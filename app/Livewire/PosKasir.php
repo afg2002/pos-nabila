@@ -19,10 +19,12 @@ class PosKasir extends Component
     public $customerName = '';
     public $customerPhone = '';
     public $paymentMethod = 'cash';
+    public $pricingTier = 'retail'; // retail, semi_grosir, grosir, custom
     public $amountPaid = 0;
     public $discount = 0;
     public $discountType = 'amount'; // amount or percentage
     public $notes = '';
+    public $paymentNotes = '';
     
     // Computed properties
     public $subtotal = 0;
@@ -38,7 +40,9 @@ class PosKasir extends Component
     protected $rules = [
         'customerName' => 'nullable|string|max:255',
         'customerPhone' => 'nullable|string|max:20',
-        'paymentMethod' => 'required|in:cash,card,transfer',
+        'paymentMethod' => 'required|in:cash,transfer,debit,qr',
+        'pricingTier' => 'required|in:retail,semi_grosir,grosir,custom',
+        'paymentNotes' => 'nullable|string|max:255',
         'amountPaid' => 'required|numeric|min:0',
         'discount' => 'nullable|numeric|min:0',
         'discountType' => 'required|in:amount,percentage',
@@ -145,15 +149,19 @@ class PosKasir extends Component
             }
             $this->cart[$cartKey]['quantity']++;
         } else {
+            // Use product's default price type if current tier is 'retail'
+            $effectivePricingTier = $this->pricingTier === 'retail' ? $product->default_price_type : $this->pricingTier;
+            
             $this->cart[$cartKey] = [
                 'product_id' => $product->id,
                 'name' => $product->name,
                 'sku' => $product->sku,
                 'barcode' => $product->barcode,
-                'price' => $product->price_retail,
+                'price' => $this->getPriceByTier($product, $effectivePricingTier),
                 'base_cost' => $product->base_cost,
                 'quantity' => 1,
-                'available_stock' => $product->current_stock
+                'available_stock' => $product->current_stock,
+                'pricing_tier' => $effectivePricingTier
             ];
         }
         
@@ -193,7 +201,42 @@ class PosKasir extends Component
             }
             
             $this->cart[$cartKey]['price'] = $price;
+            $this->cart[$cartKey]['pricing_tier'] = 'custom';
             $this->calculateTotals();
+        }
+    }
+    
+    public function updateItemPriceType($cartKey, $priceType)
+    {
+        if (isset($this->cart[$cartKey])) {
+            $product = Product::find($this->cart[$cartKey]['product_id']);
+            if ($product) {
+                $this->cart[$cartKey]['price'] = $this->getPriceByTier($product, $priceType);
+                $this->cart[$cartKey]['pricing_tier'] = $priceType;
+                $this->calculateTotals();
+                
+                $priceTypeName = Product::getPriceTypes()[$priceType];
+                session()->flash('success', "Harga produk {$product->name} diubah ke {$priceTypeName}!");
+            }
+        }
+    }
+    
+    public function bulkSetCartPriceType($priceType)
+    {
+        $updatedCount = 0;
+        foreach ($this->cart as $cartKey => $item) {
+            $product = Product::find($item['product_id']);
+            if ($product) {
+                $this->cart[$cartKey]['price'] = $this->getPriceByTier($product, $priceType);
+                $this->cart[$cartKey]['pricing_tier'] = $priceType;
+                $updatedCount++;
+            }
+        }
+        
+        if ($updatedCount > 0) {
+            $this->calculateTotals();
+            $priceTypeName = Product::getPriceTypes()[$priceType];
+            session()->flash('success', "{$updatedCount} produk di keranjang diubah ke jenis harga {$priceTypeName}!");
         }
     }
     
@@ -278,6 +321,8 @@ class PosKasir extends Component
                 'amount_paid' => $this->amountPaid,
                 'change_amount' => $this->change,
                 'notes' => $this->notes,
+            'payment_method' => $this->paymentMethod,
+            'payment_notes' => $this->paymentNotes,
                 'cashier_id' => Auth::id(),
                 // created_at akan otomatis diisi oleh Laravel
             ]);
@@ -399,6 +444,51 @@ class PosKasir extends Component
         return false;
     }
     
+    /**
+     * Get price based on selected pricing tier with support for product's default price type
+     */
+    public function getPriceByTier($product, $tier = null)
+    {
+        $effectiveTier = $tier ?: $this->pricingTier;
+        
+        switch ($effectiveTier) {
+            case 'retail':
+                return $product->price_retail;
+            case 'semi_grosir':
+                return $product->price_semi_grosir ?? $product->price_retail;
+            case 'grosir':
+                return $product->price_grosir;
+            case 'custom':
+                return $product->price_retail; // Default to retail, will be manually adjusted
+            default:
+                return $product->price_retail;
+        }
+    }
+
+    /**
+     * Update all cart prices when pricing tier changes
+     */
+    public function updatedPricingTier()
+    {
+        // Dispatch event to prevent auto-focus during pricing tier update
+        $this->dispatch('pricing-tier-updating');
+        
+        foreach ($this->cart as $cartKey => $item) {
+            $product = Product::find($item['product_id']);
+            if ($product) {
+                // Use product's default price type if switching to 'retail', otherwise use selected tier
+                $effectivePricingTier = $this->pricingTier === 'retail' ? $product->default_price_type : $this->pricingTier;
+                
+                $this->cart[$cartKey]['price'] = $this->getPriceByTier($product, $effectivePricingTier);
+                $this->cart[$cartKey]['pricing_tier'] = $effectivePricingTier;
+            }
+        }
+        $this->calculateTotals();
+        
+        // Dispatch event after update is complete
+        $this->dispatch('pricing-tier-updated');
+    }
+
     /**
      * Get barcode scan statistics for current session
      */

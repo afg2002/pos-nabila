@@ -14,11 +14,14 @@ class Product extends Model
         'barcode',
         'name',
         'category',
-        'unit',
+        'photo',
+        'unit_id',
         'base_cost',
         'price_retail',
+        'price_semi_grosir',
         'price_grosir',
         'min_margin_pct',
+        'default_price_type',
         'current_stock',
         'is_active'
     ];
@@ -26,8 +29,10 @@ class Product extends Model
     protected $casts = [
         'base_cost' => 'decimal:2',
         'price_retail' => 'decimal:2',
+        'price_semi_grosir' => 'decimal:2',
         'price_grosir' => 'decimal:2',
         'min_margin_pct' => 'decimal:2',
+        'default_price_type' => 'string',
         'is_active' => 'boolean'
     ];
 
@@ -41,6 +46,12 @@ class Product extends Model
     public function saleItems(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    // Relasi ke product unit
+    public function unit()
+    {
+        return $this->belongsTo(ProductUnit::class, 'unit_id');
     }
 
     // Method untuk mendapatkan stok saat ini
@@ -88,5 +99,65 @@ class Product extends Model
               ->orWhere('barcode', 'like', "%{$search}%")
               ->orWhere('category', 'like', "%{$search}%");
         });
+    }
+
+    // Method untuk mendapatkan URL foto dengan placeholder
+    public function getPhotoUrl()
+    {
+        if ($this->photo && file_exists(storage_path('app/public/products/' . $this->photo))) {
+            return asset('storage/products/' . $this->photo);
+        }
+        
+        // Return local placeholder image
+        return asset('storage/placeholders/no-image.svg');
+    }
+
+    /**
+     * Get price by price type
+     */
+    public function getPriceByType($priceType = null)
+    {
+        $type = $priceType ?: $this->default_price_type;
+        
+        switch ($type) {
+            case 'retail':
+                return $this->price_retail;
+            case 'semi_grosir':
+                return $this->price_semi_grosir ?? $this->price_retail;
+            case 'grosir':
+                return $this->price_grosir;
+            case 'custom':
+                return $this->price_retail; // Default for custom, will be manually adjusted
+            default:
+                return $this->price_retail;
+        }
+    }
+
+    /**
+     * Get price type display name
+     */
+    public function getPriceTypeDisplayName()
+    {
+        $types = [
+            'retail' => 'Retail',
+            'semi_grosir' => 'Semi Grosir',
+            'grosir' => 'Grosir',
+            'custom' => 'Custom'
+        ];
+        
+        return $types[$this->default_price_type] ?? 'Retail';
+    }
+
+    /**
+     * Get available price types
+     */
+    public static function getPriceTypes()
+    {
+        return [
+            'retail' => 'Retail',
+            'semi_grosir' => 'Semi Grosir',
+            'grosir' => 'Grosir',
+            'custom' => 'Custom'
+        ];
     }
 }

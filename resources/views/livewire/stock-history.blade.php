@@ -62,7 +62,7 @@
 
     <!-- Filters -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Search -->
             <div class="lg:col-span-2">
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cari</label>
@@ -94,7 +94,12 @@
                     <option value="adjustment">Penyesuaian</option>
                 </select>
             </div>
-            
+        </div>
+        
+
+        
+        <!-- Date Filters -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <!-- Date From -->
             <div>
                 <label for="dateFrom" class="block text-sm font-medium text-gray-700 mb-1">Dari Tanggal</label>
@@ -141,9 +146,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Harga</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catatan</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
@@ -154,8 +157,20 @@
                                 {{ $movement->created_at->format('d/m/Y H:i') }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">{{ $movement->product->name }}</div>
-                                <div class="text-sm text-gray-500">{{ $movement->product->sku }}</div>
+                                <div class="flex items-center space-x-3">
+                                    <!-- Product Photo -->
+                                    <div class="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                        <img src="{{ $movement->product->getPhotoUrl() }}" 
+                                             alt="{{ $movement->product->name }}"
+                                             class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                             onclick="openImageModal('{{ $movement->product->getPhotoUrl() }}', '{{ $movement->product->name }}')">
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">{{ $movement->product->name }}</div>
+                                        <div class="text-sm text-gray-500">{{ $movement->product->sku }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @if($movement->type === 'IN')
@@ -193,14 +208,14 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 <span class="text-gray-600">{{ number_format($movement->stock_before) }} → {{ number_format($movement->stock_after) }}</span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                <span class="text-gray-400">-</span>
-                            </td>
+
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ $movement->user->name ?? 'System' }}
-                            </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                {{ $movement->notes ?: '-' }}
+                                <div class="text-sm font-medium text-gray-900">{{ $movement->performedBy->name ?? $movement->user->name ?? 'System' }}</div>
+                                @if($movement->approvedBy)
+                                    <div class="text-xs text-green-600">Disetujui: {{ $movement->approvedBy->name }}</div>
+                                @elseif($movement->requires_approval && !$movement->approved_at)
+                                    <div class="text-xs text-yellow-600">Menunggu persetujuan</div>
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-2">
@@ -238,7 +253,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center text-sm text-gray-500">
+                            <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-500">
                                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
                                 </svg>
@@ -362,7 +377,12 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dilakukan Oleh</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedMovement->user->name ?? 'System' }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedMovement->performedBy->name ?? $selectedMovement->user->name ?? 'System' }}</p>
+                                    @if($selectedMovement->approvedBy)
+                                        <p class="mt-1 text-xs text-green-600">Disetujui oleh: {{ $selectedMovement->approvedBy->name }}</p>
+                                    @elseif($selectedMovement->requires_approval && !$selectedMovement->approved_at)
+                                        <p class="mt-1 text-xs text-yellow-600">Menunggu persetujuan</p>
+                                    @endif
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Referensi</label>
@@ -377,6 +397,8 @@
                                     <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedMovement->note ?: '-' }}</p>
                                 </div>
                             </div>
+                            
+
                         </div>
                     </div>
 
@@ -479,4 +501,46 @@
             </div>
         </div>
     @endif
+
+    <!-- Image Preview Modal -->
+    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">
+        <div class="relative max-w-4xl max-h-full p-4" onclick="event.stopPropagation()">
+            <button onclick="closeImageModal()" class="absolute top-2 right-2 text-white bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75">
+                <i class="fas fa-times"></i>
+            </button>
+            <img id="modalImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
+            <div id="modalImageName" class="text-white text-center mt-2 font-medium"></div>
+        </div>
+    </div>
+
+    <script>
+        function openImageModal(imageUrl, imageName) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalImageName = document.getElementById('modalImageName');
+            
+            modalImage.src = imageUrl;
+            modalImage.alt = imageName;
+            modalImageName.textContent = imageName;
+            modal.classList.remove('hidden');
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.add('hidden');
+            
+            // Restore body scroll
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        });
+    </script>
 </div>

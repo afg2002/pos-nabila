@@ -26,7 +26,8 @@ class StockForm extends Component
     #[Validate('nullable|string|max:255')]
     public $notes = '';
     
-
+    #[Validate('nullable|string|max:50')]
+    public $reason_code = '';
     
     public $showModal = false;
     public $products = [];
@@ -56,7 +57,9 @@ class StockForm extends Component
     public function closeModal()
     {
         $this->showModal = false;
-        $this->reset(['product_id', 'movement_type', 'quantity', 'notes']);
+        $this->reset([
+            'product_id', 'movement_type', 'quantity', 'notes', 'reason_code'
+        ]);
         $this->selectedProduct = null;
     }
     
@@ -100,13 +103,11 @@ class StockForm extends Component
             $product->update(['current_stock' => $stockAfter]);
             
             // Catat movement
-            StockMovement::create([
-                'product_id' => $this->product_id,
-                'type' => strtoupper($this->movement_type),
-                'qty' => $stockChange, // Positif untuk IN, negatif untuk OUT
+            StockMovement::createMovement($this->product_id, $stockChange, strtoupper($this->movement_type), [
                 'ref_type' => 'manual',
                 'ref_id' => null,
                 'note' => $this->notes,
+                'reason_code' => $this->reason_code,
                 'performed_by' => Auth::id(),
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,

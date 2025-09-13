@@ -120,8 +120,8 @@
                     </div>
                 </div>
                 <div class="h-64">
-                    @if(isset($salesChart))
-                        {!! $salesChart->container() !!}
+                    @if(isset($dailySalesChart))
+                        {!! $dailySalesChart->container() !!}
                     @else
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <i class="fas fa-chart-line text-4xl mb-2"></i>
@@ -144,8 +144,8 @@
                     </div>
                 </div>
                 <div class="h-64">
-                    @if(!empty($stockMovementData))
-                        <canvas id="stockChart" width="400" height="200"></canvas>
+                    @if(isset($stockMovementChart))
+                        {!! $stockMovementChart->container() !!}
                     @else
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <svg class="w-16 h-16 mb-2" fill="currentColor" viewBox="0 0 20 20">
@@ -172,21 +172,21 @@
                     </button>
                 </div>
                 <div class="space-y-4">
-                    @if($topProducts->count() > 0)
-                        @foreach($topProducts as $product)
-                            <div wire:key="top-product-{{ $product->id }}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    @if($topProductsData->count() > 0)
+                        @foreach($topProductsData as $product)
+                            <div wire:key="top-product-{{ $product->id ?? $loop->index }}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
                                         <i class="fas fa-box text-blue-600 dark:text-blue-400"></i>
                                     </div>
                                     <div>
                                         <p class="font-medium text-gray-900 dark:text-white">{{ $product->name }}</p>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ $product->sku }}</p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">SKU: {{ $product->sku ?? 'N/A' }}</p>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-semibold text-gray-900 dark:text-white">{{ $product->total_sold ?? 0 }} terjual</p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Rp {{ number_format($product->price_retail, 0, ',', '.') }}</p>
+                                    <p class="font-semibold text-gray-900 dark:text-white">{{ $product->total_qty ?? 0 }} terjual</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Rp {{ number_format($product->total_revenue ?? 0, 0, ',', '.') }}</p>
                                 </div>
                             </div>
                         @endforeach
@@ -274,52 +274,11 @@
 </div>
 
 @push('scripts')
-<!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- Scripts -->
-@if(isset($salesChart) && $salesChart !== null)
-    <script src="{{ $salesChart->cdn() }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait for DOM to be ready before rendering chart
-            setTimeout(function() {
-                try {
-                    {!! $salesChart->script() !!}
-                } catch (error) {
-                    console.error('Chart rendering error:', error);
-                }
-            }, 100);
-        });
-    </script>
+@if(isset($dailySalesChart))
+    {!! $dailySalesChart->script() !!}
 @endif
-
-<!-- Stock Movement Chart -->
-@if(!empty($stockMovementData))
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('stockChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: @json($stockMovementData),
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        },
-                        title: {
-                            display: true,
-                            text: 'Pergerakan Stok'
-                        }
-                    }
-                }
-            });
-        }
-    });
-</script>
+@if(isset($stockMovementChart))
+    {!! $stockMovementChart->script() !!}
 @endif
 
 <script>

@@ -23,6 +23,9 @@ class StockHistory extends Component
     public $dateTo = '';
     public $perPage = 10;
     
+
+    public $reasonCodeFilter = '';
+    
     public $products = [];
     
     // Modal properties
@@ -77,6 +80,8 @@ class StockHistory extends Component
         $this->search = '';
         $this->productFilter = '';
         $this->movementTypeFilter = '';
+
+        $this->reasonCodeFilter = '';
         $this->dateTo = now()->format('Y-m-d');
         $this->dateFrom = now()->subDays(30)->format('Y-m-d');
         $this->resetPage();
@@ -293,13 +298,13 @@ class StockHistory extends Component
     
     public function render()
     {
-        $query = StockMovement::with(['product', 'user'])
+        $query = StockMovement::with(['product', 'performedBy', 'approvedBy'])
             ->when($this->search, function ($q) {
                 $q->whereHas('product', function ($productQuery) {
                     $productQuery->where('name', 'like', '%' . $this->search . '%')
                         ->orWhere('sku', 'like', '%' . $this->search . '%');
                 })
-                ->orWhere('notes', 'like', '%' . $this->search . '%');
+                ->orWhere('note', 'like', '%' . $this->search . '%');
             })
             ->when($this->productFilter, function ($q) {
                 $q->where('product_id', $this->productFilter);
@@ -307,13 +312,16 @@ class StockHistory extends Component
             ->when($this->movementTypeFilter, function ($q) {
                 $q->where('type', strtoupper($this->movementTypeFilter));
             })
+
+            ->when($this->reasonCodeFilter, function ($q) {
+                $q->where('reason_code', $this->reasonCodeFilter);
+            })
             ->when($this->dateFrom, function ($q) {
                 $q->whereDate('created_at', '>=', $this->dateFrom);
             })
             ->when($this->dateTo, function ($q) {
                 $q->whereDate('created_at', '<=', $this->dateTo);
             })
-            ->orderBy('created_at', 'desc')
             ->orderBy('created_at', 'desc');
             
         $movements = $query->paginate($this->perPage);

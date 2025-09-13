@@ -17,12 +17,21 @@ class StockMovement extends Model
         'note',
         'performed_by',
         'stock_before',
-        'stock_after'
+        'stock_after',
+
+        'metadata',
+        'reason_code',
+        'approved_by',
+        'approved_at'
     ];
 
     protected $casts = [
         'qty' => 'integer',
-        'ref_id' => 'integer'
+        'ref_id' => 'integer',
+        'expiry_date' => 'date',
+
+        'metadata' => 'array',
+        'approved_at' => 'datetime'
     ];
 
     // Relasi ke product
@@ -43,6 +52,12 @@ class StockMovement extends Model
         return $this->belongsTo(User::class, 'performed_by');
     }
 
+    // Relasi ke user yang approve
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     // Scope untuk filter berdasarkan type
     public function scopeByType($query, $type)
     {
@@ -55,17 +70,64 @@ class StockMovement extends Model
         return $query->where('product_id', $productId);
     }
 
-    // Method untuk membuat stock movement
-    public static function createMovement($productId, $qty, $type, $refType = null, $refId = null, $note = null, $performedBy = null)
+    // Method untuk membuat stock movement dengan enhanced tracking
+    public static function createMovement($productId, $qty, $type, $options = [])
     {
+        $defaultOptions = [
+            'ref_type' => null,
+            'ref_id' => null,
+            'note' => null,
+            'performed_by' => auth()->id(),
+
+            'metadata' => null,
+            'reason_code' => null,
+            'approved_by' => null,
+            'approved_at' => null
+        ];
+        
+        $options = array_merge($defaultOptions, $options);
+        
         return self::create([
             'product_id' => $productId,
             'qty' => $qty,
             'type' => $type,
-            'ref_type' => $refType,
-            'ref_id' => $refId,
-            'note' => $note,
-            'performed_by' => $performedBy ?? auth()->id()
+            ...$options
         ]);
+    }
+
+    
+    // Scope untuk movement yang perlu approval
+    public function scopePendingApproval($query)
+    {
+        return $query->whereNull('approved_by')->whereNull('approved_at');
+    }
+    
+    // Scope untuk movement yang sudah diapprove
+    public function scopeApproved($query)
+    {
+        return $query->whereNotNull('approved_by')->whereNotNull('approved_at');
+    }
+    
+    // Method untuk approve movement
+    public function approve($userId = null)
+    {
+        $this->update([
+            'approved_by' => $userId ?? auth()->id(),
+            'approved_at' => now()
+        ]);
+        
+        return $this;
+    }
+    
+    // Method untuk check apakah sudah expired
+    public function isExpired()
+    {
+        return $this->expiry_date && $this->expiry_date->isPast();
+    }
+    
+    // Method untuk check apakah akan expired dalam X hari
+    public function isExpiringIn($days = 30)
+    {
+        return $this->expiry_date && $this->expiry_date->diffInDays(now()) <= $days;
     }
 }

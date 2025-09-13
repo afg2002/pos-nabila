@@ -15,6 +15,8 @@ class Sale extends Model
         'subtotal',
         'discount_total',
         'final_total',
+        'payment_method',
+        'payment_notes',
         'status'
     ];
 

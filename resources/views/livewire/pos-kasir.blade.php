@@ -1,4 +1,5 @@
 <div class="min-h-screen bg-gray-50">
+<div class="pos-kasir-container min-h-screen bg-gray-50">
     <!-- Flash Messages -->
     @if (session()->has('success'))
         <div class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
@@ -59,16 +60,52 @@
                     @foreach($products as $product)
                         <div class="product-card relative bg-gray-50 rounded-lg p-4 hover:bg-gray-100 cursor-pointer transition-colors"
                              wire:click="addToCart({{ $product->id }})">
+                            <!-- Product Image -->
+                            <div class="w-full h-24 mb-3 bg-gray-200 rounded-lg overflow-hidden">
+                                <img src="{{ $product->getPhotoUrl() }}" 
+                                     alt="{{ $product->name }}"
+                                     class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                     onclick="openImageModal('{{ $product->getPhotoUrl() }}', '{{ $product->name }}')"
+                                     onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
+                            </div>
+                            
                             <div class="absolute top-2 right-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                                 {{ $product->barcode }}
                             </div>
                             <div class="text-sm font-medium text-gray-900 truncate">{{ $product->name }}</div>
                             <div class="text-xs text-gray-500 mt-1">{{ $product->sku }}</div>
                             <div class="text-sm font-semibold text-blue-600 mt-2">
-                                Rp {{ number_format($product->price_retail, 0, ',', '.') }}
+                                @php
+                                    $displayPrice = match($pricingTier) {
+                                        'retail' => $product->getPriceByType('retail'),
+                                        'semi_grosir' => $product->price_semi_grosir ?? $product->price_retail,
+                                        'grosir' => $product->price_grosir,
+                                        'custom' => $product->price_retail,
+                                        default => $product->getPriceByType()
+                                    };
+                                @endphp
+                                <div class="font-bold text-base">Rp {{ number_format($displayPrice, 0, ',', '.') }}</div>
+                                
+                                <!-- Show all available prices -->
+                                <div class="text-xs space-y-1 mt-1">
+                                    @if($pricingTier !== 'retail')
+                                        <div class="text-gray-500">{{ ucfirst(str_replace('_', ' ', $pricingTier)) }}</div>
+                                    @else
+                                        <div class="text-gray-500">{{ $product->getPriceTypeDisplayName() }}</div>
+                                    @endif
+                                    
+                                    <!-- Price breakdown -->
+                                    <div class="bg-gray-50 rounded p-1 text-xs">
+                                        <div class="text-blue-600">R: Rp {{ number_format($product->price_retail, 0, ',', '.') }}</div>
+                                        @if($product->price_semi_grosir)
+                                            <div class="text-yellow-600">SG: Rp {{ number_format($product->price_semi_grosir, 0, ',', '.') }}</div>
+                                        @endif
+                                        <div class="text-green-600">G: Rp {{ number_format($product->price_grosir, 0, ',', '.') }}</div>
+                                    </div>
+                                </div>
                             </div>
                             <div class="text-xs text-gray-500 mt-1">
-                                Stok: {{ $product->current_stock }} {{ $product->unit }}
+                                Stok: {{ $product->current_stock }} {{ $product->unit ? $product->unit->abbreviation : 'pcs' }}
                             </div>
                         </div>
                     @endforeach
@@ -89,6 +126,64 @@
                             Kosongkan
                         </button>
                     @endif
+                </div>
+                
+                <!-- Bulk Price Type Control -->
+                @if(!empty($cart))
+                    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
+                            <div class="flex items-center space-x-2">
+                                @foreach(\App\Product::getPriceTypes() as $value => $label)
+                                    <button wire:click="bulkSetCartPriceType('{{ $value }}')"
+                                            class="px-2 py-1 text-xs rounded-md border 
+                                                {{ $value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : '' }}
+                                                {{ $value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : '' }}
+                                                {{ $value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : '' }}
+                                                {{ $value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : '' }}">
+                                        {{ $label }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                
+                <!-- Bulk Price Type Control -->
+                @if(!empty($cart))
+                    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
+                            <div class="flex items-center space-x-2">
+                                @foreach(\App\Product::getPriceTypes() as $value => $label)
+                                    <button wire:click="bulkSetCartPriceType('{{ $value }}')"
+                                            class="px-2 py-1 text-xs rounded-md border 
+                                                {{ $value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : '' }}
+                                                {{ $value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : '' }}
+                                                {{ $value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : '' }}
+                                                {{ $value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : '' }}">
+                                        {{ $label }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                @endif
+                
+                <!-- Pricing Tier Selector -->
+                <div class="mt-4 pricing-tier-selector">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Harga</label>
+                    <select wire:model.live="pricingTier" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onclick="event.stopPropagation();"
+                            onchange="event.stopPropagation();"
+                            onfocus="document.getElementById('barcode-input').setAttribute('data-prevent-focus', 'true');"
+                            onblur="setTimeout(() => document.getElementById('barcode-input').removeAttribute('data-prevent-focus'), 200);">
+                        <option value="retail">Retail</option>
+                        <option value="semi_grosir">Semi Grosir</option>
+                        <option value="grosir">Grosir</option>
+                        <option value="custom">Custom</option>
+                    </select>
                 </div>
                 
                 <!-- Keyboard Shortcuts Info -->
@@ -118,9 +213,23 @@
                         @foreach($cart as $key => $item)
                             <div class="bg-gray-50 rounded-lg p-4">
                                 <div class="flex items-start justify-between">
-                                    <div class="flex-1">
-                                        <h4 class="font-medium text-gray-900">{{ $item['name'] }}</h4>
-                                        <p class="text-sm text-gray-500">{{ $item['sku'] }}</p>
+                                    <div class="flex items-start space-x-3 flex-1">
+                                        <!-- Product Image -->
+                                        <div class="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                            @php
+                                                $product = \App\Product::find($item['product_id']);
+                                            @endphp
+                                            <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
+                                                 alt="{{ $item['name'] }}"
+                                                 class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                                 onclick="openImageModal('{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $item['name'] }}')"
+                                                 onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
+                                        </div>
+                                        
+                                        <div class="flex-1">
+                                            <h4 class="font-medium text-gray-900">{{ $item['name'] }}</h4>
+                                            <p class="text-sm text-gray-500">{{ $item['sku'] }}</p>
+                                        </div>
                                     </div>
                                     <button wire:click="removeFromCart('{{ $key }}')"
                                             class="text-red-500 hover:text-red-700">
@@ -142,22 +251,55 @@
                                                class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
                                     </div>
                                     
-                                    <!-- Price -->
+                                    <!-- Price Type Selector -->
                                     <div>
-                                        <label class="block text-xs font-medium text-gray-700 mb-1">Harga</label>
-                                        <input type="number" 
-                                               wire:change="updatePrice('{{ $key }}', $event.target.value)"
-                                               value="{{ $item['price'] }}"
-                                               min="{{ $item['base_cost'] * 1.1 }}"
-                                               class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
+                                        <select wire:change="updateItemPriceType('{{ $key }}', $event.target.value)"
+                                                class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                            @foreach(\App\Product::getPriceTypes() as $value => $label)
+                                                <option value="{{ $value }}" {{ $item['pricing_tier'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            @php
+                                                $product = \App\Product::find($item['product_id']);
+                                                $currentPriceType = $item['pricing_tier'];
+                                            @endphp
+                                            @if($currentPriceType === 'retail')
+                                                <span class="text-blue-600">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</span>
+                                            @elseif($currentPriceType === 'semi_grosir')
+                                                <span class="text-yellow-600">Rp {{ number_format($product->price_semi_grosir ?? 0, 0, ',', '.') }}</span>
+                                            @elseif($currentPriceType === 'grosir')
+                                                <span class="text-green-600">Rp {{ number_format($product->price_grosir ?? 0, 0, ',', '.') }}</span>
+                                            @else
+                                                <span class="text-purple-600">Custom</span>
+                                            @endif
+                                        </div>
                                     </div>
+                                    
+                                    <!-- Custom Price Input (only show for custom price type) -->
+                                    @if($item['pricing_tier'] === 'custom')
+                                        <div class="mt-2 col-span-2">
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Harga Custom</label>
+                                            <input type="number" 
+                                                   wire:change="updatePrice('{{ $key }}', $event.target.value)"
+                                                   value="{{ $item['price'] }}"
+                                                   min="{{ $item['base_cost'] * 1.1 }}"
+                                                   class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        </div>
+                                    @endif
                                 </div>
                                 
                                 <div class="mt-2 flex justify-between items-center">
                                     <span class="text-xs text-gray-500">Stok: {{ $item['available_stock'] }}</span>
-                                    <span class="font-semibold text-blue-600">
-                                        Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
-                                    </span>
+                                    <div class="text-right">
+                                        <div class="text-xs text-gray-500">
+                                            @{{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
+                                        </div>
+                                        <span class="font-semibold text-blue-600">
+                                            Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
@@ -236,9 +378,15 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
                             <select wire:model="paymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="cash">Tunai</option>
-                                <option value="card">Kartu</option>
                                 <option value="transfer">Transfer</option>
+                                <option value="debit">Kartu Debit</option>
+                                <option value="qr">QR Code</option>
                             </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Pembayaran</label>
+                            <input type="text" wire:model="paymentNotes" placeholder="Opsional..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         
                         <div>
@@ -374,32 +522,68 @@
 
 <script>
     document.addEventListener('livewire:init', () => {
+        // Track user interaction to prevent unwanted auto-focus
+        let userInteractingWithForm = false;
+        let pricingTierUpdating = false;
+        
+        // Listen for pricing tier update events
+        Livewire.on('pricing-tier-updating', () => {
+            pricingTierUpdating = true;
+            userInteractingWithForm = true;
+        });
+        
+        Livewire.on('pricing-tier-updated', () => {
+            setTimeout(() => {
+                pricingTierUpdating = false;
+                userInteractingWithForm = false;
+            }, 300); // Give some time for the DOM to update
+        });
+        
+        // Add event listeners to track form interactions
+        document.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.pricing-tier-selector') || 
+                e.target.tagName === 'SELECT' || 
+                e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'TEXTAREA') {
+                userInteractingWithForm = true;
+                setTimeout(() => {
+                    if (!pricingTierUpdating) {
+                        userInteractingWithForm = false;
+                    }
+                }, 1000); // Reset after 1 second
+            }
+        });
+        
+        document.addEventListener('focusin', function(e) {
+            if (e.target.closest('.pricing-tier-selector') || 
+                e.target.tagName === 'SELECT') {
+                userInteractingWithForm = true;
+                setTimeout(() => {
+                    if (!pricingTierUpdating) {
+                        userInteractingWithForm = false;
+                    }
+                }, 500);
+            }
+        });
+        
         Livewire.on('print-receipt', () => {
             window.print();
         });
         
-        // Auto-focus barcode input after page load
-        setTimeout(() => {
-            const barcodeInput = document.getElementById('barcode-input');
-            if (barcodeInput) {
-                barcodeInput.focus();
-            }
-        }, 100);
-        
-        // Re-focus barcode input after Livewire updates
-        Livewire.hook('morph.updated', () => {
-            setTimeout(() => {
-                const barcodeInput = document.getElementById('barcode-input');
-                if (barcodeInput && !document.querySelector('.modal')) {
-                    barcodeInput.focus();
-                }
-            }, 50);
-        });
+        // Auto-focus disabled - user can manually focus barcode input when needed
         
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
-            // Don't trigger shortcuts if user is typing in input fields (except barcode)
-            if (e.target.tagName === 'INPUT' && e.target.id !== 'barcode-input') {
+            // Don't trigger shortcuts if user is typing in input fields, select, or textarea
+            // Exception: Allow shortcuts when barcode input is focused
+            if ((e.target.tagName === 'INPUT' && e.target.id !== 'barcode-input') ||
+                e.target.tagName === 'SELECT' ||
+                e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // Don't trigger shortcuts if modal is open (except ESC)
+            if (document.querySelector('.modal') && e.key !== 'Escape') {
                 return;
             }
             
@@ -442,14 +626,22 @@
                     @this.call('closeCheckout');
                     @this.call('closeReceipt');
                 } else {
-                    // Clear search and focus barcode
-                    @this.set('productSearch', '');
-                    setTimeout(() => {
-                        const barcodeInput = document.getElementById('barcode-input');
-                        if (barcodeInput) {
-                            barcodeInput.focus();
-                        }
-                    }, 50);
+                    // Clear search and focus barcode only if not interacting with form elements
+                    const activeElement = document.activeElement;
+                    const isFormInteraction = activeElement && (
+                        activeElement.tagName === 'SELECT' ||
+                        activeElement.closest('.pricing-tier-selector')
+                    );
+                    
+                    if (!isFormInteraction) {
+                        @this.set('productSearch', '');
+                        setTimeout(() => {
+                            const barcodeInput = document.getElementById('barcode-input');
+                            if (barcodeInput) {
+                                barcodeInput.focus();
+                            }
+                        }, 50);
+                    }
                 }
             }
             
@@ -481,26 +673,92 @@
             });
             
             // Clear barcode input after successful scan
-            barcodeInput.addEventListener('blur', function() {
-                if (this.value.trim() === '') {
+            barcodeInput.addEventListener('blur', function(e) {
+                // Don't auto-focus if user is interacting with other form elements or pricing tier is updating
+                const activeElement = document.activeElement;
+                const isFormInteraction = activeElement && (
+                    activeElement.tagName === 'SELECT' ||
+                    activeElement.tagName === 'INPUT' ||
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.closest('.pricing-tier-selector')
+                );
+                
+                // Check if auto-focus is specifically prevented
+                const preventFocus = this.hasAttribute('data-prevent-focus');
+                
+                if (this.value.trim() === '' && !isFormInteraction && !userInteractingWithForm && !pricingTierUpdating && !preventFocus) {
                     setTimeout(() => {
-                        this.focus();
-                    }, 100);
+                        // Double check that user isn't interacting with form elements and pricing tier isn't updating
+                        const currentActive = document.activeElement;
+                        const stillPreventFocus = this.hasAttribute('data-prevent-focus');
+                        if (!userInteractingWithForm && !pricingTierUpdating && !stillPreventFocus &&
+                            (!currentActive || (!currentActive.closest('.pricing-tier-selector') && 
+                            currentActive.tagName !== 'SELECT' && 
+                            currentActive.tagName !== 'INPUT' && 
+                            currentActive.tagName !== 'TEXTAREA'))) {
+                            this.focus();
+                        }
+                    }, 150);
                 }
             });
         }
     });
     
-    // Flash message auto-hide
-    document.addEventListener('DOMContentLoaded', function() {
-        const flashMessages = document.querySelectorAll('.fixed.top-4.right-4');
-        flashMessages.forEach(message => {
-            setTimeout(() => {
-                message.style.opacity = '0';
+    // User interaction tracking removed - no longer needed without auto-focus
+        
+        // Flash message auto-hide
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('.fixed.top-4.right-4');
+            flashMessages.forEach(message => {
                 setTimeout(() => {
-                    message.remove();
-                }, 300);
-            }, 3000);
+                    message.style.opacity = '0';
+                    setTimeout(() => {
+                        message.remove();
+                    }, 300);
+                }, 3000);
+            });
         });
+</script>
+
+<!-- Image Preview Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-full p-4" onclick="event.stopPropagation()">
+        <button onclick="closeImageModal()" class="absolute top-2 right-2 text-white bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75">
+            <i class="fas fa-times"></i>
+        </button>
+        <img id="modalImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
+        <div id="modalImageName" class="text-white text-center mt-2 font-medium"></div>
+    </div>
+</div>
+
+<script>
+    function openImageModal(imageUrl, imageName) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalImageName = document.getElementById('modalImageName');
+        
+        modalImage.src = imageUrl;
+        modalImage.alt = imageName;
+        modalImageName.textContent = imageName;
+        modal.classList.remove('hidden');
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+        
+        // Restore body scroll
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageModal();
+        }
     });
 </script>
+</div>

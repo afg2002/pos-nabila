@@ -28,10 +28,10 @@ class Dashboard extends Component
     public $lowStockProducts = 0;
     
     // Chart Data
-    public $salesChartData = [];
+    public $salesData = [];
+    public $stockData = [];
     public $topProductsData = [];
-    public $stockMovementData = [];
-    public $revenueChartData = [];
+    public $recentSales = [];
     
     public function mount()
     {
@@ -89,36 +89,17 @@ class Dashboard extends Component
                         ->orderBy('date')
                         ->get();
         
-        $this->salesChartData = [
-            'labels' => $salesData->pluck('date')->map(function($date) {
-                return Carbon::parse($date)->format('d/m');
-            })->toArray(),
-            'datasets' => [
-                [
-                    'label' => 'Jumlah Transaksi',
-                    'data' => $salesData->pluck('count')->toArray(),
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.5)',
-                    'borderColor' => 'rgb(59, 130, 246)',
-                    'borderWidth' => 2
-                ]
-            ]
-        ];
+        // Store sales data for chart creation in render method
+        $this->salesData = $salesData;
         
-        // Revenue Chart Data
-        $this->revenueChartData = [
-            'labels' => $salesData->pluck('date')->map(function($date) {
-                return Carbon::parse($date)->format('d/m');
-            })->toArray(),
-            'datasets' => [
-                [
-                    'label' => 'Pendapatan (Rp)',
-                    'data' => $salesData->pluck('revenue')->toArray(),
-                    'backgroundColor' => 'rgba(16, 185, 129, 0.5)',
-                    'borderColor' => 'rgb(16, 185, 129)',
-                    'borderWidth' => 2
-                ]
-            ]
-        ];
+        // Create LarapexChart for revenue (optional - can be combined with sales)
+        // $this->revenueChart = LarapexChart::barChart()
+        //     ->setTitle('Pendapatan Harian')
+        //     ->addData('Pendapatan', $salesData->pluck('revenue')->toArray())
+        //     ->setXAxis($salesData->pluck('date')->map(function($date) {
+        //         return Carbon::parse($date)->format('d/m');
+        //     })->toArray())
+        //     ->setColors(['#10B981']);
         
         // Top Products Data
         $topProducts = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -130,22 +111,8 @@ class Dashboard extends Component
                               ->limit(5)
                               ->get();
         
-        $this->topProductsData = [
-            'labels' => $topProducts->pluck('name')->toArray(),
-            'datasets' => [
-                [
-                    'label' => 'Jumlah Terjual',
-                    'data' => $topProducts->pluck('total_qty')->toArray(),
-                    'backgroundColor' => [
-                        'rgba(239, 68, 68, 0.8)',
-                        'rgba(245, 158, 11, 0.8)',
-                        'rgba(59, 130, 246, 0.8)',
-                        'rgba(16, 185, 129, 0.8)',
-                        'rgba(139, 92, 246, 0.8)'
-                    ]
-                ]
-            ]
-        ];
+        // Top products data (keep for table display)
+        $this->topProductsData = $topProducts;
         
         // Stock Movement Data (In vs Out)
         $stockIn = StockMovement::where('type', 'IN')
@@ -156,23 +123,18 @@ class Dashboard extends Component
                                 ->whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
                                 ->sum('qty');
         
-        // Only create stock movement data if there's actual movement
-        if ($stockIn > 0 || $stockOut > 0) {
-            $this->stockMovementData = [
-                'labels' => ['Stok Masuk', 'Stok Keluar'],
-                'datasets' => [
-                    [
-                        'data' => [$stockIn, $stockOut],
-                        'backgroundColor' => [
-                            'rgba(16, 185, 129, 0.8)',
-                            'rgba(239, 68, 68, 0.8)'
-                        ]
-                    ]
-                ]
-            ];
-        } else {
-            $this->stockMovementData = [];
-        }
+        // Store stock data for chart creation in render method
+        $this->stockData = [
+            'stockIn' => $stockIn,
+            'stockOut' => $stockOut
+        ];
+        
+        // Load recent sales
+        $this->recentSales = Sale::with('saleItems')
+            ->whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
     }
     
     public function exportExcel()
@@ -285,41 +247,45 @@ class Dashboard extends Component
         $todayRevenue = $todaySales; // Same as today's sales total
         $todayTransactions = Sale::whereDate('created_at', Carbon::today())->count();
         
-        // Get top products (last 7 days)
-        $topProducts = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+        // Get top products data
+        $topProductsData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
                               ->join('products', 'sale_items.product_id', '=', 'products.id')
                               ->whereBetween('sales.created_at', [Carbon::now()->subDays(7), Carbon::now()])
-                              ->selectRaw('products.id, products.name, products.sku, products.price_retail, SUM(sale_items.qty) as total_sold')
-                              ->groupBy('products.id', 'products.name', 'products.sku', 'products.price_retail')
-                              ->orderByDesc('total_sold')
+                              ->selectRaw('products.id, products.name, products.sku, SUM(sale_items.qty) as total_qty, SUM(sale_items.qty * sale_items.unit_price) as total_revenue')
+                              ->groupBy('products.id', 'products.name', 'products.sku')
+                              ->orderByDesc('total_qty')
                               ->limit(5)
                               ->get();
         
-        // Get recent sales (last 10)
-        $recentSales = Sale::with(['cashier', 'saleItems'])
+        // Get recent sales
+        $recentSales = Sale::with(['saleItems'])
                           ->orderByDesc('created_at')
-                          ->limit(10)
+                          ->limit(5)
                           ->get();
         
-        // Prepare chart data for last 7 days
-        $chartLabels = [];
-        $chartData = [];
-        
-        for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i);
-            $chartLabels[] = $date->format('d/m');
-            $dailySales = Sale::whereDate('created_at', $date)->count();
-            $chartData[] = $dailySales;
+        // Create sales chart from stored data
+        $dailySalesChart = null;
+        if (!empty($this->salesData) && $this->salesData->count() > 0) {
+            $dailySalesChart = LarapexChart::lineChart()
+                ->setTitle('Penjualan Harian')
+                ->setSubtitle('Trend penjualan dalam periode yang dipilih')
+                ->addData('Jumlah Transaksi', $this->salesData->pluck('count')->toArray())
+                ->setXAxis($this->salesData->pluck('date')->map(function($date) {
+                    return Carbon::parse($date)->format('d/m');
+                })->toArray())
+                ->setColors(['#3B82F6'])
+                ->setHeight(300);
         }
         
-        // Create sales chart only if there's data
-        $salesChart = null;
-        if (array_sum($chartData) > 0) {
-            $salesChart = LarapexChart::lineChart()
-                ->setTitle('Penjualan 7 Hari Terakhir')
-                ->setSubtitle('Grafik penjualan harian')
-                ->addData('Jumlah Transaksi', $chartData)
-                ->setXAxis($chartLabels)
+        // Create stock chart from stored data
+        $stockMovementChart = null;
+        if (!empty($this->stockData) && ($this->stockData['stockIn'] > 0 || $this->stockData['stockOut'] > 0)) {
+            $stockMovementChart = LarapexChart::donutChart()
+                ->setTitle('Pergerakan Stok')
+                ->setSubtitle('Stok masuk vs keluar')
+                ->addData([$this->stockData['stockIn'], abs($this->stockData['stockOut'])])
+                ->setLabels(['Stok Masuk', 'Stok Keluar'])
+                ->setColors(['#10B981', '#EF4444'])
                 ->setHeight(300);
         }
         
@@ -328,12 +294,10 @@ class Dashboard extends Component
             'totalSales' => $this->totalRevenue, // Total revenue in selected date range
             'lowStockCount' => $this->lowStockProducts,
             'todayTransactions' => $todayTransactions,
-            'todaySales' => $todaySales,
-            'todayRevenue' => $todayRevenue,
-            'topProducts' => $topProducts,
+            'topProductsData' => $topProductsData,
             'recentSales' => $recentSales,
-            'salesChart' => $salesChart,
-            'stockMovementData' => $this->stockMovementData
+            'dailySalesChart' => $dailySalesChart,
+            'stockMovementChart' => $stockMovementChart
         ]);
     }
 }
