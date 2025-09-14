@@ -35,6 +35,10 @@ class PermissionSeeder extends Seeder
             ['name' => 'products.create', 'display_name' => 'Create Products', 'description' => 'Can create new products', 'group' => 'products'],
             ['name' => 'products.edit', 'display_name' => 'Edit Products', 'description' => 'Can edit existing products', 'group' => 'products'],
             ['name' => 'products.delete', 'display_name' => 'Delete Products', 'description' => 'Can delete products', 'group' => 'products'],
+            ['name' => 'products.restore', 'display_name' => 'Restore Products', 'description' => 'Can restore soft deleted products', 'group' => 'products'],
+            ['name' => 'products.force_delete', 'display_name' => 'Force Delete Products', 'description' => 'Can permanently delete products', 'group' => 'products'],
+            ['name' => 'products.view_trashed', 'display_name' => 'View Trashed Products', 'description' => 'Can view soft deleted products', 'group' => 'products'],
+            ['name' => 'products.manage_status', 'display_name' => 'Manage Product Status', 'description' => 'Can change product status', 'group' => 'products'],
             ['name' => 'products.import', 'display_name' => 'Import Products', 'description' => 'Can import products from Excel', 'group' => 'products'],
             ['name' => 'products.export', 'display_name' => 'Export Products', 'description' => 'Can export products to Excel/PDF', 'group' => 'products'],
             

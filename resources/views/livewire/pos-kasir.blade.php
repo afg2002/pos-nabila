@@ -2,14 +2,20 @@
 <div class="pos-kasir-container min-h-screen bg-gray-50">
     <!-- Flash Messages -->
     @if (session()->has('success'))
-        <div class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
-            {{ session('success') }}
+        <div id="success-alert" class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
+            <span>{{ session('success') }}</span>
+            <button onclick="closeAlert('success-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     @endif
 
     @if (session()->has('error'))
-        <div class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg">
-            {{ session('error') }}
+        <div id="error-alert" class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
+            <span>{{ session('error') }}</span>
+            <button onclick="closeAlert('error-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
     @endif
 
@@ -62,27 +68,27 @@
                              wire:click="addToCart({{ $product->id }})">
                             <!-- Product Image -->
                             <div class="w-full h-24 mb-3 bg-gray-200 rounded-lg overflow-hidden">
-                                <img src="{{ $product->getPhotoUrl() }}" 
-                                     alt="{{ $product->name }}"
+                                <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
+                                     alt="{{ $product ? $product->name : 'No Product' }}"
                                      class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                     onclick="openImageModal('{{ $product->getPhotoUrl() }}', '{{ $product->name }}')"
+                                     onclick="openImageModal('{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $product ? addslashes($product->name) : 'No Product' }}')"
                                      onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
                             </div>
                             
                             <div class="absolute top-2 right-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                {{ $product->barcode }}
+                                {{ $product ? $product->barcode : '-' }}
                             </div>
-                            <div class="text-sm font-medium text-gray-900 truncate">{{ $product->name }}</div>
-                            <div class="text-xs text-gray-500 mt-1">{{ $product->sku }}</div>
+                            <div class="text-sm font-medium text-gray-900 truncate">{{ $product ? $product->name : 'No Product' }}</div>
+                            <div class="text-xs text-gray-500 mt-1">{{ $product ? $product->sku : '-' }}</div>
                             <div class="text-sm font-semibold text-blue-600 mt-2">
                                 @php
-                                    $displayPrice = match($pricingTier) {
+                                    $displayPrice = $product ? match($pricingTier) {
                                         'retail' => $product->getPriceByType('retail'),
                                         'semi_grosir' => $product->price_semi_grosir ?? $product->price_retail,
                                         'grosir' => $product->price_grosir,
                                         'custom' => $product->price_retail,
                                         default => $product->getPriceByType()
-                                    };
+                                    } : 0;
                                 @endphp
                                 <div class="font-bold text-base">Rp {{ number_format($displayPrice, 0, ',', '.') }}</div>
                                 
@@ -91,17 +97,19 @@
                                     @if($pricingTier !== 'retail')
                                         <div class="text-gray-500">{{ ucfirst(str_replace('_', ' ', $pricingTier)) }}</div>
                                     @else
-                                        <div class="text-gray-500">{{ $product->getPriceTypeDisplayName() }}</div>
+                                        <div class="text-gray-500">{{ $product ? $product->getPriceTypeDisplayName() : '-' }}</div>
                                     @endif
                                     
                                     <!-- Price breakdown -->
-                                    <div class="bg-gray-50 rounded p-1 text-xs">
-                                        <div class="text-blue-600">R: Rp {{ number_format($product->price_retail, 0, ',', '.') }}</div>
-                                        @if($product->price_semi_grosir)
-                                            <div class="text-yellow-600">SG: Rp {{ number_format($product->price_semi_grosir, 0, ',', '.') }}</div>
-                                        @endif
-                                        <div class="text-green-600">G: Rp {{ number_format($product->price_grosir, 0, ',', '.') }}</div>
-                                    </div>
+                                    @if($product)
+                                        <div class="bg-gray-50 rounded p-1 text-xs">
+                                            <div class="text-blue-600">R: Rp {{ number_format($product->price_retail, 0, ',', '.') }}</div>
+                                            @if($product->price_semi_grosir)
+                                                <div class="text-yellow-600">SG: Rp {{ number_format($product->price_semi_grosir, 0, ',', '.') }}</div>
+                                            @endif
+                                            <div class="text-green-600">G: Rp {{ number_format($product->price_grosir, 0, ',', '.') }}</div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                             <div class="text-xs text-gray-500 mt-1">
@@ -217,12 +225,13 @@
                                         <!-- Product Image -->
                                         <div class="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
                                             @php
-                                                $product = \App\Product::find($item['product_id']);
+                                                $product = $cartProducts->get($item['product_id']);
+                                                $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
                                             @endphp
-                                            <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
+                                            <img src="{{ $photoUrl }}" 
                                                  alt="{{ $item['name'] }}"
                                                  class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                                 onclick="openImageModal('{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $item['name'] }}')"
+                                                 onclick="openImageModal('{{ $photoUrl }}', '{{ $item['name'] }}')"
                                                  onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
                                         </div>
                                         
@@ -265,14 +274,18 @@
                                                 $product = \App\Product::find($item['product_id']);
                                                 $currentPriceType = $item['pricing_tier'];
                                             @endphp
-                                            @if($currentPriceType === 'retail')
-                                                <span class="text-blue-600">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</span>
-                                            @elseif($currentPriceType === 'semi_grosir')
-                                                <span class="text-yellow-600">Rp {{ number_format($product->price_semi_grosir ?? 0, 0, ',', '.') }}</span>
-                                            @elseif($currentPriceType === 'grosir')
-                                                <span class="text-green-600">Rp {{ number_format($product->price_grosir ?? 0, 0, ',', '.') }}</span>
+                                            @if($product)
+                                                @if($currentPriceType === 'retail')
+                                                    <span class="text-blue-600">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</span>
+                                                @elseif($currentPriceType === 'semi_grosir')
+                                                    <span class="text-yellow-600">Rp {{ number_format($product->price_semi_grosir ?? 0, 0, ',', '.') }}</span>
+                                                @elseif($currentPriceType === 'grosir')
+                                                    <span class="text-green-600">Rp {{ number_format($product->price_grosir ?? 0, 0, ',', '.') }}</span>
+                                                @else
+                                                    <span class="text-purple-600">Custom</span>
+                                                @endif
                                             @else
-                                                <span class="text-purple-600">Custom</span>
+                                                <span class="text-gray-500">Product not found</span>
                                             @endif
                                         </div>
                                     </div>
@@ -294,7 +307,7 @@
                                     <span class="text-xs text-gray-500">Stok: {{ $item['available_stock'] }}</span>
                                     <div class="text-right">
                                         <div class="text-xs text-gray-500">
-                                            @{{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
+                                            {{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
                                         </div>
                                         <span class="font-semibold text-blue-600">
                                             Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
@@ -596,9 +609,7 @@
             // F2 - Clear Cart
             if (e.key === 'F2') {
                 e.preventDefault();
-                if (confirm('Yakin ingin mengosongkan keranjang?')) {
-                    @this.call('clearCart');
-                }
+                @this.call('confirmClearCart');
             }
             
             // F3 - Focus barcode input
@@ -708,16 +719,25 @@
         
         // Flash message auto-hide
         document.addEventListener('DOMContentLoaded', function() {
-            const flashMessages = document.querySelectorAll('.fixed.top-4.right-4');
+            const flashMessages = document.querySelectorAll('#success-alert, #error-alert');
             flashMessages.forEach(message => {
                 setTimeout(() => {
-                    message.style.opacity = '0';
-                    setTimeout(() => {
-                        message.remove();
-                    }, 300);
-                }, 3000);
+                    closeAlert(message.id);
+                }, 5000); // Auto close after 5 seconds
             });
         });
+        
+        // Function to close alert manually
+        function closeAlert(alertId) {
+            const alert = document.getElementById(alertId);
+            if (alert) {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    alert.remove();
+                }, 300);
+            }
+        }
 </script>
 
 <!-- Image Preview Modal -->

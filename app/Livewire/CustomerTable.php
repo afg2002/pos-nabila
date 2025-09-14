@@ -3,13 +3,14 @@
 namespace App\Livewire;
 
 use App\Customer;
+use App\Shared\Traits\WithAlerts;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
 
 class CustomerTable extends Component
 {
-    use WithPagination;
+    use WithPagination, WithAlerts;
     
     // Search & Filter Properties
     public $search = '';
@@ -151,8 +152,25 @@ class CustomerTable extends Component
         }
     }
     
-    public function delete($customerId)
+    /**
+     * Confirm delete customer
+     */
+    public function confirmDelete($customerId)
     {
+        $customer = Customer::findOrFail($customerId);
+        $this->showConfirm(
+            'Hapus Pelanggan',
+            "Yakin ingin menghapus pelanggan '{$customer->name}'?",
+            'delete',
+            ['customerId' => $customerId],
+            'Ya, hapus!',
+            'Batal'
+        );
+    }
+
+    public function delete($params)
+    {
+        $customerId = $params['customerId'];
         try {
             $customer = Customer::findOrFail($customerId);
             
@@ -207,6 +225,27 @@ class CustomerTable extends Component
         }
     }
     
+    /**
+     * Confirm bulk delete customers
+     */
+    public function confirmDeleteSelected()
+    {
+        if (empty($this->selectedCustomers)) {
+            session()->flash('error', 'Pilih pelanggan yang akan dihapus!');
+            return;
+        }
+
+        $count = count($this->selectedCustomers);
+        $this->showConfirm(
+            'Hapus Pelanggan Massal',
+            "Yakin ingin menghapus {$count} pelanggan terpilih?",
+            'deleteSelected',
+            [],
+            'Ya, hapus!',
+            'Batal'
+        );
+    }
+
     public function deleteSelected()
     {
         try {

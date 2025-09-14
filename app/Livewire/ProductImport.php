@@ -15,6 +15,7 @@ class ProductImport extends Component
     
     public $file;
     public $importing = false;
+    public $downloading = false;
     public $importResults = null;
     
     protected $rules = [
@@ -37,12 +38,16 @@ class ProductImport extends Component
     
     public function downloadTemplate()
     {
+        $this->downloading = true;
+        
         try {
+            $this->downloading = false;
             return Excel::download(
                 new ProductTemplateExport(),
                 'template-import-produk.xlsx'
             );
         } catch (\Exception $e) {
+            $this->downloading = false;
             session()->flash('error', 'Gagal mengunduh template: ' . $e->getMessage());
         }
     }

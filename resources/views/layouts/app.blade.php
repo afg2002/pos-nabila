@@ -10,6 +10,8 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="{{ asset('css/font-awesome.css') }}">
+    <!-- ApexCharts for LarapexChart -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     @livewireStyles
     <style>
         .sidebar-gradient {
@@ -318,12 +320,32 @@
                             <!-- Right side items -->
                             <div class="flex items-center space-x-4">
                                 <!-- Notifications -->
-                                <button class="p-2 text-gray-400 hover:text-gray-600 relative">
-                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-8a4.5 4.5 0 00-4.5-4.5h-1"></path>
-                                    </svg>
-                                    <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span>
-                                </button>
+                                <div class="relative">
+                                    <button id="notification-btn" class="p-2 text-gray-400 hover:text-gray-600 relative transition-colors duration-200">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-8a4.5 4.5 0 00-4.5-4.5h-1"></path>
+                                        </svg>
+                                        <span class="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400"></span>
+                                    </button>
+                                    
+                                    <!-- Notification Dropdown -->
+                                    <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                                        <div class="p-4 border-b border-gray-200">
+                                            <h3 class="text-lg font-semibold text-gray-900">Notifikasi</h3>
+                                        </div>
+                                        <div class="max-h-64 overflow-y-auto">
+                                            <div class="p-4 text-center text-gray-500">
+                                                <svg class="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-8a4.5 4.5 0 00-4.5-4.5h-1"></path>
+                                                </svg>
+                                                <p>Tidak ada notifikasi baru</p>
+                                            </div>
+                                        </div>
+                                        <div class="p-3 border-t border-gray-200">
+                                            <button class="w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium">Lihat Semua Notifikasi</button>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <!-- Search -->
                                 <div class="relative hidden md:block">
@@ -332,7 +354,12 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                                         </svg>
                                     </div>
-                                    <input type="text" placeholder="Quick search..." class="block w-64 pl-10 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    <input type="text" id="quick-search" placeholder="Quick search..." class="block w-64 pl-10 pr-3 py-2 border border-gray-200 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    
+                                    <!-- Search Results Dropdown -->
+                                    <div id="search-results" class="hidden absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-64 overflow-y-auto">
+                                        <!-- Search results will be populated here -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -555,7 +582,13 @@
                 showConfirm(data.title, data.text, data.confirmText, data.cancelText)
                     .then((result) => {
                         if (result.isConfirmed && data.method) {
-                            Livewire.dispatch(data.method, data.params || {});
+                            // Dispatch a window event that will be caught by the component
+                            window.dispatchEvent(new CustomEvent('livewire-confirm-action', {
+                                detail: {
+                                    method: data.method,
+                                    params: data.params || {}
+                                }
+                            }));
                         }
                     });
             });
@@ -574,6 +607,115 @@
                 }
             });
         }
+
+        // Quick Search Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const quickSearch = document.getElementById('quick-search');
+            const searchResults = document.getElementById('search-results');
+            let searchTimeout;
+
+            if (quickSearch && searchResults) {
+                quickSearch.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    
+                    clearTimeout(searchTimeout);
+                    
+                    if (query.length < 2) {
+                        searchResults.classList.add('hidden');
+                        return;
+                    }
+
+                    searchTimeout = setTimeout(() => {
+                        performQuickSearch(query);
+                    }, 300);
+                });
+
+                // Hide search results when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!quickSearch.contains(e.target) && !searchResults.contains(e.target)) {
+                        searchResults.classList.add('hidden');
+                    }
+                });
+
+                // Handle keyboard navigation
+                quickSearch.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        searchResults.classList.add('hidden');
+                        this.blur();
+                    }
+                });
+            }
+        });
+
+        function performQuickSearch(query) {
+            const searchResults = document.getElementById('search-results');
+            
+            // Show loading state
+            searchResults.innerHTML = `
+                <div class="p-4 text-center">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                    <p class="text-sm text-gray-500 mt-2">Mencari...</p>
+                </div>
+            `;
+            searchResults.classList.remove('hidden');
+
+            // Simulate search (replace with actual search logic)
+            setTimeout(() => {
+                const mockResults = [
+                    { type: 'product', name: 'Produk ' + query, url: '/products', icon: 'fas fa-box' },
+                    { type: 'user', name: 'User ' + query, url: '/users', icon: 'fas fa-user' },
+                    { type: 'sale', name: 'Penjualan ' + query, url: '/reports', icon: 'fas fa-chart-line' }
+                ];
+
+                if (mockResults.length > 0) {
+                    searchResults.innerHTML = mockResults.map(result => `
+                        <a href="${result.url}" class="block px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0">
+                            <div class="flex items-center">
+                                <i class="${result.icon} text-gray-400 mr-3"></i>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">${result.name}</p>
+                                    <p class="text-xs text-gray-500 capitalize">${result.type}</p>
+                                </div>
+                            </div>
+                        </a>
+                    `).join('');
+                } else {
+                    searchResults.innerHTML = `
+                        <div class="p-4 text-center text-gray-500">
+                            <i class="fas fa-search text-2xl mb-2"></i>
+                            <p class="text-sm">Tidak ada hasil untuk "${query}"</p>
+                        </div>
+                    `;
+                }
+            }, 500);
+        }
+
+        // Notification Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const notificationBtn = document.getElementById('notification-btn');
+            const notificationDropdown = document.getElementById('notification-dropdown');
+
+            if (notificationBtn && notificationDropdown) {
+                notificationBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    notificationDropdown.classList.toggle('hidden');
+                });
+
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!notificationBtn.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                        notificationDropdown.classList.add('hidden');
+                    }
+                });
+
+                // Handle escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        notificationDropdown.classList.add('hidden');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html>

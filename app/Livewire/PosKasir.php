@@ -10,9 +10,11 @@ use App\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Validate;
+use App\Shared\Traits\WithAlerts;
 
 class PosKasir extends Component
 {
+    use WithAlerts;
     public $barcode = '';
     public $productSearch = '';
     public $cart = [];
@@ -95,14 +97,14 @@ class PosKasir extends Component
             return;
         }
         
-        $product = Product::where('barcode', $this->barcode)
-                         ->where('is_active', true)
+        $product = Product::availableForSale()
+                         ->where('barcode', $this->barcode)
                          ->first();
         
         if (!$product) {
             // Try to find by SKU as fallback
-            $product = Product::where('sku', $this->barcode)
-                             ->where('is_active', true)
+            $product = Product::availableForSale()
+                             ->where('sku', $this->barcode)
                              ->first();
         }
         
@@ -132,10 +134,10 @@ class PosKasir extends Component
     
     public function addToCart($productId)
     {
-        $product = Product::find($productId);
+        $product = Product::availableForSale()->find($productId);
         
-        if (!$product || !$product->is_active) {
-            session()->flash('error', 'Produk tidak ditemukan atau tidak aktif!');
+        if (!$product) {
+            session()->flash('error', 'Produk tidak ditemukan atau tidak tersedia untuk dijual!');
             return;
         }
         
@@ -249,7 +251,22 @@ class PosKasir extends Component
         }
     }
     
-    public function clearCart()
+    public function confirmClearCart()
+    {
+        if (empty($this->cart)) {
+            session()->flash('error', 'Keranjang sudah kosong!');
+            return;
+        }
+        
+        $this->showConfirm(
+            'Konfirmasi Kosongkan Keranjang',
+            'Apakah Anda yakin ingin mengosongkan semua item di keranjang?',
+            'clearCart',
+            []
+        );
+    }
+    
+    public function clearCart($params = [])
     {
         $this->cart = [];
         $this->calculateTotals();
@@ -501,10 +518,22 @@ class PosKasir extends Component
         ];
     }
     
+    /**
+     * Get cart products with eager loading to avoid N+1 queries
+     */
+    public function getCartProducts()
+    {
+        if (empty($this->cart)) {
+            return collect();
+        }
+        
+        $productIds = array_column($this->cart, 'product_id');
+        return Product::whereIn('id', $productIds)->get()->keyBy('id');
+    }
+    
     public function render()
     {
-        $query = Product::where('is_active', true)
-                       ->where('current_stock', '>', 0);
+        $query = Product::availableForSale();
         
         // Apply search filter if productSearch is not empty
         if (!empty($this->productSearch)) {
@@ -516,7 +545,8 @@ class PosKasir extends Component
         }
         
         $products = $query->orderBy('name')->get();
+        $cartProducts = $this->getCartProducts();
         
-        return view('livewire.pos-kasir', compact('products'));
+        return view('livewire.pos-kasir', compact('products', 'cartProducts'));
     }
 }

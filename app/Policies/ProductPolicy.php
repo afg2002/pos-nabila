@@ -73,4 +73,36 @@ class ProductPolicy
     {
         return $user->hasPermission('products.export');
     }
+    
+    /**
+     * Determine whether the user can force delete the product (permanent).
+     */
+    public function forceDelete(User $user, Product $product): bool
+    {
+        return $user->hasPermission('products.force_delete');
+    }
+    
+    /**
+     * Determine whether the user can restore the product.
+     */
+    public function restore(User $user, Product $product): bool
+    {
+        return $user->hasPermission('products.restore');
+    }
+    
+    /**
+     * Determine whether the user can view trashed products.
+     */
+    public function viewTrashed(User $user): bool
+    {
+        return $user->hasPermission('products.view_trashed');
+    }
+    
+    /**
+     * Determine whether the user can manage product status.
+     */
+    public function manageStatus(User $user, Product $product): bool
+    {
+        return $user->hasPermission('products.manage_status');
+    }
 }

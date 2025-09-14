@@ -35,7 +35,8 @@ class StockForm extends Component
     
     public function mount()
     {
-        $this->products = Product::where('is_active', true)
+        $this->products = Product::where('status', 'active')
+            ->whereNull('deleted_at')
             ->orderBy('name')
             ->get();
     }

@@ -194,7 +194,8 @@ class ReportManagement extends Component
 
         if ($this->categoryFilter) {
             $query->whereHas('product', function ($q) {
-                $q->where('category', $this->categoryFilter);
+                $q->where('category', $this->categoryFilter)
+                  ->whereNull('deleted_at');
             });
         }
 
@@ -212,7 +213,10 @@ class ReportManagement extends Component
             'stock_out' => $movements->where('type', 'out')->sum('quantity'),
             'net_movement' => $movements->where('type', 'in')->sum('quantity') - $movements->where('type', 'out')->sum('quantity'),
             'products_affected' => $movements->pluck('product_id')->unique()->count(),
-            'low_stock_items' => Product::whereColumn('current_stock', '<=', 'minimum_stock')->count()
+            'low_stock_items' => Product::where('status', 'active')
+                                       ->whereNull('deleted_at')
+                                       ->where('current_stock', '<', 10)
+                                       ->count()
         ];
     }
 
@@ -410,13 +414,15 @@ class ReportManagement extends Component
         return Product::select('category')
             ->distinct()
             ->whereNotNull('category')
+            ->whereNull('deleted_at')
             ->orderBy('category')
             ->pluck('category');
     }
 
     public function getProducts()
     {
-        $query = Product::select('id', 'name', 'sku', 'category');
+        $query = Product::select('id', 'name', 'sku', 'category')
+                       ->whereNull('deleted_at');
         
         if ($this->categoryFilter) {
             $query->where('category', $this->categoryFilter);

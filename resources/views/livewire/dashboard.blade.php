@@ -109,17 +109,17 @@
 
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <!-- Sales Chart -->
+            <!-- Sales & Revenue Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Penjualan Harian</h3>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Penjualan & Pendapatan</h3>
                     <div class="flex space-x-2">
                         <button wire:click="exportSalesChart" class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded transition-colors">
                             <i class="fas fa-download mr-1"></i>Export
                         </button>
                     </div>
                 </div>
-                <div class="h-64">
+                <div class="h-80">
                     @if(isset($dailySalesChart))
                         {!! $dailySalesChart->container() !!}
                     @else
@@ -143,7 +143,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="h-64">
+                <div class="h-80">
                     @if(isset($stockMovementChart))
                         {!! $stockMovementChart->container() !!}
                     @else
@@ -153,6 +153,61 @@
                                 <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"></path>
                             </svg>
                             <p>Belum ada data untuk ditampilkan</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Charts Section -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+            <!-- Top Products Bar Chart -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Produk Terlaris</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">7 hari terakhir</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button wire:click="exportTopProducts" class="text-sm bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-chart-bar mr-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="h-80">
+                    @if(isset($topProductsChart))
+                        {!! $topProductsChart->container() !!}
+                    @else
+                        <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-chart-bar text-4xl mb-2"></i>
+                            <p>Belum ada data penjualan</p>
+                            <p class="text-xs mt-1">Data akan muncul setelah ada transaksi</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Category Distribution Chart -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Distribusi Kategori</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Berdasarkan jumlah produk</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button wire:click="exportCategoryChart" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-chart-pie mr-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="h-80">
+                    @if(isset($categoryChart))
+                        {!! $categoryChart->container() !!}
+                    @else
+                        <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-chart-pie text-4xl mb-2"></i>
+                            <p>Belum ada data kategori</p>
+                            <p class="text-xs mt-1">Tambahkan produk untuk melihat distribusi</p>
                         </div>
                     @endif
                 </div>
@@ -280,6 +335,12 @@
 @if(isset($stockMovementChart))
     {!! $stockMovementChart->script() !!}
 @endif
+@if(isset($topProductsChart))
+    {!! $topProductsChart->script() !!}
+@endif
+@if(isset($categoryChart))
+    {!! $categoryChart->script() !!}
+@endif
 
 <script>
     // Dashboard functionality
@@ -326,4 +387,21 @@
         });
     });
 </script>
+
+@if(isset($dailySalesChart))
+    {!! $dailySalesChart->script() !!}
+@endif
+
+@if(isset($stockMovementChart))
+    {!! $stockMovementChart->script() !!}
+@endif
+
+@if(isset($topProductsChart))
+    {!! $topProductsChart->script() !!}
+@endif
+
+@if(isset($categoryChart))
+    {!! $categoryChart->script() !!}
+@endif
+
 @endpush

@@ -65,7 +65,9 @@ class Dashboard extends Component
     private function loadStats()
     {
         // Total Products
-        $this->totalProducts = Product::where('is_active', true)->count();
+        $this->totalProducts = Product::where('status', 'active')
+                                     ->whereNull('deleted_at')
+                                     ->count();
         
         // Total Sales in date range
         $this->totalSales = Sale::whereBetween('created_at', [$this->dateFrom, $this->dateTo])->count();
@@ -75,7 +77,8 @@ class Dashboard extends Component
                                  ->sum('final_total');
         
         // Low Stock Products (stock < 10)
-        $this->lowStockProducts = Product::where('is_active', true)
+        $this->lowStockProducts = Product::where('status', 'active')
+                                        ->whereNull('deleted_at')
                                         ->where('current_stock', '<', 10)
                                         ->count();
     }
@@ -240,6 +243,11 @@ class Dashboard extends Component
         return $this->exportExcel();
     }
     
+    public function exportCategoryChart()
+    {
+        session()->flash('success', 'Export category chart berhasil!');
+    }
+    
     public function render()
     {
         // Calculate today's sales and revenue
@@ -263,30 +271,69 @@ class Dashboard extends Component
                           ->limit(5)
                           ->get();
         
-        // Create sales chart from stored data
+        // Create sales trend chart (line + bar combination)
         $dailySalesChart = null;
         if (!empty($this->salesData) && $this->salesData->count() > 0) {
             $dailySalesChart = LarapexChart::lineChart()
-                ->setTitle('Penjualan Harian')
-                ->setSubtitle('Trend penjualan dalam periode yang dipilih')
+                ->setTitle('Penjualan & Pendapatan Harian')
+                ->setSubtitle('Trend penjualan dan pendapatan dalam periode yang dipilih')
                 ->addData('Jumlah Transaksi', $this->salesData->pluck('count')->toArray())
+                ->addData('Pendapatan (Rb)', $this->salesData->pluck('revenue')->map(function($revenue) {
+                    return round($revenue / 1000, 1); // Convert to thousands for better chart readability
+                })->toArray())
                 ->setXAxis($this->salesData->pluck('date')->map(function($date) {
                     return Carbon::parse($date)->format('d/m');
                 })->toArray())
-                ->setColors(['#3B82F6'])
-                ->setHeight(300);
+                ->setColors(['#3B82F6', '#10B981'])
+                ->setHeight(350)
+                ->setGrid(true)
+                ->setMarkers(['#3B82F6', '#10B981'], 6, 0);
         }
         
-        // Create stock chart from stored data
+        // Create stock movement chart
         $stockMovementChart = null;
         if (!empty($this->stockData) && ($this->stockData['stockIn'] > 0 || $this->stockData['stockOut'] > 0)) {
             $stockMovementChart = LarapexChart::donutChart()
                 ->setTitle('Pergerakan Stok')
-                ->setSubtitle('Stok masuk vs keluar')
+                ->setSubtitle('Stok masuk vs keluar dalam periode ini')
                 ->addData([$this->stockData['stockIn'], abs($this->stockData['stockOut'])])
                 ->setLabels(['Stok Masuk', 'Stok Keluar'])
                 ->setColors(['#10B981', '#EF4444'])
-                ->setHeight(300);
+                ->setHeight(350);
+        }
+        
+        // Create top products bar chart
+        $topProductsChart = null;
+        if ($topProductsData->count() > 0) {
+            $topProductsChart = LarapexChart::barChart()
+                ->setTitle('Top 5 Produk Terlaris')
+                ->setSubtitle('Berdasarkan jumlah terjual dalam 7 hari terakhir')
+                ->addData('Qty Terjual', $topProductsData->pluck('total_qty')->toArray())
+                ->setXAxis($topProductsData->pluck('name')->map(function($name) {
+                    return strlen($name) > 15 ? substr($name, 0, 15) . '...' : $name;
+                })->toArray())
+                ->setColors(['#8B5CF6'])
+                ->setHeight(350)
+                ->setGrid(true, true)
+                ->setDataLabels(true);
+        }
+        
+        // Create category performance pie chart
+        $categoryChart = null;
+        $categoryData = Product::selectRaw('category, SUM(current_stock) as total_stock, COUNT(*) as product_count')
+                             ->where('status', 'active')
+                             ->whereNull('deleted_at')
+                             ->groupBy('category')
+                             ->get();
+        
+        if ($categoryData->count() > 0) {
+            $categoryChart = LarapexChart::pieChart()
+                ->setTitle('Distribusi Produk per Kategori')
+                ->setSubtitle('Berdasarkan jumlah produk aktif')
+                ->addData($categoryData->pluck('product_count')->toArray())
+                ->setLabels($categoryData->pluck('category')->toArray())
+                ->setColors(['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'])
+                ->setHeight(350);
         }
         
         return view('livewire.dashboard', [
@@ -297,7 +344,9 @@ class Dashboard extends Component
             'topProductsData' => $topProductsData,
             'recentSales' => $recentSales,
             'dailySalesChart' => $dailySalesChart,
-            'stockMovementChart' => $stockMovementChart
+            'stockMovementChart' => $stockMovementChart,
+            'topProductsChart' => $topProductsChart,
+            'categoryChart' => $categoryChart
         ]);
     }
 }

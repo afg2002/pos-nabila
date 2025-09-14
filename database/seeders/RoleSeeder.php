@@ -38,8 +38,8 @@ class RoleSeeder extends Seeder
             ]
         );
         
-        // Assign admin permissions (all except system settings)
-        $adminPermissions = Permission::whereNotIn('name', ['system.settings'])->get();
+        // Assign admin permissions (all permissions)
+        $adminPermissions = Permission::all();
         $admin->permissions()->sync($adminPermissions->pluck('id'));
         
         // Create Manager role
@@ -56,7 +56,7 @@ class RoleSeeder extends Seeder
         $managerPermissions = Permission::whereIn('name', [
             'users.view', 'users.create', 'users.edit',
             'roles.view', 'permissions.view',
-            'products.view', 'products.create', 'products.edit', 'products.delete', 'products.export',
+            'products.view', 'products.create', 'products.edit', 'products.delete', 'products.restore', 'products.view_trashed', 'products.manage_status', 'products.export',
             'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete', 'inventory.manage', 'inventory.history', 'inventory.export',
             'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.export',
             'pos.reports', 'dashboard.view', 'dashboard.export'

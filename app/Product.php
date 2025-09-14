@@ -5,10 +5,11 @@ namespace App;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
     protected $fillable = [
         'sku',
         'barcode',
@@ -23,7 +24,7 @@ class Product extends Model
         'min_margin_pct',
         'default_price_type',
         'current_stock',
-        'is_active'
+        'status'
     ];
 
     protected $casts = [
@@ -33,7 +34,7 @@ class Product extends Model
         'price_grosir' => 'decimal:2',
         'min_margin_pct' => 'decimal:2',
         'default_price_type' => 'string',
-        'is_active' => 'boolean'
+        'deleted_at' => 'datetime'
     ];
 
     // Relasi ke stock movements
@@ -87,7 +88,28 @@ class Product extends Model
     // Scope untuk produk aktif
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('status', 'active');
+    }
+    
+    // Scope untuk produk berdasarkan status
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('status', $status);
+    }
+    
+    // Scope untuk produk yang tidak dihapus dan aktif (untuk POS)
+    public function scopeAvailableForSale($query)
+    {
+        return $query->where('status', 'active')
+                    ->whereNull('deleted_at')
+                    ->where('current_stock', '>', 0);
+    }
+    
+    // Scope untuk produk yang bisa dihapus (tidak ada transaksi)
+    public function scopeDeletable($query)
+    {
+        return $query->whereDoesntHave('stockMovements')
+                    ->whereDoesntHave('saleItems');
     }
 
     // Scope untuk pencarian
@@ -159,5 +181,62 @@ class Product extends Model
             'grosir' => 'Grosir',
             'custom' => 'Custom'
         ];
+    }
+    
+    /**
+     * Get available statuses
+     */
+    public static function getStatuses()
+    {
+        return [
+            'active' => 'Aktif',
+            'inactive' => 'Tidak Aktif',
+            'discontinued' => 'Dihentikan',
+            'deleted' => 'Dihapus'
+        ];
+    }
+    
+    /**
+     * Get status display name
+     */
+    public function getStatusDisplayName()
+    {
+        $statuses = self::getStatuses();
+        return $statuses[$this->status] ?? 'Tidak Diketahui';
+    }
+    
+    /**
+     * Check if product can be deleted (no transaction history)
+     */
+    public function canBeDeleted()
+    {
+        return !$this->stockMovements()->exists() && !$this->saleItems()->exists();
+    }
+    
+    /**
+     * Check if product is available for sale
+     */
+    public function isAvailableForSale()
+    {
+        return in_array($this->status, ['active']) && 
+               $this->current_stock > 0;
+    }
+    
+    /**
+     * Soft delete with status update
+     */
+    public function softDeleteWithStatus()
+    {
+        $this->update(['status' => 'inactive']);
+        return $this->delete();
+    }
+    
+    /**
+     * Restore product with active status
+     */
+    public function restoreWithStatus()
+    {
+        $this->restore();
+        return $this->update(['status' => 'active']);
     }
 }

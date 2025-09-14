@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Product;
 use App\ProductUnit;
 use App\AuditLog;
+use App\Shared\Traits\WithAlerts;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
@@ -14,12 +15,13 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductTable extends Component
 {
-    use WithPagination, AuthorizesRequests, WithFileUploads;
+    use WithPagination, AuthorizesRequests, WithFileUploads, WithAlerts;
 
     // Properties untuk search dan filter
     public $search = '';
     public $category = '';
     public $status = '';
+    public $showDeleted = false;
     public $sortField = 'name';
     public $sortDirection = 'asc';
     public $perPage = 10;
@@ -45,7 +47,7 @@ class ProductTable extends Component
     public $price_grosir = 0;
     public $min_margin_pct = 0;
     public $default_price_type = 'retail';
-    public $is_active = true;
+    public $productStatus = 'active';
 
     // Properties untuk unit management
     public $showUnitModal = false;
@@ -57,6 +59,14 @@ class ProductTable extends Component
     public $selectedProducts = [];
     public $selectAll = false;
     public $bulkPriceType = 'retail';
+    
+    // Properties untuk bulk price update
+    public $showBulkPriceModal = false;
+    public $bulkUpdateCategory = '';
+    public $bulkUpdateType = 'percentage'; // percentage, fixed_amount, set_price
+    public $bulkUpdateValue = 0;
+    public $bulkPriceField = 'price_retail'; // price_retail, price_semi_grosir, price_grosir
+    public $bulkUpdatePreview = [];
 
     // Properties untuk photo editing dalam detail modal
     public $showPhotoEditMode = false;
@@ -105,7 +115,7 @@ class ProductTable extends Component
             'price_grosir' => 'required|numeric|min:0',
             'min_margin_pct' => 'required|numeric|min:0|max:100',
             'default_price_type' => 'required|in:retail,semi_grosir,grosir,custom',
-            'is_active' => 'boolean'
+            'productStatus' => 'required|in:active,inactive,discontinued'
         ];
     }
 
@@ -168,7 +178,7 @@ class ProductTable extends Component
         $this->price_grosir = $product->price_grosir;
         $this->min_margin_pct = $product->min_margin_pct;
         $this->default_price_type = $product->default_price_type;
-        $this->is_active = $product->is_active;
+        $this->productStatus = $product->status;
         
         $this->editMode = true;
         $this->showModal = true;
@@ -275,6 +285,21 @@ class ProductTable extends Component
 
     public $isRemovingPhoto = false;
 
+    /**
+     * Confirm remove product photo
+     */
+    public function confirmRemoveProductPhoto()
+    {
+        $this->showConfirm(
+            'Hapus Foto Produk',
+            'Yakin ingin menghapus foto ini?',
+            'removeProductPhoto',
+            [],
+            'Ya, hapus!',
+            'Batal'
+        );
+    }
+
     public function removeProductPhoto()
     {
         $this->isRemovingPhoto = true;
@@ -331,7 +356,7 @@ class ProductTable extends Component
                 'price_grosir' => $this->price_grosir,
                 'min_margin_pct' => $this->min_margin_pct,
                 'default_price_type' => $this->default_price_type,
-                'is_active' => $this->is_active
+                'status' => $this->productStatus
             ];
             
             // Handle photo upload
@@ -370,6 +395,9 @@ class ProductTable extends Component
                 session()->flash('message', 'Produk berhasil ditambahkan!');
             }
 
+            // Clear cache setelah save
+            $this->clearProductCache();
+            
             $this->closeModal();
             $this->dispatch('productSaved');
             
@@ -378,51 +406,205 @@ class ProductTable extends Component
         }
     }
 
-    public function delete($productId)
+    /**
+     * Confirm soft delete product
+     */
+    public function confirmSoftDelete($productId)
     {
+        $product = Product::findOrFail($productId);
+        $this->showConfirm(
+            'Hapus Produk',
+            "Yakin ingin menghapus produk '{$product->name}'? (Dapat dikembalikan)",
+            'softDelete',
+            ['productId' => $productId],
+            'Ya, hapus!',
+            'Batal'
+        );
+    }
+
+    /**
+     * Soft delete product with status update
+     */
+    public function softDelete($params)
+    {
+        $productId = $params['productId'];
         try {
             $product = Product::findOrFail($productId);
             
             // Check authorization
             $this->authorize('delete', $product);
             
-            $productData = $product->toArray();
+            $oldData = $product->toArray();
             
-            // Check if product has stock movements or sales
-            if ($product->stockMovements()->exists() || $product->saleItems()->exists()) {
-                session()->flash('error', 'Produk tidak dapat dihapus karena memiliki riwayat transaksi!');
-                return;
-            }
-            
-            $product->delete();
+            // Soft delete with status update
+            $product->softDeleteWithStatus();
             
             // Log audit
-            AuditLog::logDelete('products', $productId, $productData);
+            AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
             
-            session()->flash('message', 'Produk berhasil dihapus!');
+            session()->flash('message', 'Produk berhasil dihapus (soft delete)!');
             $this->dispatch('productDeleted');
             
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-
-    public function toggleStatus($productId)
+    
+    /**
+     * Confirm force delete product
+     */
+    public function confirmForceDelete($productId)
     {
+        $product = Product::withTrashed()->findOrFail($productId);
+        $this->showConfirm(
+            'Hapus Permanen',
+            "PERINGATAN: Ini akan menghapus produk '{$product->name}' secara permanen! Yakin ingin melanjutkan?",
+            'forceDelete',
+            ['productId' => $productId],
+            'Ya, hapus permanen!',
+            'Batal'
+        );
+    }
+    
+    /**
+     * Force delete product (permanent)
+     */
+    public function forceDelete($params)
+    {
+        $productId = $params['productId'];
         try {
-            $product = Product::findOrFail($productId);
-            $oldData = $product->toArray();
-            $product->update(['is_active' => !$product->is_active]);
+            $product = Product::withTrashed()->findOrFail($productId);
+            
+            // Check authorization
+            $this->authorize('forceDelete', $product);
+            
+            $productData = $product->toArray();
+            
+            // Force delete (permanent)
+            $product->forceDelete();
             
             // Log audit
-            AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+            AuditLog::logDelete('products', $productId, $productData);
             
-            $status = $product->is_active ? 'diaktifkan' : 'dinonaktifkan';
-            session()->flash('message', "Produk berhasil {$status}!");
+            session()->flash('message', 'Produk berhasil dihapus permanen!');
+            $this->dispatch('productDeleted');
             
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+    
+    /**
+     * Confirm restore product
+     */
+    public function confirmRestore($productId)
+    {
+        $product = Product::withTrashed()->findOrFail($productId);
+        $this->showConfirm(
+            'Pulihkan Produk',
+            "Yakin ingin memulihkan produk '{$product->name}'?",
+            'restore',
+            ['productId' => $productId],
+            'Ya, pulihkan!',
+            'Batal'
+        );
+    }
+    
+    /**
+     * Restore soft deleted product
+     */
+    public function restore($params)
+    {
+        $productId = $params['productId'];
+        try {
+            $product = Product::withTrashed()->findOrFail($productId);
+            
+            // Check authorization
+            $this->authorize('restore', $product);
+            
+            $oldData = $product->toArray();
+            
+            // Restore with active status
+            $product->restoreWithStatus();
+            
+            // Log audit
+            AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+            
+            session()->flash('message', 'Produk berhasil dipulihkan!');
+            $this->dispatch('productRestored');
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Update product status
+     */
+    public function updateStatus($productId, $status)
+    {
+        try {
+            $product = Product::findOrFail($productId);
+            
+            // Check authorization
+            $this->authorize('update', $product);
+            
+            $oldData = $product->toArray();
+            $product->update(['status' => $status]);
+            
+            // Log audit
+            AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+            
+            $statusName = $product->getStatusDisplayName();
+            session()->flash('message', "Status produk berhasil diubah ke {$statusName}!");
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+
+
+    /**
+     * Confirm bulk delete products
+     */
+    public function confirmBulkDelete()
+    {
+        if (empty($this->selectedProducts)) {
+            session()->flash('error', 'Pilih produk yang akan dihapus!');
+            return;
+        }
+
+        $count = count($this->selectedProducts);
+        $this->showConfirm(
+            'Hapus Produk Massal',
+            "Yakin ingin menghapus {$count} produk terpilih?",
+            'bulkDelete',
+            [],
+            'Ya, hapus!',
+            'Batal'
+        );
+    }
+
+    /**
+     * Confirm bulk restore products
+     */
+    public function confirmBulkRestore()
+    {
+        if (empty($this->selectedProducts)) {
+            session()->flash('error', 'Pilih produk yang akan dikembalikan!');
+            return;
+        }
+
+        $count = count($this->selectedProducts);
+        $this->showConfirm(
+            'Kembalikan Produk Massal',
+            "Yakin ingin mengembalikan {$count} produk terpilih?",
+            'bulkRestore',
+            [],
+            'Ya, kembalikan!',
+            'Batal'
+        );
     }
 
     public function bulkDelete()
@@ -438,24 +620,125 @@ class ProductTable extends Component
             foreach ($products as $product) {
                 // Check authorization
                 $this->authorize('delete', $product);
-                
-                // Check if product has stock movements or sales
-                if ($product->stockMovements()->exists() || $product->saleItems()->exists()) {
-                    session()->flash('error', "Produk {$product->name} tidak dapat dihapus karena memiliki riwayat transaksi!");
-                    return;
-                }
             }
             
+            $deletedCount = 0;
             foreach ($products as $product) {
-                $productData = $product->toArray();
-                $product->delete();
+                $oldData = $product->toArray();
+                
+                // Use soft delete with status update (same as individual delete)
+                $product->softDeleteWithStatus();
                 
                 // Log audit
-                AuditLog::logDelete('products', $product->id, $productData);
+                AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+                
+                $deletedCount++;
             }
             
-            $count = count($this->selectedProducts);
-            session()->flash('message', "{$count} produk berhasil dihapus!");
+            session()->flash('message', "{$deletedCount} produk berhasil dihapus (soft delete)!");
+            $this->dispatch('productDeleted');
+            
+            $this->selectedProducts = [];
+            $this->selectAll = false;
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function bulkRestore()
+    {
+        if (empty($this->selectedProducts)) {
+            session()->flash('error', 'Pilih produk yang akan dikembalikan!');
+            return;
+        }
+
+        try {
+            $products = Product::withTrashed()->whereIn('id', $this->selectedProducts)->get();
+            
+            foreach ($products as $product) {
+                // Check authorization
+                $this->authorize('restore', $product);
+            }
+            
+            $restoredCount = 0;
+            foreach ($products as $product) {
+                $oldData = $product->toArray();
+                
+                // Use restore with status update
+                $product->restoreWithStatus();
+                
+                // Log audit
+                AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+                
+                $restoredCount++;
+            }
+            
+            session()->flash('message', "{$restoredCount} produk berhasil dikembalikan!");
+            $this->dispatch('productRestored');
+            
+            $this->selectedProducts = [];
+            $this->selectAll = false;
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Confirm bulk hard delete products
+     */
+    public function confirmBulkHardDelete()
+    {
+        if (empty($this->selectedProducts)) {
+            session()->flash('error', 'Pilih produk yang akan dihapus permanen!');
+            return;
+        }
+
+        $count = count($this->selectedProducts);
+        $this->showConfirm(
+            'Hapus Permanen Produk Massal',
+            "PERINGATAN: Yakin ingin menghapus permanen {$count} produk terpilih? Data tidak dapat dikembalikan!",
+            'bulkHardDelete',
+            [],
+            'Ya, hapus permanen!',
+            'Batal'
+        );
+    }
+
+    /**
+     * Bulk hard delete products (permanent deletion)
+     */
+    public function bulkHardDelete()
+    {
+        if (empty($this->selectedProducts)) {
+            session()->flash('error', 'Pilih produk yang akan dihapus permanen!');
+            return;
+        }
+
+        try {
+            $products = Product::withTrashed()->whereIn('id', $this->selectedProducts)->get();
+            
+            foreach ($products as $product) {
+                // Check authorization for force delete
+                $this->authorize('forceDelete', $product);
+            }
+            
+            $deletedCount = 0;
+            foreach ($products as $product) {
+                $oldData = $product->toArray();
+                
+                // Log audit before permanent deletion
+                AuditLog::logDelete('products', $product->id, $oldData);
+                
+                // Permanent delete
+                $product->forceDelete();
+                
+                $deletedCount++;
+            }
+            
+            session()->flash('message', "{$deletedCount} produk berhasil dihapus permanen!");
+            $this->dispatch('productHardDeleted');
             
             $this->selectedProducts = [];
             $this->selectAll = false;
@@ -540,7 +823,7 @@ class ProductTable extends Component
         $this->price_grosir = 0;
         $this->min_margin_pct = 0;
         $this->default_price_type = 'retail';
-        $this->is_active = true;
+        $this->productStatus = 'active';
     }
 
     public function exportProducts()
@@ -564,7 +847,20 @@ class ProductTable extends Component
     
     public function refreshProducts()
     {
-        // Method untuk refresh data setelah operasi CRUD
+        // Clear cache setelah operasi CRUD
+        $this->clearProductCache();
+        
+        // Reset pagination ke halaman pertama
+        $this->resetPage();
+    }
+    
+    /**
+     * Clear product-related cache
+     */
+    private function clearProductCache()
+    {
+        cache()->forget('product_categories');
+        cache()->forget('product_units');
     }
 
     // Unit Management Methods
@@ -608,6 +904,9 @@ class ProductTable extends Component
             // Set unit yang baru dibuat sebagai pilihan
             $this->unit_id = $unit->id;
             
+            // Clear cache units setelah menambah unit baru
+            cache()->forget('product_units');
+            
             $this->closeUnitModal();
             session()->flash('message', 'Unit berhasil ditambahkan!');
             
@@ -618,28 +917,55 @@ class ProductTable extends Component
 
     public function getProducts()
     {
-        $query = Product::query();
-
-        // Search
-        if ($this->search) {
-            $query->search($this->search);
+        $query = Product::query()
+            ->select([
+                'id', 'sku', 'barcode', 'name', 'category', 'photo', 
+                'unit_id', 'base_cost', 'price_retail', 'price_semi_grosir', 
+                'price_grosir', 'current_stock', 'status', 'created_at', 
+                'updated_at', 'deleted_at'
+            ])
+            ->with(['unit:id,name,abbreviation']);
+        
+        // Include soft deleted if requested
+        if ($this->showDeleted) {
+            $query->withTrashed();
         }
 
-        // Filter by category
+        // Search with optimized query
+        if ($this->search) {
+            $searchTerm = '%' . $this->search . '%';
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'like', $searchTerm)
+                  ->orWhere('sku', 'like', $searchTerm)
+                  ->orWhere('barcode', 'like', $searchTerm)
+                  ->orWhere('category', 'like', $searchTerm);
+            });
+        }
+
+        // Filter by category with index
         if ($this->category) {
             $query->where('category', $this->category);
         }
 
-        // Filter by status
+        // Filter by status with optimized conditions
         if ($this->status !== '') {
-            if ($this->status === 'active') {
-                $query->active();
-            } elseif ($this->status === 'inactive') {
-                $query->where('is_active', false);
+            switch ($this->status) {
+                case 'active':
+                    $query->where('status', 'active');
+                    break;
+                case 'inactive':
+                    $query->where('status', 'inactive');
+                    break;
+                case 'discontinued':
+                    $query->where('status', 'discontinued');
+                    break;
+                case 'deleted':
+                    $query->onlyTrashed();
+                    break;
             }
         }
 
-        // Sort
+        // Sort with index optimization
         $query->orderBy($this->sortField, $this->sortDirection);
 
         return $query;
@@ -647,21 +973,33 @@ class ProductTable extends Component
 
     public function getCategories()
     {
-        return Product::select('category')
-            ->distinct()
-            ->whereNotNull('category')
-            ->orderBy('category')
-            ->pluck('category');
+        // Cache categories for better performance
+        return cache()->remember('product_categories', 300, function () {
+            return Product::select('category')
+                ->distinct()
+                ->whereNotNull('category')
+                ->where('category', '!=', '')
+                ->orderBy('category')
+                ->pluck('category');
+        });
     }
 
     public function getUnits()
     {
-        return ProductUnit::active()->ordered()->get();
+        // Cache units for better performance
+        return cache()->remember('product_units', 600, function () {
+            return ProductUnit::select('id', 'name', 'abbreviation')
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+        });
     }
 
     public function render()
     {
-        $products = $this->getProducts()->with('unit')->paginate($this->perPage);
+        // Products already have unit relationship loaded via eager loading
+        $products = $this->getProducts()->paginate($this->perPage);
         $categories = $this->getCategories();
         $units = $this->getUnits();
 
@@ -670,5 +1008,141 @@ class ProductTable extends Component
             'categories' => $categories,
             'units' => $units
         ]);
+    }
+    
+    // Bulk Price Update Methods
+    
+    public function openBulkPriceModal()
+    {
+        $this->resetBulkPriceForm();
+        $this->showBulkPriceModal = true;
+    }
+    
+    public function closeBulkPriceModal()
+    {
+        $this->showBulkPriceModal = false;
+        $this->resetBulkPriceForm();
+        $this->resetValidation(['bulkUpdateCategory', 'bulkUpdateValue']);
+    }
+    
+    public function resetBulkPriceForm()
+    {
+        $this->bulkUpdateCategory = '';
+        $this->bulkUpdateType = 'percentage';
+        $this->bulkUpdateValue = 0;
+        $this->bulkPriceField = 'price_retail';
+        $this->bulkUpdatePreview = [];
+    }
+    
+    public function generateBulkPricePreview()
+    {
+        $this->validate([
+            'bulkUpdateCategory' => 'required|string',
+            'bulkUpdateValue' => 'required|numeric|min:0',
+        ]);
+        
+        try {
+            $products = Product::where('category', $this->bulkUpdateCategory)
+                ->where('status', 'active')
+                ->select('id', 'name', 'sku', $this->bulkPriceField)
+                ->get();
+                
+            $this->bulkUpdatePreview = [];
+            
+            foreach ($products as $product) {
+                $currentPrice = $product->{$this->bulkPriceField};
+                $newPrice = $this->calculateNewPrice($currentPrice, $this->bulkUpdateType, $this->bulkUpdateValue);
+                
+                $this->bulkUpdatePreview[] = [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'sku' => $product->sku,
+                    'current_price' => $currentPrice,
+                    'new_price' => $newPrice,
+                    'difference' => $newPrice - $currentPrice,
+                    'percentage_change' => $currentPrice > 0 ? (($newPrice - $currentPrice) / $currentPrice) * 100 : 0
+                ];
+            }
+            
+            if (empty($this->bulkUpdatePreview)) {
+                session()->flash('error', 'Tidak ada produk aktif yang ditemukan untuk kategori ini.');
+            }
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+    
+    public function executeBulkPriceUpdate()
+    {
+        if (empty($this->bulkUpdatePreview)) {
+            session()->flash('error', 'Silakan generate preview terlebih dahulu.');
+            return;
+        }
+        
+        try {
+            $updatedCount = 0;
+            
+            foreach ($this->bulkUpdatePreview as $preview) {
+                $product = Product::find($preview['id']);
+                if ($product) {
+                    // Check authorization
+                    $this->authorize('update', $product);
+                    
+                    $oldData = $product->toArray();
+                    
+                    $product->update([
+                        $this->bulkPriceField => $preview['new_price']
+                    ]);
+                    
+                    // Log audit
+                    AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+                    
+                    $updatedCount++;
+                }
+            }
+            
+            // Clear cache setelah bulk update
+            $this->clearProductCache();
+            
+            session()->flash('message', "Berhasil memperbarui harga {$updatedCount} produk.");
+            $this->closeBulkPriceModal();
+            $this->dispatch('productSaved');
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+    
+    private function calculateNewPrice($currentPrice, $type, $value)
+    {
+        switch ($type) {
+            case 'percentage':
+                return $currentPrice * (1 + ($value / 100));
+            case 'fixed_amount':
+                return $currentPrice + $value;
+            case 'set_price':
+                return $value;
+            default:
+                return $currentPrice;
+        }
+    }
+    
+    public function getBulkUpdateTypeOptions()
+    {
+        return [
+            'percentage' => 'Persentase (%)',
+            'fixed_amount' => 'Jumlah Tetap (Rp)',
+            'set_price' => 'Set Harga Baru (Rp)'
+        ];
+    }
+    
+    public function getBulkPriceFieldOptions()
+    {
+        return [
+            'price_retail' => 'Harga Retail',
+            'price_semi_grosir' => 'Harga Semi Grosir',
+            'price_grosir' => 'Harga Grosir'
+        ];
     }
 }

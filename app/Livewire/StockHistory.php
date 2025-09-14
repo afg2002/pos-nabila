@@ -11,10 +11,11 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Shared\Traits\WithAlerts;
 
 class StockHistory extends Component
 {
-    use WithPagination, AuthorizesRequests;
+    use WithPagination, AuthorizesRequests, WithAlerts;
     
     public $search = '';
     public $productFilter = '';
@@ -41,7 +42,8 @@ class StockHistory extends Component
     
     public function mount()
     {
-        $this->products = Product::where('is_active', true)
+        $this->products = Product::where('status', 'active')
+            ->whereNull('deleted_at')
             ->orderBy('name')
             ->get();
             
@@ -231,8 +233,27 @@ class StockHistory extends Component
         }
     }
     
-    public function deleteMovement($movementId)
+    public function confirmDeleteMovement($movementId)
     {
+        $movement = StockMovement::find($movementId);
+        
+        if (!$movement) {
+            session()->flash('error', 'Pergerakan stok tidak ditemukan.');
+            return;
+        }
+        
+        $this->showConfirm(
+            'Konfirmasi Hapus Pergerakan Stok',
+            'Apakah Anda yakin ingin menghapus pergerakan stok ini? Stok produk akan dikembalikan ke kondisi sebelumnya.',
+            'deleteMovement',
+            ['movementId' => $movementId]
+        );
+    }
+    
+    public function deleteMovement($params)
+    {
+        $movementId = $params['movementId'];
+        
         try {
             DB::beginTransaction();
             
@@ -299,6 +320,9 @@ class StockHistory extends Component
     public function render()
     {
         $query = StockMovement::with(['product', 'performedBy', 'approvedBy'])
+            ->whereHas('product', function ($productQuery) {
+                $productQuery->whereNull('deleted_at');
+            })
             ->when($this->search, function ($q) {
                 $q->whereHas('product', function ($productQuery) {
                     $productQuery->where('name', 'like', '%' . $this->search . '%')
@@ -312,7 +336,6 @@ class StockHistory extends Component
             ->when($this->movementTypeFilter, function ($q) {
                 $q->where('type', strtoupper($this->movementTypeFilter));
             })
-
             ->when($this->reasonCodeFilter, function ($q) {
                 $q->where('reason_code', $this->reasonCodeFilter);
             })

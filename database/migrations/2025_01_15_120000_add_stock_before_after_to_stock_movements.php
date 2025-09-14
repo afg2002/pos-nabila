@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('stock_movements', function (Blueprint $table) {
-            $table->integer('stock_before')->after('qty')->default(0);
-            $table->integer('stock_after')->after('stock_before')->default(0);
+            $table->integer('stock_before')->default(0)->after('qty');
+            $table->integer('stock_after')->default(0)->after('stock_before');
         });
     }
 

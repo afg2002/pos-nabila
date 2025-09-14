@@ -49,7 +49,20 @@
                     <option value="">Semua Status</option>
                     <option value="active">Aktif</option>
                     <option value="inactive">Tidak Aktif</option>
+                    <option value="discontinued">Dihentikan</option>
+                    <option value="deleted">Dihapus</option>
                 </select>
+                
+                <!-- Show Deleted Checkbox -->
+                @can('viewTrashed', App\Product::class)
+                    <div class="mt-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" wire:model.live="showDeleted" 
+                                   class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Tampilkan produk yang dihapus</span>
+                        </label>
+                    </div>
+                @endcan
             </div>
 
             <!-- Per Page -->
@@ -82,6 +95,11 @@
                         class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500">
                     <i class="fas fa-file-export mr-2"></i>Export Excel
                 </button>
+                
+                <button wire:click="openBulkPriceModal" 
+                        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <i class="fas fa-tags mr-2"></i>Bulk Update Harga
+                </button>
             @endcan
             
             @can('bulkDelete', App\Product::class)
@@ -100,11 +118,24 @@
                         </button>
                     </div>
                     
-                    <button wire:click="bulkDelete" 
-                            onclick="return confirm('Yakin ingin menghapus {{ count($selectedProducts) }} produk terpilih?')"
-                            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-                        <i class="fas fa-trash mr-2"></i>Hapus Terpilih ({{ count($selectedProducts) }})
-                    </button>
+                    @if($status !== 'deleted')
+                        <button wire:click="confirmBulkDelete" 
+                                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                            <i class="fas fa-trash mr-2"></i>Hapus Terpilih ({{ count($selectedProducts) }})
+                        </button>
+                    @else
+                        <button wire:click="confirmBulkRestore" 
+                                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <i class="fas fa-undo mr-2"></i>Kembalikan Terpilih ({{ count($selectedProducts) }})
+                        </button>
+                        
+                        @if(auth()->user()->hasPermission('products.force_delete'))
+                            <button wire:click="confirmBulkHardDelete" 
+                                    class="px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-700">
+                                <i class="fas fa-trash-alt mr-2"></i>Hapus Permanen ({{ count($selectedProducts) }})
+                            </button>
+                        @endif
+                    @endif
                 @endif
             @endcan
         </div>
@@ -141,8 +172,12 @@
                                 <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} ml-1"></i>
                             @endif
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer" 
+                            wire:click="sortBy('current_stock')">
                             Stok
+                            @if($sortField === 'current_stock')
+                                <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} ml-1"></i>
+                            @endif
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer" 
                             wire:click="sortBy('price_retail')">
@@ -248,36 +283,99 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <button wire:click="toggleStatus({{ $product->id }})" 
-                                        class="px-2 py-1 rounded-full text-xs font-medium {{ $product->is_active ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200' }}">
-                                    {{ $product->is_active ? 'Aktif' : 'Tidak Aktif' }}
-                                </button>
+                                <div class="flex flex-col space-y-1">
+                                    @if($product->trashed())
+                                        <!-- Soft Deleted Product -->
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            <i class="fas fa-trash mr-1"></i>Dihapus
+                                        </span>
+                                    @else
+                                        <!-- Active Product Status -->
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {{ $product->status === 'active' ? 'bg-green-100 text-green-800' : '' }}
+                                            {{ $product->status === 'inactive' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                            {{ $product->status === 'discontinued' ? 'bg-red-100 text-red-800' : '' }}">
+                                            @if($product->status === 'active')
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                            @elseif($product->status === 'inactive')
+                                                <i class="fas fa-pause-circle mr-1"></i>
+                                            @elseif($product->status === 'discontinued')
+                                                <i class="fas fa-stop-circle mr-1"></i>
+                                            @endif
+                                            {{ $product->getStatusDisplayName() }}
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
-                                    @can('view', $product)
-                                        <button wire:click="openDetailModal({{ $product->id }})" 
-                                                class="text-green-600 hover:text-green-900 dark:text-green-400"
-                                                title="Lihat Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                    @endcan
-                                    @can('update', $product)
-                                        <button wire:click="openEditModal({{ $product->id }})" 
-                                                class="text-blue-600 hover:text-blue-900 dark:text-blue-400"
-                                                title="Edit Produk">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    @endcan
-                                    @can('delete', $product)
-                                        <button wire:click="delete({{ $product->id }})" 
-                                                onclick="return confirm('Yakin ingin menghapus produk ini?')"
-                                                class="text-red-600 hover:text-red-900 dark:text-red-400"
-                                                title="Hapus Produk">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    @endcan
-                                    @if(!Gate::allows('view', $product) && !Gate::allows('update', $product) && !Gate::allows('delete', $product))
+                                    @if($product->trashed())
+                                        <!-- Actions for Soft Deleted Products -->
+                                        @can('restore', $product)
+                                            <button wire:click="confirmRestore({{ $product->id }})" 
+                                                    class="text-green-600 hover:text-green-900 dark:text-green-400"
+                                                    title="Kembalikan Produk">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        @endcan
+                                        @can('forceDelete', $product)
+                                            <button wire:click="confirmForceDelete({{ $product->id }})" 
+                                                    class="text-red-800 hover:text-red-900 dark:text-red-600"
+                                                    title="Hapus Permanen">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        @endcan
+                                    @else
+                                        <!-- Actions for Active Products -->
+                                        @can('view', $product)
+                                            <button wire:click="openDetailModal({{ $product->id }})" 
+                                                    class="text-green-600 hover:text-green-900 dark:text-green-400"
+                                                    title="Lihat Detail">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        @endcan
+                                        @can('update', $product)
+                                            <button wire:click="openEditModal({{ $product->id }})" 
+                                                    class="text-blue-600 hover:text-blue-900 dark:text-blue-400"
+                                                    title="Edit Produk">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        @endcan
+                                        @can('manageStatus', $product)
+                                            <div class="relative inline-block text-left">
+                                                <button type="button" 
+                                                        class="text-purple-600 hover:text-purple-900 dark:text-purple-400"
+                                                        onclick="toggleStatusDropdown({{ $product->id }})"
+                                                        title="Ubah Status">
+                                                    <i class="fas fa-cog"></i>
+                                                </button>
+                                                <div id="status-dropdown-{{ $product->id }}" class="hidden absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                                    <div class="py-1">
+                                                        <button wire:click="updateStatus({{ $product->id }}, 'active')" 
+                                                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                            <i class="fas fa-check-circle text-green-500 mr-2"></i>Aktif
+                                                        </button>
+                                                        <button wire:click="updateStatus({{ $product->id }}, 'inactive')" 
+                                                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                            <i class="fas fa-pause-circle text-yellow-500 mr-2"></i>Tidak Aktif
+                                                        </button>
+                                                        <button wire:click="updateStatus({{ $product->id }}, 'discontinued')" 
+                                                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                                                            <i class="fas fa-stop-circle text-red-500 mr-2"></i>Dihentikan
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endcan
+                                        @can('delete', $product)
+                                            <button wire:click="confirmSoftDelete({{ $product->id }})" 
+                                                    class="text-red-600 hover:text-red-900 dark:text-red-400"
+                                                    title="Hapus Produk (Soft Delete)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        @endcan
+                                    @endif
+                                    @if(!$product->trashed() && !Gate::allows('view', $product) && !Gate::allows('update', $product) && !Gate::allows('delete', $product) && !Gate::allows('manageStatus', $product))
                                         <span class="text-gray-400 text-sm">Tidak ada aksi</span>
                                     @endif
                                 </div>
@@ -465,11 +563,14 @@
 
                                 <!-- Status -->
                                 <div class="md:col-span-2">
-                                    <label class="flex items-center">
-                                        <input type="checkbox" wire:model="is_active" 
-                                               class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Produk Aktif</span>
-                                    </label>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status Produk *</label>
+                                    <select wire:model="productStatus" 
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option value="active">Aktif</option>
+                                        <option value="inactive">Tidak Aktif</option>
+                                        <option value="discontinued">Dihentikan</option>
+                                    </select>
+                                    @error('productStatus') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
@@ -518,11 +619,11 @@
                                         Preview
                                     </div>
                                 @else
-                                    <img src="{{ $selectedProduct->getPhotoUrl() }}" 
-                                         alt="{{ $selectedProduct->name }}"
+                                    <img src="{{ $selectedProduct ? $selectedProduct->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
+                                         alt="{{ $selectedProduct ? $selectedProduct->name : 'No Image' }}"
                                          class="w-32 h-32 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-80 transition-opacity"
                                          wire:click.stop
-                                         onclick="event.stopPropagation(); openImageModal('{{ $selectedProduct->getPhotoUrl() }}', '{{ addslashes($selectedProduct->name) }}')">
+                                         onclick="event.stopPropagation(); openImageModal('{{ $selectedProduct ? $selectedProduct->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $selectedProduct ? addslashes($selectedProduct->name) : 'No Image' }}')">
                                     <div class="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black bg-opacity-20 rounded-lg pointer-events-none">
                                         <i class="fas fa-search-plus text-white text-xl"></i>
                                     </div>
@@ -592,13 +693,12 @@
                                     <div class="flex space-x-2">
                                         <button wire:click="togglePhotoEditMode" 
                                                 class="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-                                            <i class="fas fa-camera mr-1"></i>{{ $selectedProduct->photo ? 'Ubah Foto' : 'Tambah Foto' }}
+                                            <i class="fas fa-camera mr-1"></i>{{ ($selectedProduct && $selectedProduct->photo) ? 'Ubah Foto' : 'Tambah Foto' }}
                                         </button>
-                                        @if($selectedProduct->photo)
-                                            <button wire:click="removeProductPhoto" 
+                                        @if($selectedProduct && $selectedProduct->photo)
+                                            <button wire:click="confirmRemoveProductPhoto" 
                                                     wire:loading.attr="disabled" 
                                                     wire:target="removeProductPhoto"
-                                                    wire:confirm="Yakin ingin menghapus foto ini?"
                                                     class="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center">
                                                 <span wire:loading.remove wire:target="removeProductPhoto">
                                                     <i class="fas fa-trash mr-1"></i>Hapus Foto
@@ -621,23 +721,23 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">SKU</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct->sku }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct ? $selectedProduct->sku : '-' }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Barcode</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct->barcode ?: '-' }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct ? ($selectedProduct->barcode ?: '-') : '-' }}</p>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Produk</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold">{{ $selectedProduct->name }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold">{{ $selectedProduct ? $selectedProduct->name : '-' }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kategori</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct->category }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct ? $selectedProduct->category : '-' }}</p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Unit</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct->unit ? $selectedProduct->unit->name . ' (' . $selectedProduct->unit->abbreviation . ')' : '-' }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedProduct && $selectedProduct->unit ? $selectedProduct->unit->name . ' (' . $selectedProduct->unit->abbreviation . ')' : '-' }}</p>
                             </div>
                         </div>
 
@@ -647,15 +747,15 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Harga Dasar</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">Rp {{ number_format($selectedProduct->base_cost, 0, ',', '.') }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">Rp {{ $selectedProduct ? number_format($selectedProduct->base_cost, 0, ',', '.') : '0' }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Harga Retail</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold text-blue-600">Rp {{ number_format($selectedProduct->price_retail, 0, ',', '.') }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold text-blue-600">Rp {{ $selectedProduct ? number_format($selectedProduct->price_retail, 0, ',', '.') : '0' }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Harga Semi Grosir</label>
-                                    @if($selectedProduct->price_semi_grosir)
+                                    @if($selectedProduct && $selectedProduct->price_semi_grosir)
                                         <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold text-yellow-600">Rp {{ number_format($selectedProduct->price_semi_grosir, 0, ',', '.') }}</p>
                                     @else
                                         <p class="mt-1 text-sm text-gray-400">Tidak diset</p>
@@ -663,16 +763,16 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Harga Grosir</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold text-green-600">Rp {{ number_format($selectedProduct->price_grosir, 0, ',', '.') }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold text-green-600">Rp {{ $selectedProduct ? number_format($selectedProduct->price_grosir, 0, ',', '.') : '0' }}</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jenis Harga Default</label>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1
-                                        {{ $selectedProduct->default_price_type === 'retail' ? 'bg-blue-100 text-blue-800' : '' }}
-                                        {{ $selectedProduct->default_price_type === 'semi_grosir' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                        {{ $selectedProduct->default_price_type === 'grosir' ? 'bg-green-100 text-green-800' : '' }}
-                                        {{ $selectedProduct->default_price_type === 'custom' ? 'bg-purple-100 text-purple-800' : '' }}">
-                                        {{ $selectedProduct->getPriceTypeDisplayName() }}
+                                        {{ $selectedProduct && $selectedProduct->default_price_type === 'retail' ? 'bg-blue-100 text-blue-800' : '' }}
+                                        {{ $selectedProduct && $selectedProduct->default_price_type === 'semi_grosir' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                        {{ $selectedProduct && $selectedProduct->default_price_type === 'grosir' ? 'bg-green-100 text-green-800' : '' }}
+                                        {{ $selectedProduct && $selectedProduct->default_price_type === 'custom' ? 'bg-purple-100 text-purple-800' : '' }}">
+                                        {{ $selectedProduct ? $selectedProduct->getPriceTypeDisplayName() : '-' }}
                                     </span>
                                 </div>
                             </div>
@@ -682,10 +782,10 @@
                                 <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Perbandingan Margin</h5>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                                     @php
-                                        $baseCost = $selectedProduct->base_cost;
-                                        $retailMargin = $baseCost > 0 ? (($selectedProduct->price_retail - $baseCost) / $baseCost) * 100 : 0;
-                                        $semiGrosirMargin = $selectedProduct->price_semi_grosir && $baseCost > 0 ? (($selectedProduct->price_semi_grosir - $baseCost) / $baseCost) * 100 : 0;
-                                        $grosirMargin = $baseCost > 0 ? (($selectedProduct->price_grosir - $baseCost) / $baseCost) * 100 : 0;
+                                        $baseCost = $selectedProduct ? $selectedProduct->base_cost : 0;
+                                        $retailMargin = $selectedProduct && $baseCost > 0 ? (($selectedProduct->price_retail - $baseCost) / $baseCost) * 100 : 0;
+                                        $semiGrosirMargin = $selectedProduct && $selectedProduct->price_semi_grosir && $baseCost > 0 ? (($selectedProduct->price_semi_grosir - $baseCost) / $baseCost) * 100 : 0;
+                                        $grosirMargin = $selectedProduct && $baseCost > 0 ? (($selectedProduct->price_grosir - $baseCost) / $baseCost) * 100 : 0;
                                     @endphp
                                     
                                     <div class="bg-blue-50 dark:bg-blue-900 p-2 rounded">
@@ -693,7 +793,7 @@
                                         <span class="text-blue-600 dark:text-blue-400">{{ number_format($retailMargin, 1) }}%</span>
                                     </div>
                                     
-                                    @if($selectedProduct->price_semi_grosir)
+                                    @if($selectedProduct && $selectedProduct->price_semi_grosir)
                                         <div class="bg-yellow-50 dark:bg-yellow-900 p-2 rounded">
                                             <span class="font-medium text-yellow-700 dark:text-yellow-300">Semi Grosir:</span>
                                             <span class="text-yellow-600 dark:text-yellow-400">{{ number_format($semiGrosirMargin, 1) }}%</span>
@@ -715,16 +815,26 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Stok Saat Ini</label>
                                     <p class="mt-1 text-sm text-gray-900 dark:text-white">
-                                        <span class="px-2 py-1 rounded-full text-xs {{ $selectedProduct->isLowStock() ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                                            {{ number_format($selectedProduct->current_stock) }}
+                                        <span class="px-2 py-1 rounded-full text-xs {{ $selectedProduct && $selectedProduct->isLowStock() ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                            {{ $selectedProduct ? number_format($selectedProduct->current_stock) : '0' }}
                                         </span>
                                     </p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
                                     <p class="mt-1 text-sm">
-                                        <span class="px-2 py-1 rounded-full text-xs {{ $selectedProduct->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                            {{ $selectedProduct->is_active ? 'Aktif' : 'Tidak Aktif' }}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                            {{ $selectedProduct && $selectedProduct->status === 'active' ? 'bg-green-100 text-green-800' : '' }}
+                                            {{ $selectedProduct && $selectedProduct->status === 'inactive' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                            {{ $selectedProduct && $selectedProduct->status === 'discontinued' ? 'bg-red-100 text-red-800' : '' }}">
+                                            @if($selectedProduct && $selectedProduct->status === 'active')
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                            @elseif($selectedProduct && $selectedProduct->status === 'inactive')
+                                                <i class="fas fa-pause-circle mr-1"></i>
+                                            @elseif($selectedProduct && $selectedProduct->status === 'discontinued')
+                                                <i class="fas fa-stop-circle mr-1"></i>
+                                            @endif
+                                            {{ $selectedProduct ? $selectedProduct->getStatusDisplayName() : '-' }}
                                         </span>
                                     </p>
                                 </div>
@@ -732,7 +842,7 @@
                         </div>
 
                         <!-- Riwayat Stock Movement (10 terakhir) -->
-                        @if($selectedProduct->stockMovements->count() > 0)
+                        @if($selectedProduct && $selectedProduct->stockMovements->count() > 0)
                             <div class="border-t border-gray-200 dark:border-gray-600 pt-4">
                                 <h4 class="text-md font-medium text-gray-900 dark:text-white mb-3">Riwayat Pergerakan Stok (10 Terakhir)</h4>
                                 <div class="overflow-x-auto">
@@ -746,7 +856,7 @@
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-600">
-                                            @foreach($selectedProduct->stockMovements as $movement)
+                                            @foreach($selectedProduct->stockMovements ?? [] as $movement)
                                                 <tr>
                                                     <td class="px-3 py-2 text-xs text-gray-900 dark:text-white">
                                                         {{ $movement->created_at->format('d/m/Y H:i') }}
@@ -872,6 +982,31 @@
             document.body.style.overflow = 'hidden';
         }
         
+        function toggleStatusDropdown(productId) {
+            const dropdown = document.getElementById('status-dropdown-' + productId);
+            const allDropdowns = document.querySelectorAll('[id^="status-dropdown-"]');
+            
+            // Close all other dropdowns
+            allDropdowns.forEach(function(dd) {
+                if (dd.id !== 'status-dropdown-' + productId) {
+                    dd.classList.add('hidden');
+                }
+            });
+            
+            // Toggle current dropdown
+            dropdown.classList.toggle('hidden');
+        }
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('[onclick*="toggleStatusDropdown"]') && !event.target.closest('[id^="status-dropdown-"]')) {
+                const allDropdowns = document.querySelectorAll('[id^="status-dropdown-"]');
+                allDropdowns.forEach(function(dropdown) {
+                    dropdown.classList.add('hidden');
+                });
+            }
+        });
+        
         function closeImageModal() {
             const modal = document.getElementById('imageModal');
             modal.classList.add('hidden');
@@ -938,4 +1073,114 @@
             </div>
         </div>
     @endif
+
+    <!-- Bulk Price Update Modal -->
+    @if($showBulkPriceModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="$set('showBulkPriceModal', false)">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white" wire:click.stop>
+                <div class="mt-3">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-medium text-gray-900">Bulk Update Harga Produk</h3>
+                        <button wire:click="$set('showBulkPriceModal', false)" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Category Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Kategori Produk</label>
+                            <select wire:model="bulkUpdateCategory" wire:change="generateBulkPricePreview" 
+                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">Pilih Kategori</option>
+                                @foreach($this->getCategories() as $category)
+                                    <option value="{{ $category }}">{{ $category }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Price Field Selection -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Field Harga</label>
+                            <select wire:model="bulkPriceField" wire:change="generateBulkPricePreview" 
+                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="price">Harga Jual</option>
+                                <option value="cost_price">Harga Beli</option>
+                                <option value="wholesale_price">Harga Grosir</option>
+                            </select>
+                        </div>
+
+                        <!-- Update Type -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Update</label>
+                            <select wire:model="bulkUpdateType" wire:change="generateBulkPricePreview" 
+                                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="percentage">Persentase (%)</option>
+                                <option value="fixed">Nilai Tetap (Rp)</option>
+                                <option value="set">Set Harga Baru (Rp)</option>
+                            </select>
+                        </div>
+
+                        <!-- Update Value -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                @if($bulkUpdateType === 'percentage')
+                                    Persentase (+ untuk naik, - untuk turun)
+                                @elseif($bulkUpdateType === 'fixed')
+                                    Nilai (+ untuk tambah, - untuk kurang)
+                                @else
+                                    Harga Baru
+                                @endif
+                            </label>
+                            <input type="number" step="0.01" wire:model="bulkUpdateValue" wire:input="generateBulkPricePreview" 
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Masukkan nilai">
+                        </div>
+
+                        <!-- Preview -->
+                        @if($bulkUpdatePreview && count($bulkUpdatePreview) > 0)
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-gray-900 mb-2">Preview Perubahan ({{ count($bulkUpdatePreview) }} produk)</h4>
+                                <div class="max-h-40 overflow-y-auto">
+                                    @foreach($bulkUpdatePreview as $preview)
+                                        <div class="flex justify-between items-center py-1 text-sm">
+                                            <span class="text-gray-700">{{ $preview['name'] }}</span>
+                                            <span class="text-blue-600">
+                                                Rp {{ number_format($preview['old_price'], 0, ',', '.') }} 
+                                                → Rp {{ number_format($preview['new_price'], 0, ',', '.') }}
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button wire:click="$set('showBulkPriceModal', false)" 
+                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Batal
+                        </button>
+                        <button wire:click="executeBulkPriceUpdate" 
+                                @if(!$bulkUpdateCategory || !$bulkUpdateValue || !$bulkUpdatePreview || count($bulkUpdatePreview) === 0) disabled @endif
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Update Harga ({{ $bulkUpdatePreview ? count($bulkUpdatePreview) : 0 }} produk)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
+
+<script>
+    // Handle confirmation actions from SweetAlert2
+    window.addEventListener('livewire-confirm-action', function(event) {
+        const { method, params } = event.detail;
+        
+        // Call the method on this Livewire component
+        @this.call(method, params);
+    });
+</script>

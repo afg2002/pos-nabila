@@ -160,15 +160,15 @@
                                 <div class="flex items-center space-x-3">
                                     <!-- Product Photo -->
                                     <div class="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                        <img src="{{ $movement->product->getPhotoUrl() }}" 
-                                             alt="{{ $movement->product->name }}"
+                                        <img src="{{ $movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
+                                             alt="{{ $movement->product ? $movement->product->name : 'No Product' }}"
                                              class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                             onclick="openImageModal('{{ $movement->product->getPhotoUrl() }}', '{{ $movement->product->name }}')">
+                                             onclick="openImageModal('{{ $movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $movement->product ? addslashes($movement->product->name) : 'No Product' }}')">
                                     </div>
                                     
                                     <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ $movement->product->name }}</div>
-                                        <div class="text-sm text-gray-500">{{ $movement->product->sku }}</div>
+                                        <div class="text-sm font-medium text-gray-900">{{ $movement->product ? $movement->product->name : 'No Product' }}</div>
+                                        <div class="text-sm text-gray-500">{{ $movement->product ? $movement->product->sku : '-' }}</div>
                                     </div>
                                 </div>
                             </td>
@@ -238,8 +238,7 @@
                                         
                                         <!-- Delete Button -->
                                         @can('delete', $movement)
-                                            <button wire:click="deleteMovement({{ $movement->id }})" 
-                                                    wire:confirm="Apakah Anda yakin ingin menghapus pergerakan stok ini?"
+                                            <button wire:click="confirmDeleteMovement({{ $movement->id }})" 
                                                     class="text-red-600 hover:text-red-900 transition-colors duration-200"
                                                     title="Hapus">
                                                 <i class="fas fa-trash"></i>

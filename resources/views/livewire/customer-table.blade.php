@@ -71,7 +71,7 @@
                     </button>
                     
                     @if(count($selectedCustomers) > 0)
-                        <button wire:click="deleteSelected" onclick="return confirm('Yakin ingin menghapus pelanggan terpilih?')" 
+                        <button wire:click="confirmDeleteSelected" 
                                 class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
                             <i class="fas fa-trash mr-1"></i>Hapus Terpilih ({{ count($selectedCustomers) }})
                         </button>
@@ -165,7 +165,7 @@
                                     <button wire:click="openEditModal({{ $customer->id }})" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button wire:click="delete({{ $customer->id }})" onclick="return confirm('Yakin ingin menghapus pelanggan ini?')" 
+                                    <button wire:click="confirmDelete({{ $customer->id }})" 
                                             class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300">
                                         <i class="fas fa-trash"></i>
                                     </button>

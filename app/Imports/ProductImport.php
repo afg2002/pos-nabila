@@ -49,19 +49,30 @@ class ProductImport implements ToCollection, WithHeadingRow
                     continue;
                 }
                 
+                // Find unit by name or create default
+                $unitId = 1; // Default to 'Pieces'
+                if (!empty($row['unit'])) {
+                    $unit = \App\ProductUnit::where('name', 'LIKE', '%' . trim($row['unit']) . '%')
+                                            ->orWhere('abbreviation', 'LIKE', '%' . trim($row['unit']) . '%')
+                                            ->first();
+                    if ($unit) {
+                        $unitId = $unit->id;
+                    }
+                }
+                
                 // Create product
                 $product = Product::create([
                     'sku' => $row['sku'],
                     'barcode' => $row['barcode'] ?? null,
                     'name' => $row['nama_produk'],
                     'category' => $row['kategori'] ?? 'Umum',
-                    'unit' => $row['unit'],
+                    'unit_id' => $unitId,
                     'current_stock' => $row['stok_awal'] ?? 0,
                     'base_cost' => $row['harga_beli'],
                     'price_retail' => $row['harga_jual'],
                     'price_grosir' => $row['harga_grosir'] ?? $row['harga_jual'],
                     'min_margin_pct' => $row['margin_min'] ?? 0,
-                    'is_active' => in_array(strtolower($row['status']), ['aktif', 'active']) ? true : false,
+                    'status' => in_array(strtolower($row['status']), ['aktif', 'active']) ? 'active' : 'inactive',
                 ]);
                 
                 // Create initial stock movement if stock > 0

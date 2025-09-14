@@ -145,18 +145,34 @@
                     </div>
                 </form>
 
-                <!-- Demo Account Info -->
+                <!-- Demo Accounts Info -->
                 <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h3 class="text-sm font-semibold text-blue-800 mb-2 flex items-center">
+                    <h3 class="text-sm font-semibold text-blue-800 mb-3 flex items-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        Demo Account
+                        Demo Accounts
                     </h3>
-                    <div class="text-xs text-blue-700 space-y-1">
-                        <p><strong>Email:</strong> admin@example.com</p>
-                        <p><strong>Password:</strong> password</p>
-                        <p class="text-blue-600 mt-2">Use this account to explore the application features.</p>
+                    <div class="text-xs text-blue-700 space-y-2">
+                        <div class="bg-white p-2 rounded border border-blue-100">
+                            <p class="font-semibold text-blue-800">👑 Admin</p>
+                            <p><strong>Email:</strong> admin@example.com</p>
+                            <p><strong>Password:</strong> password</p>
+                            <p class="text-blue-600 text-xs mt-1">Full access to all features</p>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-blue-100">
+                            <p class="font-semibold text-blue-800">👨‍💼 Manager</p>
+                            <p><strong>Email:</strong> manager@example.com</p>
+                            <p><strong>Password:</strong> password</p>
+                            <p class="text-blue-600 text-xs mt-1">Manage products, sales & reports</p>
+                        </div>
+                        <div class="bg-white p-2 rounded border border-blue-100">
+                            <p class="font-semibold text-blue-800">🛒 Kasir</p>
+                            <p><strong>Email:</strong> kasir@example.com</p>
+                            <p><strong>Password:</strong> password</p>
+                            <p class="text-blue-600 text-xs mt-1">POS operations & basic features</p>
+                        </div>
+                        <p class="text-blue-600 mt-3 text-center font-medium">Choose any account to explore different access levels!</p>
                     </div>
                 </div>
 
