@@ -8,6 +8,7 @@ use App\Shared\Services\LoggerService;
 use App\Shared\Traits\WithAlerts;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 
 class RoleList extends Component
 {
@@ -45,6 +46,13 @@ class RoleList extends Component
         }
 
         $this->sortField = $field;
+    }
+
+    #[On('roleSaved')]
+    public function refreshRoleList()
+    {
+        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
     public function toggleRoleStatus($roleId)

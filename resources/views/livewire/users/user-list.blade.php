@@ -160,7 +160,7 @@
                                     </button>
                                 @endpermission
                                 @permission('users.edit')
-                                    <button wire:click="toggleUserStatus({{ $user->id }})" 
+                                    <button wire:click="toggleUserStatus({{ $user->id }})"
                                             class="group/btn inline-flex items-center px-3 py-2 text-xs font-semibold text-yellow-600 bg-yellow-50 rounded-lg hover:bg-yellow-100 hover:text-yellow-700 transition-all duration-200 transform hover:scale-105">
                                         <svg class="w-4 h-4 mr-1.5 group-hover/btn:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             @if($user->is_active)
@@ -173,8 +173,7 @@
                                     </button>
                                 @endpermission
                                 @permission('users.delete')
-                                    <button 
-                                        wire:click="confirmDeleteUser({{ $user->id }})"
+                                    <button wire:click="confirmDeleteUser({{ $user->id }})"
                                         class="group/btn inline-flex items-center px-3 py-2 text-xs font-semibold text-red-600 bg-red-50 rounded-lg hover:bg-red-100 hover:text-red-700 transition-all duration-200 transform hover:scale-105"
                                     >
                                         <svg class="w-4 h-4 mr-1.5 group-hover/btn:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">

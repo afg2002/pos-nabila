@@ -64,6 +64,15 @@ class PermissionSeeder extends Seeder
             ['name' => 'pos.reports', 'display_name' => 'View POS Reports', 'description' => 'Can view sales reports and analytics', 'group' => 'pos'],
             ['name' => 'pos.refund', 'display_name' => 'Process Refunds', 'description' => 'Can process refunds and returns', 'group' => 'pos'],
             
+            // Agenda permissions
+            ['name' => 'agenda.view', 'display_name' => 'View Agenda', 'description' => 'Can view incoming goods agenda and calendar', 'group' => 'agenda'],
+            ['name' => 'agenda.create', 'display_name' => 'Create Agenda', 'description' => 'Can create new incoming goods schedule', 'group' => 'agenda'],
+            ['name' => 'agenda.edit', 'display_name' => 'Edit Agenda', 'description' => 'Can edit existing agenda items', 'group' => 'agenda'],
+            ['name' => 'agenda.delete', 'display_name' => 'Delete Agenda', 'description' => 'Can delete agenda items', 'group' => 'agenda'],
+            ['name' => 'agenda.payment', 'display_name' => 'Manage Payments', 'description' => 'Can manage payment schedules and debt', 'group' => 'agenda'],
+            ['name' => 'agenda.financial', 'display_name' => 'View Financial Status', 'description' => 'Can view financial condition and cash balance', 'group' => 'agenda'],
+            ['name' => 'agenda.export', 'display_name' => 'Export Agenda', 'description' => 'Can export agenda and financial reports', 'group' => 'agenda'],
+            
             // Dashboard permissions
             ['name' => 'dashboard.view', 'display_name' => 'View Dashboard', 'description' => 'Can view dashboard and analytics', 'group' => 'dashboard'],
             ['name' => 'dashboard.export', 'display_name' => 'Export Reports', 'description' => 'Can export dashboard reports', 'group' => 'dashboard'],

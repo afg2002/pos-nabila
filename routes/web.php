@@ -77,6 +77,28 @@ Route::middleware(['auth', 'permission:pos.access'])->group(function () {
     })->name('pos.index');
 });
 
+// Agenda Management System
+Route::middleware(['auth', 'permission:agenda.view'])->group(function () {
+    Route::get('/agenda', function () {
+        return view('agenda.index');
+    })->name('agenda.index');
+});
+
+// Financial Management
+Route::middleware(['auth', 'permission:agenda.financial'])->prefix('financial')->group(function () {
+    Route::get('/dashboard', function () {
+        return view('financial.dashboard');
+    })->name('financial.dashboard');
+    
+    Route::get('/forms', function () {
+        return view('financial.forms');
+    })->name('financial.forms');
+    
+    Route::get('/reports', function () {
+        return view('financial.reports');
+    })->name('financial.reports')->middleware('permission:agenda.export');
+});
+
 // Profile Settings Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/profile', function () {

@@ -8,6 +8,7 @@ use App\Shared\Services\LoggerService;
 use App\Shared\Traits\WithAlerts;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\On;
 
 class UserList extends Component
 {
@@ -38,6 +39,13 @@ class UserList extends Component
         }
 
         $this->sortField = $field;
+    }
+
+    #[On('userSaved')]
+    public function refreshUserList()
+    {
+        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
     public function toggleUserStatus($userId)
