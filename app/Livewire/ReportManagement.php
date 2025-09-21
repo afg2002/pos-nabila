@@ -106,22 +106,39 @@ class ReportManagement extends Component
         $this->isLoading = true;
         
         try {
-            switch ($this->reportType) {
-                case 'sales':
-                    $this->generateSalesReport();
-                    break;
-                case 'inventory':
-                    $this->generateInventoryReport();
-                    break;
-                case 'profit':
-                    $this->generateProfitReport();
-                    break;
-                case 'cashier':
-                    $this->generateCashierReport();
-                    break;
-                default:
-                    $this->generateSalesReport();
-            }
+            // Create cache key based on report parameters
+            $cacheKey = 'report_' . md5(serialize([
+                'type' => $this->reportType,
+                'dateFrom' => $this->dateFrom,
+                'dateTo' => $this->dateTo,
+                'cashierId' => $this->cashierId,
+                'customerId' => $this->customerId,
+                'categoryFilter' => $this->categoryFilter,
+                'productId' => $this->productId,
+                'groupBy' => $this->groupBy
+            ]));
+
+            // Cache reports for 10 minutes
+            $cachedData = cache()->remember($cacheKey, 600, function () {
+                switch ($this->reportType) {
+                    case 'sales':
+                        return $this->buildSalesReport();
+                    case 'inventory':
+                        return $this->buildInventoryReport();
+                    case 'profit':
+                        return $this->buildProfitReport();
+                    case 'cashier':
+                        return $this->buildCashierReport();
+                    default:
+                        return $this->buildSalesReport();
+                }
+            });
+
+            // Assign cached data to properties
+            $this->reportData = $cachedData['reportData'];
+            $this->summaryStats = $cachedData['summaryStats'];
+            $this->chartData = $cachedData['chartData'];
+
         } catch (\Exception $e) {
             session()->flash('error', 'Error generating report: ' . $e->getMessage());
         }
@@ -129,7 +146,7 @@ class ReportManagement extends Component
         $this->isLoading = false;
     }
 
-    private function generateSalesReport()
+    private function buildSalesReport()
     {
         $query = Sale::with(['user', 'saleItems.product'])
             ->whereBetween('created_at', [
@@ -166,10 +183,10 @@ class ReportManagement extends Component
             });
         }
 
-        $this->reportData = $sales->toArray();
+        $reportData = $sales->toArray();
         
         // Calculate summary statistics
-        $this->summaryStats = [
+        $summaryStats = [
             'total_sales' => $sales->count(),
             'total_revenue' => $sales->sum('total_amount'),
             'average_sale' => $sales->count() > 0 ? $sales->sum('total_amount') / $sales->count() : 0,
@@ -181,7 +198,13 @@ class ReportManagement extends Component
         ];
 
         // Generate chart data
-        $this->generateChartData($sales);
+        $chartData = $this->buildChartData($sales);
+
+        return [
+            'reportData' => $reportData,
+            'summaryStats' => $summaryStats,
+            'chartData' => $chartData
+        ];
     }
 
     private function generateInventoryReport()
@@ -209,9 +232,9 @@ class ReportManagement extends Component
         // Calculate inventory statistics
         $this->summaryStats = [
             'total_movements' => $movements->count(),
-            'stock_in' => $movements->where('type', 'in')->sum('quantity'),
-            'stock_out' => $movements->where('type', 'out')->sum('quantity'),
-            'net_movement' => $movements->where('type', 'in')->sum('quantity') - $movements->where('type', 'out')->sum('quantity'),
+            'stock_in' => $movements->where('type', 'in')->sum('qty'),
+            'stock_out' => $movements->where('type', 'out')->sum('qty'),
+            'net_movement' => $movements->where('type', 'in')->sum('qty') - $movements->where('type', 'out')->sum('qty'),
             'products_affected' => $movements->pluck('product_id')->unique()->count(),
             'low_stock_items' => Product::where('status', 'active')
                                        ->whereNull('deleted_at')

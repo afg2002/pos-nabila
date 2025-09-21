@@ -7,6 +7,9 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+// Test route for Alpine.js debugging
+Route::get('/test-alpine', App\Livewire\TestAlpine::class)->name('test.alpine');
+
 // Dashboard Route (redirect /home to /dashboard)
 Route::get('/dashboard', function () {
     return view('dashboard');
@@ -75,6 +78,41 @@ Route::middleware(['auth', 'permission:pos.access'])->group(function () {
     Route::get('/pos', function () {
         return view('pos.index');
     })->name('pos.index');
+});
+
+// Capital Tracking Management
+Route::middleware(['auth'])->group(function () {
+    Route::get('/capital-tracking', function () {
+        return view('capital-tracking.index');
+    })->name('capital-tracking.index');
+});
+
+// Purchase Order Management
+Route::middleware(['auth'])->group(function () {
+    Route::get('/purchase-orders', function () {
+        return view('purchase-orders.index');
+    })->name('purchase-orders.index');
+});
+
+// Cash Ledger Management
+Route::middleware(['auth'])->group(function () {
+    Route::get('/cash-ledger', function () {
+        return view('cash-ledger.index');
+    })->name('cash-ledger.index');
+});
+
+// Debt Reminder Management
+Route::middleware(['auth'])->group(function () {
+    Route::get('/debt-reminders', function () {
+        return view('debt-reminders.index');
+    })->name('debt-reminders.index');
+});
+
+// Incoming Goods Agenda Management
+Route::middleware(['auth'])->group(function () {
+    Route::get('/incoming-goods-agenda', function () {
+        return view('incoming-goods-agenda.index');
+    })->name('incoming-goods-agenda.index');
 });
 
 // Profile Settings Routes

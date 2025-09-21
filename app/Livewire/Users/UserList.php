@@ -116,8 +116,33 @@ class UserList extends Component
 
     public function render()
     {
+        // Create cache key based on filters
+        $cacheKey = 'users_' . md5(serialize([
+            'search' => $this->search,
+            'showInactive' => $this->showInactive,
+            'sortField' => $this->sortField,
+            'sortDirection' => $this->sortDirection,
+            'page' => $this->getPage(),
+            'perPage' => $this->perPage
+        ]));
+
+        // For search queries, don't cache to ensure real-time results
+        if ($this->search) {
+            $users = $this->buildUserQuery();
+        } else {
+            // Cache for 5 minutes for non-search requests
+            $users = cache()->remember($cacheKey, 300, function () {
+                return $this->buildUserQuery();
+            });
+        }
+
+        return view('livewire.users.user-list', compact('users'));
+    }
+
+    private function buildUserQuery()
+    {
         // Optimize query with proper select and joins
-        $users = User::query()
+        return User::query()
             ->select(['id', 'name', 'email', 'is_active', 'created_at', 'updated_at'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -131,7 +156,5 @@ class UserList extends Component
             ->with(['roles:id,name,display_name']) // Only select needed columns
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
-
-        return view('livewire.users.user-list', compact('users'));
     }
 }

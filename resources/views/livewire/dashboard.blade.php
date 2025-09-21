@@ -24,20 +24,20 @@
             <div class="flex flex-wrap gap-4 items-end">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Dari Tanggal</label>
-                    <input type="date" wire:model.live="dateFrom" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    <input type="date" wire:model.live="dateFrom" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sampai Tanggal</label>
-                    <input type="date" wire:model.live="dateTo" class="border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
+                    <input type="date" wire:model.live="dateTo" class="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white">
                 </div>
-                <button wire:click="refreshData" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                <button wire:click="refreshData" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
                     <i class="fas fa-sync-alt mr-1"></i>Refresh
                 </button>
             </div>
         </div>
 
         <!-- Statistics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <!-- Total Products -->
             <div class="stats-card bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 border-blue-500">
                 <div class="flex items-center">
@@ -84,7 +84,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Stok Menipis</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $lowStockCount }}</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $lowStockProducts }}</p>
                     </div>
                 </div>
             </div>
@@ -101,14 +101,14 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Transaksi Hari Ini</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $todayTransactions }}</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $todayStats['transactions'] }}</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Charts Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Sales & Revenue Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -119,7 +119,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="h-80">
+                <div class="h-64 sm:h-80">
                     @if(isset($dailySalesChart))
                         {!! $dailySalesChart->container() !!}
                     @else
@@ -143,7 +143,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="h-80">
+                <div class="h-64 sm:h-80">
                     @if(isset($stockMovementChart))
                         {!! $stockMovementChart->container() !!}
                     @else
@@ -160,7 +160,7 @@
         </div>
 
         <!-- Additional Charts Section -->
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <!-- Top Products Bar Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
@@ -174,7 +174,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="h-80">
+                <div class="h-64 sm:h-80">
                     @if(isset($topProductsChart))
                         {!! $topProductsChart->container() !!}
                     @else
@@ -200,7 +200,7 @@
                         </button>
                     </div>
                 </div>
-                <div class="h-80">
+                <div class="h-64 sm:h-80">
                     @if(isset($categoryChart))
                         {!! $categoryChart->container() !!}
                     @else
@@ -215,15 +215,15 @@
         </div>
 
         <!-- Recent Activities -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Top Products -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Produk Terlaris</h3>
-                    <button wire:click="exportTopProducts" class="text-sm bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded transition-colors">
+                    <button wire:click="exportTopProducts" class="text-sm bg-indigo-500 hover:bg-indigo-600 text-white px-2 sm:px-3 py-1 rounded transition-colors">
                         <svg class="w-4 h-4 mr-1 inline" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                        </svg>Export Excel
+                        </svg><span class="hidden sm:inline">Export Excel</span><span class="sm:hidden">Excel</span>
                     </button>
                 </div>
                 <div class="space-y-4">
@@ -260,10 +260,10 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Penjualan Terbaru</h3>
-                    <button wire:click="exportRecentSales" class="text-sm bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded transition-colors">
+                    <button wire:click="exportRecentSales" class="text-sm bg-green-500 hover:bg-green-600 text-white px-2 sm:px-3 py-1 rounded transition-colors">
                         <svg class="w-4 h-4 mr-1 inline" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
-                        </svg>Export PDF
+                        </svg><span class="hidden sm:inline">Export PDF</span><span class="sm:hidden">PDF</span>
                     </button>
                 </div>
                 <div class="space-y-4">
@@ -302,26 +302,26 @@
         <!-- Export Buttons -->
         <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Export Laporan</h3>
-            <div class="flex flex-wrap gap-3">
-                <button wire:click="exportDashboardPDF" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                    <svg class="w-4 h-4 mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <button wire:click="exportDashboardPDF" class="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
-                    </svg>Export Dashboard PDF
+                    </svg><span class="hidden sm:inline">Export Dashboard PDF</span><span class="sm:hidden">PDF</span>
                 </button>
-                <button wire:click="exportDashboardExcel" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                    <svg class="w-4 h-4 mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
+                <button wire:click="exportDashboardExcel" class="bg-green-500 hover:bg-green-600 text-white px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
-                    </svg>Export Dashboard Excel
+                    </svg><span class="hidden sm:inline">Export Dashboard Excel</span><span class="sm:hidden">Excel</span>
                 </button>
-                <button wire:click="exportSalesReport" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                    <svg class="w-4 h-4 mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
+                <button wire:click="exportSalesReport" class="bg-blue-500 hover:bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3m-6-3v9a1 1 0 001 1h4a1 1 0 001-1v-9M5 5h10a1 1 0 011 1v12a1 1 0 01-1 1H5a1 1 0 01-1-1V6a1 1 0 011-1z"></path>
-                    </svg>Export Sales Report
+                    </svg><span class="hidden sm:inline">Export Sales Report</span><span class="sm:hidden">Sales</span>
                 </button>
-                <button wire:click="exportStockReport" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-                    <svg class="w-4 h-4 mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
+                <button wire:click="exportStockReport" class="bg-purple-500 hover:bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4 mr-1 sm:mr-2 inline" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
-                    </svg>Export Stock Report
+                    </svg><span class="hidden sm:inline">Export Stock Report</span><span class="sm:hidden">Stock</span>
                 </button>
             </div>
         </div>

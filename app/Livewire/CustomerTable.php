@@ -288,6 +288,28 @@ class CustomerTable extends Component
     
     public function getCustomers()
     {
+        // Create cache key based on filters
+        $cacheKey = 'customers_' . md5(serialize([
+            'search' => $this->search,
+            'typeFilter' => $this->typeFilter,
+            'statusFilter' => $this->statusFilter,
+            'page' => $this->getPage(),
+            'perPage' => $this->perPage
+        ]));
+
+        // For search queries, don't cache to ensure real-time results
+        if ($this->search) {
+            return $this->buildCustomerQuery();
+        }
+
+        // Cache for 5 minutes for non-search requests
+        return cache()->remember($cacheKey, 300, function () {
+            return $this->buildCustomerQuery();
+        });
+    }
+
+    private function buildCustomerQuery()
+    {
         return Customer::query()
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -304,6 +326,16 @@ class CustomerTable extends Component
             })
             ->orderBy('created_at', 'desc')
             ->paginate($this->perPage);
+    }
+
+    // Add cache clearing method
+    private function clearCustomerCache()
+    {
+        // Clear all customer cache keys
+        $cacheKeys = cache()->getRedis()->keys('*customers_*');
+        if ($cacheKeys) {
+            cache()->getRedis()->del($cacheKeys);
+        }
     }
     
     public function render()

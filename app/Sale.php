@@ -11,6 +11,7 @@ use App\Domains\User\Models\User;
 class Sale extends Model
 {
     protected $fillable = [
+        'sale_number',
         'cashier_id',
         'subtotal',
         'discount_total',

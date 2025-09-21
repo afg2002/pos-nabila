@@ -48,5 +48,13 @@ class DatabaseSeeder extends Seeder
         if ($userRole) {
             $testUser->roles()->attach($userRole->id);
         }
+        
+        // Run seeders that depend on users
+        $this->call([
+            CapitalTrackingSeeder::class,
+            CashLedgerSeeder::class,
+            PurchaseOrderSeeder::class,
+            DebtReminderSeeder::class,
+        ]);
     }
 }

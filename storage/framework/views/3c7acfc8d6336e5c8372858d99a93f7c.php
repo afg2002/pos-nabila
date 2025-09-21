@@ -1,0 +1,949 @@
+<div class="min-h-screen bg-gray-50">
+<div class="pos-kasir-container min-h-screen bg-gray-50">
+    <!-- Flash Messages -->
+    <!--[if BLOCK]><![endif]--><?php if(session()->has('success')): ?>
+        <div id="success-alert" class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
+            <span><?php echo e(session('success')); ?></span>
+            <button onclick="closeAlert('success-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+    <?php if(session()->has('error')): ?>
+        <div id="error-alert" class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
+            <span><?php echo e(session('error')); ?></span>
+            <button onclick="closeAlert('error-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+    <div class="flex h-screen">
+        <!-- Left Panel - Product Selection -->
+        <div class="w-1/2 bg-white border-r border-gray-200 flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-900">Pilih Produk</h2>
+                
+                <!-- Barcode Scanner -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-barcode mr-2"></i>Scan Barcode
+                        <span class="text-xs text-gray-500 ml-2">(F3 untuk focus)</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" 
+                               id="barcode-input"
+                               wire:model.live="barcode" 
+                               placeholder="Scan atau ketik barcode..."
+                               class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               autofocus
+                               autocomplete="off"
+                               maxlength="50">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                            <i class="fas fa-qrcode text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500">
+                        Mendukung: EAN-13, UPC-A, Code 128, QR Code
+                    </div>
+                </div>
+                
+                <!-- Product Search -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Cari Produk</label>
+                    <input type="text" 
+                           wire:model.live="productSearch" 
+                           placeholder="Cari nama produk atau SKU..."
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <!-- Custom Item Button -->
+                <div class="mt-4">
+                    <button type="button" 
+                            wire:click="showCustomItemModal"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center">
+                        <i class="fas fa-plus mr-2"></i>
+                        Tambah Item Custom
+                    </button>
+                </div>
+            </div>
+
+            <!-- Product Grid -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="product-card relative bg-gray-50 rounded-lg p-4 hover:bg-gray-100 cursor-pointer transition-colors"
+                             wire:click="addToCart(<?php echo e($product->id); ?>)">
+                            <!-- Product Image -->
+                            <div class="w-full h-24 mb-3 bg-gray-200 rounded-lg overflow-hidden">
+                                <img src="<?php echo e($product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')); ?>" 
+                                     alt="<?php echo e($product ? $product->name : 'No Product'); ?>"
+                                     class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                     onclick="openImageModal('<?php echo e($product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')); ?>', '<?php echo e($product ? addslashes($product->name) : 'No Product'); ?>')"
+                                     onerror="this.src='<?php echo e(asset('storage/placeholders/no-image.svg')); ?>'">
+                            </div>
+                            
+                            <div class="absolute top-2 right-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                <?php echo e($product ? $product->barcode : '-'); ?>
+
+                            </div>
+                            <div class="text-sm font-medium text-gray-900 truncate"><?php echo e($product ? $product->name : 'No Product'); ?></div>
+                            <div class="text-xs text-gray-500 mt-1"><?php echo e($product ? $product->sku : '-'); ?></div>
+                            <div class="text-sm font-semibold text-blue-600 mt-2">
+                                <?php
+                                    $displayPrice = $product ? match($pricingTier) {
+                                        'retail' => $product->getPriceByType('retail'),
+                                        'semi_grosir' => $product->price_semi_grosir ?? $product->price_retail,
+                                        'grosir' => $product->price_grosir,
+                                        'custom' => $product->price_retail,
+                                        default => $product->getPriceByType()
+                                    } : 0;
+                                ?>
+                                <div class="font-bold text-base">Rp <?php echo e(number_format($displayPrice, 0, ',', '.')); ?></div>
+                                
+                                <!-- Show all available prices -->
+                                <div class="text-xs space-y-1 mt-1">
+                                    <!--[if BLOCK]><![endif]--><?php if($pricingTier !== 'retail'): ?>
+                                        <div class="text-gray-500"><?php echo e(ucfirst(str_replace('_', ' ', $pricingTier))); ?></div>
+                                    <?php else: ?>
+                                        <div class="text-gray-500"><?php echo e($product ? $product->getPriceTypeDisplayName() : '-'); ?></div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                    
+                                    <!-- Price breakdown -->
+                                    <!--[if BLOCK]><![endif]--><?php if($product): ?>
+                                        <div class="bg-gray-50 rounded p-1 text-xs">
+                                            <div class="text-blue-600">R: Rp <?php echo e(number_format($product->price_retail, 0, ',', '.')); ?></div>
+                                            <!--[if BLOCK]><![endif]--><?php if($product->price_semi_grosir): ?>
+                                                <div class="text-yellow-600">SG: Rp <?php echo e(number_format($product->price_semi_grosir, 0, ',', '.')); ?></div>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            <div class="text-green-600">G: Rp <?php echo e(number_format($product->price_grosir, 0, ',', '.')); ?></div>
+                                        </div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Stok: <?php echo e($product->current_stock); ?> <?php echo e($product->unit ? $product->unit->abbreviation : 'pcs'); ?>
+
+                            </div>
+                        </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Cart & Checkout -->
+        <div class="w-1/2 bg-white flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-gray-200">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Keranjang Belanja</h2>
+                    <!--[if BLOCK]><![endif]--><?php if(!empty($cart)): ?>
+                        <button wire:click="clearCart" 
+                                class="text-red-600 hover:text-red-800 text-sm font-medium"
+                                title="Shortcut: F2">
+                            Kosongkan
+                        </button>
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                </div>
+                
+                <!-- Bulk Price Type Control -->
+                <!--[if BLOCK]><![endif]--><?php if(!empty($cart)): ?>
+                    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
+                            <div class="flex items-center space-x-2">
+                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = \App\Product::getPriceTypes(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <button wire:click="bulkSetCartPriceType('<?php echo e($value); ?>')"
+                                            class="px-2 py-1 text-xs rounded-md border 
+                                                <?php echo e($value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : ''); ?>
+
+                                                <?php echo e($value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : ''); ?>
+
+                                                <?php echo e($value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : ''); ?>
+
+                                                <?php echo e($value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : ''); ?>">
+                                        <?php echo e($label); ?>
+
+                                    </button>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                
+                <!-- Bulk Price Type Control -->
+                <!--[if BLOCK]><![endif]--><?php if(!empty($cart)): ?>
+                    <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
+                            <div class="flex items-center space-x-2">
+                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = \App\Product::getPriceTypes(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <button wire:click="bulkSetCartPriceType('<?php echo e($value); ?>')"
+                                            class="px-2 py-1 text-xs rounded-md border 
+                                                <?php echo e($value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : ''); ?>
+
+                                                <?php echo e($value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : ''); ?>
+
+                                                <?php echo e($value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : ''); ?>
+
+                                                <?php echo e($value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : ''); ?>">
+                                        <?php echo e($label); ?>
+
+                                    </button>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                            </div>
+                        </div>
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                
+                <!-- Pricing Tier Selector -->
+                <div class="mt-4 pricing-tier-selector">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Jenis Harga</label>
+                    <select wire:model.live="pricingTier" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            onclick="event.stopPropagation();"
+                            onchange="event.stopPropagation();"
+                            onfocus="document.getElementById('barcode-input').setAttribute('data-prevent-focus', 'true');"
+                            onblur="setTimeout(() => document.getElementById('barcode-input').removeAttribute('data-prevent-focus'), 200);">
+                        <option value="retail">Retail</option>
+                        <option value="semi_grosir">Semi Grosir</option>
+                        <option value="grosir">Grosir</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                
+                <!-- Keyboard Shortcuts Info -->
+                <div class="mt-2 text-xs text-gray-500">
+                    <span class="mr-3">F1: Checkout</span>
+                    <span class="mr-3">F2: Kosongkan</span>
+                    <span class="mr-3">F3: Focus Barcode</span>
+                    <span class="mr-3">F4: Cari Produk</span>
+                    <span>ESC: Batal/Tutup</span>
+                </div>
+            </div>
+
+            <!-- Cart Items -->
+            <div class="flex-1 overflow-y-auto">
+                <!--[if BLOCK]><![endif]--><?php if(empty($cart)): ?>
+                    <div class="flex items-center justify-center h-full text-gray-500">
+                        <div class="text-center">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5M7 13l-1.1 5m0 0h9.1M6 18a2 2 0 100 4 2 2 0 000-4zm12 0a2 2 0 100 4 2 2 0 000-4z"></path>
+                            </svg>
+                            <p class="mt-2">Keranjang masih kosong</p>
+                            <p class="text-sm">Scan barcode atau pilih produk</p>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="p-6 space-y-4">
+                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $cart; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-start space-x-3 flex-1">
+                                        <!-- Product Image -->
+                                        <div class="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                            <!--[if BLOCK]><![endif]--><?php if(isset($item['is_custom']) && $item['is_custom']): ?>
+                                                <!-- Custom item icon -->
+                                                <div class="w-full h-full flex items-center justify-center bg-green-100">
+                                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                </div>
+                                            <?php else: ?>
+                                                <?php
+                                                    $product = $cartProducts->get($item['product_id']);
+                                                    $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
+                                                ?>
+                                                <img src="<?php echo e($photoUrl); ?>" 
+                                                     alt="<?php echo e($item['name']); ?>"
+                                                     class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                                     onclick="openImageModal('<?php echo e($photoUrl); ?>', '<?php echo e($item['name']); ?>')"
+                                                     onerror="this.src='<?php echo e(asset('storage/placeholders/no-image.svg')); ?>'">
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                        </div>
+                                        
+                                        <div class="flex-1">
+                                            <h4 class="font-medium text-gray-900"><?php echo e($item['name']); ?></h4>
+                                            <!--[if BLOCK]><![endif]--><?php if(isset($item['is_custom']) && $item['is_custom']): ?>
+                                                <p class="text-sm text-green-600">Item Custom</p>
+                                            <?php else: ?>
+                                                <p class="text-sm text-gray-500"><?php echo e($item['sku']); ?></p>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                        </div>
+                                    </div>
+                                    <button wire:click="removeFromCart('<?php echo e($key); ?>')"
+                                            class="text-red-500 hover:text-red-700">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <div class="mt-3 grid grid-cols-2 gap-3">
+                                    <!-- Quantity -->
+                                    <div>
+                                        <label class="block text-xs font-medium text-gray-700 mb-1">Jumlah</label>
+                                        <input type="number" 
+                                               wire:change="updateQuantity('<?php echo e($key); ?>', $event.target.value)"
+                                               value="<?php echo e($item['quantity']); ?>"
+                                               min="1" 
+                                               <?php if(!isset($item['is_custom']) || !$item['is_custom']): ?>
+                                                   max="<?php echo e($item['available_stock']); ?>"
+                                               <?php endif; ?>
+                                               class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                    </div>
+                                    
+                                    <!-- Price Type Selector (only for regular products, not custom items) -->
+                                    <!--[if BLOCK]><![endif]--><?php if(!isset($item['is_custom']) || !$item['is_custom']): ?>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
+                                            <select wire:change="updateItemPriceType('<?php echo e($key); ?>', $event.target.value)"
+                                                    class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = \App\Product::getPriceTypes(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <option value="<?php echo e($value); ?>" <?php echo e($item['pricing_tier'] === $value ? 'selected' : ''); ?>><?php echo e($label); ?></option>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                            </select>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                <?php
+                                                    $product = \App\Product::find($item['product_id']);
+                                                    $currentPriceType = $item['pricing_tier'];
+                                                ?>
+                                                <!--[if BLOCK]><![endif]--><?php if($product): ?>
+                                                    <!--[if BLOCK]><![endif]--><?php if($currentPriceType === 'retail'): ?>
+                                                        <span class="text-blue-600">Rp <?php echo e(number_format($product->price_retail ?? 0, 0, ',', '.')); ?></span>
+                                                    <?php elseif($currentPriceType === 'semi_grosir'): ?>
+                                                        <span class="text-yellow-600">Rp <?php echo e(number_format($product->price_semi_grosir ?? 0, 0, ',', '.')); ?></span>
+                                                    <?php elseif($currentPriceType === 'grosir'): ?>
+                                                        <span class="text-green-600">Rp <?php echo e(number_format($product->price_grosir ?? 0, 0, ',', '.')); ?></span>
+                                                    <?php else: ?>
+                                                        <span class="text-purple-600">Custom</span>
+                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                <?php else: ?>
+                                                    <span class="text-gray-500">Product not found</span>
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            </div>
+                                        </div>
+                                    <?php else: ?>
+                                        <!-- Custom Item Price Display -->
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
+                                            <div class="px-2 py-1 text-sm bg-gray-100 border border-gray-300 rounded">
+                                                <span class="text-green-600 font-medium">Item Custom</span>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                    
+                                    <!-- Custom Price Input (only show for custom price type on regular products) -->
+                                    <!--[if BLOCK]><![endif]--><?php if((!isset($item['is_custom']) || !$item['is_custom']) && $item['pricing_tier'] === 'custom'): ?>
+                                        <div class="mt-2 col-span-2">
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Harga Custom</label>
+                                            <input type="number" 
+                                                   wire:change="updatePrice('<?php echo e($key); ?>', $event.target.value)"
+                                                   value="<?php echo e($item['price']); ?>"
+                                                   min="<?php echo e($item['base_cost'] * 1.1); ?>"
+                                                   class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                        </div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                </div>
+                                
+                                <div class="mt-2 flex justify-between items-center">
+                                    <!--[if BLOCK]><![endif]--><?php if(isset($item['is_custom']) && $item['is_custom']): ?>
+                                        <span class="text-xs text-green-600 font-medium">Item Custom</span>
+                                    <?php else: ?>
+                                        <span class="text-xs text-gray-500">Stok: <?php echo e($item['available_stock']); ?></span>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                    <div class="text-right">
+                                        <div class="text-xs text-gray-500">
+                                            <?php echo e(number_format($item['quantity'])); ?> × Rp <?php echo e(number_format($item['price'], 0, ',', '.')); ?>
+
+                                        </div>
+                                        <span class="font-semibold text-blue-600">
+                                            Rp <?php echo e(number_format($item['price'] * $item['quantity'], 0, ',', '.')); ?>
+
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+            </div>
+
+            <!-- Cart Summary & Checkout -->
+            <!--[if BLOCK]><![endif]--><?php if(!empty($cart)): ?>
+                <div class="border-t border-gray-200 p-6">
+                    <!-- Discount -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Diskon</label>
+                        <div class="flex space-x-2">
+                            <select wire:model.live="discountType" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="amount">Rp</option>
+                                <option value="percentage">%</option>
+                            </select>
+                            <input type="number" 
+                                   wire:model.live="discount" 
+                                   placeholder="0"
+                                   min="0"
+                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="space-y-2 mb-4">
+                        <div class="flex justify-between text-sm">
+                            <span>Subtotal:</span>
+                            <span>Rp <?php echo e(number_format($subtotal, 0, ',', '.')); ?></span>
+                        </div>
+                        <!--[if BLOCK]><![endif]--><?php if($discountAmount > 0): ?>
+                            <div class="flex justify-between text-sm text-red-600">
+                                <span>Diskon:</span>
+                                <span>-Rp <?php echo e(number_format($discountAmount, 0, ',', '.')); ?></span>
+                            </div>
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                        <div class="flex justify-between text-lg font-semibold border-t pt-2">
+                            <span>Total:</span>
+                            <span>Rp <?php echo e(number_format($total, 0, ',', '.')); ?></span>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Button -->
+                    <button wire:click="openCheckout" 
+                            class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            title="Shortcut: F1">
+                        Checkout (F1)
+                    </button>
+                </div>
+            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <!--[if BLOCK]><![endif]--><?php if($showCheckoutModal): ?>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                <h3 class="text-lg font-semibold mb-4">Checkout</h3>
+                
+                <form wire:submit="processCheckout">
+                    <!-- Customer Info -->
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan</label>
+                            <input type="text" wire:model="customerName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">No. Telepon</label>
+                            <input type="text" wire:model="customerPhone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
+                            <select wire:model="paymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="cash">Tunai</option>
+                                <option value="transfer">Transfer</option>
+                                <option value="debit">Kartu Debit</option>
+                                <option value="qr">QR Code</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Pembayaran</label>
+                            <input type="text" wire:model="paymentNotes" placeholder="Opsional..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Bayar</label>
+                            <input type="number" wire:model.live="amountPaid" min="<?php echo e($total); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                            <textarea wire:model="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Summary -->
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span>Total:</span>
+                            <span class="font-semibold">Rp <?php echo e(number_format($total, 0, ',', '.')); ?></span>
+                        </div>
+                        <div class="flex justify-between text-sm mb-2">
+                            <span>Bayar:</span>
+                            <span>Rp <?php echo e(number_format($amountPaid, 0, ',', '.')); ?></span>
+                        </div>
+                        <div class="flex justify-between text-lg font-semibold border-t pt-2">
+                            <span>Kembalian:</span>
+                            <span class="<?php echo e($change >= 0 ? 'text-green-600' : 'text-red-600'); ?>">
+                                Rp <?php echo e(number_format($change, 0, ',', '.')); ?>
+
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Buttons -->
+                    <div class="flex space-x-3">
+                        <button type="button" wire:click="closeCheckout" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                            Batal
+                        </button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" <?php echo e($amountPaid < $total ? 'disabled' : ''); ?>>
+                            Proses
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+    <!-- Receipt Modal -->
+    <!--[if BLOCK]><![endif]--><?php if($showReceiptModal && $lastSale): ?>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4" id="receipt">
+                <div class="text-center mb-6">
+                    <h3 class="text-lg font-bold">STRUK PENJUALAN</h3>
+                    <p class="text-sm text-gray-600"><?php echo e($lastSale->sale_number); ?></p>
+                    <p class="text-xs text-gray-500"><?php echo e($lastSale->created_at->format('d/m/Y H:i:s')); ?></p>
+                </div>
+                
+                <!-- Customer Info -->
+                <!--[if BLOCK]><![endif]--><?php if($lastSale->customer_name): ?>
+                    <div class="mb-4 text-sm">
+                        <p><strong>Pelanggan:</strong> <?php echo e($lastSale->customer_name); ?></p>
+                        <!--[if BLOCK]><![endif]--><?php if($lastSale->customer_phone): ?>
+                            <p><strong>Telepon:</strong> <?php echo e($lastSale->customer_phone); ?></p>
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                
+                <!-- Items -->
+                <div class="border-t border-b border-gray-300 py-3 mb-4">
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $lastSale->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="flex justify-between text-sm mb-1">
+                            <div class="flex-1">
+                                <div><?php echo e($item->product->name); ?></div>
+                                <div class="text-xs text-gray-500">
+                                    <?php echo e($item->quantity); ?> x Rp <?php echo e(number_format($item->unit_price, 0, ',', '.')); ?>
+
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                Rp <?php echo e(number_format($item->total_price, 0, ',', '.')); ?>
+
+                            </div>
+                        </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                </div>
+                
+                <!-- Summary -->
+                <div class="text-sm space-y-1 mb-4">
+                    <div class="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>Rp <?php echo e(number_format($lastSale->subtotal, 0, ',', '.')); ?></span>
+                    </div>
+                    <!--[if BLOCK]><![endif]--><?php if($lastSale->discount_amount > 0): ?>
+                        <div class="flex justify-between text-red-600">
+                            <span>Diskon:</span>
+                            <span>-Rp <?php echo e(number_format($lastSale->discount_amount, 0, ',', '.')); ?></span>
+                        </div>
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                    <div class="flex justify-between font-semibold border-t pt-1">
+                        <span>Total:</span>
+                        <span>Rp <?php echo e(number_format($lastSale->final_total, 0, ',', '.')); ?></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Bayar (<?php echo e(ucfirst($lastSale->payment_method)); ?>):</span>
+                        <span>Rp <?php echo e(number_format($lastSale->amount_paid, 0, ',', '.')); ?></span>
+                    </div>
+                    <div class="flex justify-between font-semibold">
+                        <span>Kembalian:</span>
+                        <span>Rp <?php echo e(number_format($lastSale->change_amount, 0, ',', '.')); ?></span>
+                    </div>
+                </div>
+                
+                <!--[if BLOCK]><![endif]--><?php if($lastSale->notes): ?>
+                    <div class="text-xs text-gray-600 mb-4">
+                        <strong>Catatan:</strong> <?php echo e($lastSale->notes); ?>
+
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                
+                <div class="text-center text-xs text-gray-500 mb-6">
+                    <p>Terima kasih atas kunjungan Anda!</p>
+                    <p>Kasir: <?php echo e($lastSale->cashier->name ?? 'System'); ?></p>
+                </div>
+                
+                <!-- Buttons -->
+                <div class="flex space-x-3">
+                    <button wire:click="closeReceipt" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                        Tutup
+                    </button>
+                    <button wire:click="printReceipt" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                        Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+</div>
+
+<script>
+    document.addEventListener('livewire:init', () => {
+        // Track user interaction to prevent unwanted auto-focus
+        let userInteractingWithForm = false;
+        let pricingTierUpdating = false;
+        
+        // Listen for pricing tier update events
+        Livewire.on('pricing-tier-updating', () => {
+            pricingTierUpdating = true;
+            userInteractingWithForm = true;
+        });
+        
+        Livewire.on('pricing-tier-updated', () => {
+            setTimeout(() => {
+                pricingTierUpdating = false;
+                userInteractingWithForm = false;
+            }, 300); // Give some time for the DOM to update
+        });
+        
+        // Add event listeners to track form interactions
+        document.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.pricing-tier-selector') || 
+                e.target.tagName === 'SELECT' || 
+                e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'TEXTAREA') {
+                userInteractingWithForm = true;
+                setTimeout(() => {
+                    if (!pricingTierUpdating) {
+                        userInteractingWithForm = false;
+                    }
+                }, 1000); // Reset after 1 second
+            }
+        });
+        
+        document.addEventListener('focusin', function(e) {
+            if (e.target.closest('.pricing-tier-selector') || 
+                e.target.tagName === 'SELECT') {
+                userInteractingWithForm = true;
+                setTimeout(() => {
+                    if (!pricingTierUpdating) {
+                        userInteractingWithForm = false;
+                    }
+                }, 500);
+            }
+        });
+        
+        Livewire.on('print-receipt', () => {
+            window.print();
+        });
+        
+        // Auto-focus disabled - user can manually focus barcode input when needed
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Don't trigger shortcuts if user is typing in input fields, select, or textarea
+            // Exception: Allow shortcuts when barcode input is focused
+            if ((e.target.tagName === 'INPUT' && e.target.id !== 'barcode-input') ||
+                e.target.tagName === 'SELECT' ||
+                e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
+            // Don't trigger shortcuts if modal is open (except ESC)
+            if (document.querySelector('.modal') && e.key !== 'Escape') {
+                return;
+            }
+            
+            // F1 - Open Checkout (if cart not empty)
+            if (e.key === 'F1') {
+                e.preventDefault();
+                window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('openCheckout');
+            }
+            
+            // F2 - Clear Cart
+            if (e.key === 'F2') {
+                e.preventDefault();
+                window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('confirmClearCart');
+            }
+            
+            // F3 - Focus barcode input
+            if (e.key === 'F3') {
+                e.preventDefault();
+                const barcodeInput = document.getElementById('barcode-input');
+                if (barcodeInput) {
+                    barcodeInput.focus();
+                    barcodeInput.select();
+                }
+            }
+            
+            // F4 - Focus product search
+            if (e.key === 'F4') {
+                e.preventDefault();
+                const searchInput = document.querySelector('input[wire\\:model\\.live="productSearch"]');
+                if (searchInput) {
+                    searchInput.focus();
+                }
+            }
+            
+            // ESC - Close modals or clear search
+            if (e.key === 'Escape') {
+                if (document.querySelector('.modal')) {
+                    window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('closeCheckout');
+                    window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('closeReceipt');
+                } else {
+                    // Clear search and focus barcode only if not interacting with form elements
+                    const activeElement = document.activeElement;
+                    const isFormInteraction = activeElement && (
+                        activeElement.tagName === 'SELECT' ||
+                        activeElement.closest('.pricing-tier-selector')
+                    );
+                    
+                    if (!isFormInteraction) {
+                        window.Livewire.find('<?php echo e($_instance->getId()); ?>').set('productSearch', '');
+                        setTimeout(() => {
+                            const barcodeInput = document.getElementById('barcode-input');
+                            if (barcodeInput) {
+                                barcodeInput.focus();
+                            }
+                        }, 50);
+                    }
+                }
+            }
+            
+            // Enter - Quick add first product from search results
+            if (e.key === 'Enter' && e.target.id !== 'barcode-input') {
+                const firstProduct = document.querySelector('.product-card');
+                if (firstProduct) {
+                    firstProduct.click();
+                }
+            }
+        });
+        
+        // Barcode validation and formatting
+        const barcodeInput = document.getElementById('barcode-input');
+        if (barcodeInput) {
+            barcodeInput.addEventListener('input', function(e) {
+                // Remove non-alphanumeric characters
+                let value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+                
+                // Auto-submit when barcode length is typical (8, 12, 13 digits)
+                if (value.length >= 8 && /^\d+$/.test(value)) {
+                    // Typical barcode lengths: EAN-8 (8), UPC-A (12), EAN-13 (13)
+                    if ([8, 12, 13].includes(value.length)) {
+                        setTimeout(() => {
+                            window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('addProductByBarcode');
+                        }, 100);
+                    }
+                }
+            });
+            
+            // Clear barcode input after successful scan
+            barcodeInput.addEventListener('blur', function(e) {
+                // Don't auto-focus if user is interacting with other form elements or pricing tier is updating
+                const activeElement = document.activeElement;
+                const isFormInteraction = activeElement && (
+                    activeElement.tagName === 'SELECT' ||
+                    activeElement.tagName === 'INPUT' ||
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.closest('.pricing-tier-selector')
+                );
+                
+                // Check if auto-focus is specifically prevented
+                const preventFocus = this.hasAttribute('data-prevent-focus');
+                
+                if (this.value.trim() === '' && !isFormInteraction && !userInteractingWithForm && !pricingTierUpdating && !preventFocus) {
+                    setTimeout(() => {
+                        // Double check that user isn't interacting with form elements and pricing tier isn't updating
+                        const currentActive = document.activeElement;
+                        const stillPreventFocus = this.hasAttribute('data-prevent-focus');
+                        if (!userInteractingWithForm && !pricingTierUpdating && !stillPreventFocus &&
+                            (!currentActive || (!currentActive.closest('.pricing-tier-selector') && 
+                            currentActive.tagName !== 'SELECT' && 
+                            currentActive.tagName !== 'INPUT' && 
+                            currentActive.tagName !== 'TEXTAREA'))) {
+                            this.focus();
+                        }
+                    }, 150);
+                }
+            });
+        }
+    });
+    
+    // User interaction tracking removed - no longer needed without auto-focus
+        
+        // Flash message auto-hide
+        document.addEventListener('DOMContentLoaded', function() {
+            const flashMessages = document.querySelectorAll('#success-alert, #error-alert');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    closeAlert(message.id);
+                }, 5000); // Auto close after 5 seconds
+            });
+        });
+        
+        // Function to close alert manually
+        function closeAlert(alertId) {
+            const alert = document.getElementById(alertId);
+            if (alert) {
+                alert.style.opacity = '0';
+                alert.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    alert.remove();
+                }, 300);
+            }
+        }
+</script>
+
+<!-- Custom Item Modal -->
+<!--[if BLOCK]><![endif]--><?php if($showCustomItemModal): ?>
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Tambah Item Custom</h3>
+            <button wire:click="hideCustomItemModal" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <form wire:submit.prevent="addCustomItem">
+            <!-- Item Name -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Nama Item</label>
+                <input type="text" 
+                       wire:model="customItemName" 
+                       placeholder="Masukkan nama item..."
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent <?php $__errorArgs = ['customItemName'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['customItemName'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                    <p class="text-red-500 text-xs mt-1"><?php echo e($message); ?></p>
+                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+            </div>
+            
+            <!-- Item Price -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Harga</label>
+                <input type="number" 
+                       wire:model="customItemPrice" 
+                       placeholder="0"
+                       min="0.01"
+                       step="0.01"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent <?php $__errorArgs = ['customItemPrice'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['customItemPrice'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                    <p class="text-red-500 text-xs mt-1"><?php echo e($message); ?></p>
+                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+            </div>
+            
+            <!-- Item Quantity -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Jumlah</label>
+                <input type="number" 
+                       wire:model="customItemQuantity" 
+                       placeholder="1"
+                       min="1"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent <?php $__errorArgs = ['customItemQuantity'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['customItemQuantity'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                    <p class="text-red-500 text-xs mt-1"><?php echo e($message); ?></p>
+                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+            </div>
+            
+            <!-- Buttons -->
+            <div class="flex justify-end space-x-3">
+                <button type="button" 
+                        wire:click="hideCustomItemModal"
+                        class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
+                    Batal
+                </button>
+                <button type="submit" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
+                    Tambah ke Keranjang
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+<!-- Image Preview Modal -->
+<div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-full p-4" onclick="event.stopPropagation()">
+        <button onclick="closeImageModal()" class="absolute top-2 right-2 text-white bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75">
+            <i class="fas fa-times"></i>
+        </button>
+        <img id="modalImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
+        <div id="modalImageName" class="text-white text-center mt-2 font-medium"></div>
+    </div>
+</div>
+
+<script>
+    function openImageModal(imageUrl, imageName) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalImageName = document.getElementById('modalImageName');
+        
+        modalImage.src = imageUrl;
+        modalImage.alt = imageName;
+        modalImageName.textContent = imageName;
+        modal.classList.remove('hidden');
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.classList.add('hidden');
+        
+        // Restore body scroll
+        document.body.style.overflow = 'auto';
+    }
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeImageModal();
+        }
+    });
+</script>
+</div><?php /**PATH C:\laragon\www\pos-nabila\resources\views/livewire/pos-kasir.blade.php ENDPATH**/ ?>

@@ -51,9 +51,12 @@ class ProductTable extends Component
 
     // Properties untuk unit management
     public $showUnitModal = false;
+    public $editingUnitId = null;
     public $newUnitName = '';
     public $newUnitAbbreviation = '';
     public $newUnitDescription = '';
+    public $confirmingUnitDelete = false;
+    public $unitToDelete = null;
 
     // Properties untuk bulk actions
     public $selectedProducts = [];
@@ -847,11 +850,15 @@ class ProductTable extends Component
     
     public function refreshProducts()
     {
-        // Clear cache setelah operasi CRUD
+        // Clear product-related caches
+        cache()->forget('product_categories');
+        cache()->forget('product_units');
+        
+        // Clear product listing cache with wildcard pattern
         $this->clearProductCache();
         
-        // Reset pagination ke halaman pertama
         $this->resetPage();
+        session()->flash('success', 'Data produk berhasil diperbarui!');
     }
     
     /**
@@ -859,14 +866,28 @@ class ProductTable extends Component
      */
     private function clearProductCache()
     {
-        cache()->forget('product_categories');
-        cache()->forget('product_units');
+        // Clear all product cache keys
+        $cacheKeys = cache()->getRedis()->keys('*products_*');
+        if ($cacheKeys) {
+            cache()->getRedis()->del($cacheKeys);
+        }
     }
 
     // Unit Management Methods
     public function openUnitModal()
     {
         $this->resetUnitForm();
+        $this->editingUnitId = null;
+        $this->showUnitModal = true;
+    }
+
+    public function openEditUnitModal($unitId)
+    {
+        $unit = ProductUnit::findOrFail($unitId);
+        $this->editingUnitId = $unit->id;
+        $this->newUnitName = $unit->name;
+        $this->newUnitAbbreviation = $unit->abbreviation;
+        $this->newUnitDescription = $unit->description;
         $this->showUnitModal = true;
     }
 
@@ -879,6 +900,7 @@ class ProductTable extends Component
 
     public function resetUnitForm()
     {
+        $this->editingUnitId = null;
         $this->newUnitName = '';
         $this->newUnitAbbreviation = '';
         $this->newUnitDescription = '';
@@ -886,36 +908,118 @@ class ProductTable extends Component
 
     public function saveUnit()
     {
-        $this->validate([
-            'newUnitName' => 'required|string|max:50|unique:product_units,name',
-            'newUnitAbbreviation' => 'required|string|max:10|unique:product_units,abbreviation',
+        $rules = [
+            'newUnitName' => 'required|string|max:50',
+            'newUnitAbbreviation' => 'required|string|max:10',
             'newUnitDescription' => 'nullable|string|max:255'
-        ]);
+        ];
+
+        // Add unique validation rules based on edit mode
+        if ($this->editingUnitId) {
+            $rules['newUnitName'] .= '|unique:product_units,name,' . $this->editingUnitId;
+            $rules['newUnitAbbreviation'] .= '|unique:product_units,abbreviation,' . $this->editingUnitId;
+        } else {
+            $rules['newUnitName'] .= '|unique:product_units,name';
+            $rules['newUnitAbbreviation'] .= '|unique:product_units,abbreviation';
+        }
+
+        $this->validate($rules);
 
         try {
-            $unit = ProductUnit::create([
+            $data = [
                 'name' => $this->newUnitName,
                 'abbreviation' => $this->newUnitAbbreviation,
                 'description' => $this->newUnitDescription,
-                'is_active' => true,
-                'sort_order' => ProductUnit::max('sort_order') + 1
-            ]);
+                'is_active' => true
+            ];
 
-            // Set unit yang baru dibuat sebagai pilihan
-            $this->unit_id = $unit->id;
+            if ($this->editingUnitId) {
+                // Update existing unit
+                $unit = ProductUnit::findOrFail($this->editingUnitId);
+                $unit->update($data);
+                session()->flash('message', 'Unit berhasil diperbarui!');
+            } else {
+                // Create new unit
+                $data['sort_order'] = ProductUnit::max('sort_order') + 1;
+                $unit = ProductUnit::create($data);
+                
+                // Set unit yang baru dibuat sebagai pilihan
+                $this->unit_id = $unit->id;
+                session()->flash('message', 'Unit berhasil ditambahkan!');
+            }
             
-            // Clear cache units setelah menambah unit baru
+            // Clear cache units setelah operasi CRUD
             cache()->forget('product_units');
             
             $this->closeUnitModal();
-            session()->flash('message', 'Unit berhasil ditambahkan!');
             
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
+    public function confirmDeleteUnit($unitId)
+    {
+        $unit = ProductUnit::findOrFail($unitId);
+        
+        // Check if unit is being used by any products
+        $productCount = Product::where('unit_id', $unitId)->count();
+        
+        if ($productCount > 0) {
+            session()->flash('error', "Unit '{$unit->name}' tidak dapat dihapus karena masih digunakan oleh {$productCount} produk.");
+            return;
+        }
+
+        $this->unitToDelete = $unitId;
+        $this->confirmingUnitDelete = true;
+        
+        $this->showConfirm(
+            'Hapus Unit',
+            "Yakin ingin menghapus unit '{$unit->name}'?",
+            'deleteUnit',
+            ['unitId' => $unitId],
+            'Ya, hapus!',
+            'Batal'
+        );
+    }
+
+    public function deleteUnit($params)
+    {
+        $unitId = $params['unitId'];
+        
+        try {
+            $unit = ProductUnit::findOrFail($unitId);
+            
+            // Double check if unit is being used
+            $productCount = Product::where('unit_id', $unitId)->count();
+            
+            if ($productCount > 0) {
+                session()->flash('error', "Unit '{$unit->name}' tidak dapat dihapus karena masih digunakan oleh {$productCount} produk.");
+                return;
+            }
+            
+            $unit->delete();
+            
+            // Clear cache units setelah delete
+            cache()->forget('product_units');
+            
+            session()->flash('message', 'Unit berhasil dihapus!');
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        } finally {
+            $this->confirmingUnitDelete = false;
+            $this->unitToDelete = null;
+        }
+    }
+
     public function getProducts()
+    {
+        // Temporarily disable caching to fix serialization issues
+        return $this->buildProductQuery()->paginate($this->perPage);
+    }
+
+    private function buildProductQuery()
     {
         $query = Product::query()
             ->select([
@@ -987,19 +1091,22 @@ class ProductTable extends Component
     public function getUnits()
     {
         // Cache units for better performance
-        return cache()->remember('product_units', 600, function () {
+        $units = cache()->remember('product_units', 600, function () {
             return ProductUnit::select('id', 'name', 'abbreviation')
                 ->where('is_active', true)
                 ->orderBy('sort_order')
                 ->orderBy('name')
-                ->get();
+                ->get()
+                ->toArray();
         });
+        
+        return collect($units);
     }
 
     public function render()
     {
         // Products already have unit relationship loaded via eager loading
-        $products = $this->getProducts()->paginate($this->perPage);
+        $products = $this->getProducts();
         $categories = $this->getCategories();
         $units = $this->getUnits();
 
@@ -1137,12 +1244,7 @@ class ProductTable extends Component
         ];
     }
     
-    public function getBulkPriceFieldOptions()
-    {
-        return [
-            'price_retail' => 'Harga Retail',
-            'price_semi_grosir' => 'Harga Semi Grosir',
-            'price_grosir' => 'Harga Grosir'
-        ];
-    }
+
+
+
 }

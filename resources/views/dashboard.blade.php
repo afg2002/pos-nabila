@@ -17,9 +17,9 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-4xl font-bold mb-3 bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                        Welcome back, {{ auth()->user()->name }}!
+                        Selamat datang kembali, {{ auth()->user()->name }}!
                     </h1>
-                    <p class="text-xl text-blue-100 mb-4">Here's what's happening with your system today.</p>
+                    <p class="text-xl text-blue-100 mb-4">Berikut adalah ringkasan aktivitas sistem Anda hari ini.</p>
                     <div class="flex items-center space-x-4 text-sm text-blue-200">
                         <div class="flex items-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +68,7 @@
                                 </div>
                             </div>
                             <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-600 mb-1">Total Users</p>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Total Pengguna</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_users']) }}</p>
                             </div>
                         </div>
@@ -104,7 +104,7 @@
                                 </div>
                             </div>
                             <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-600 mb-1">Total Roles</p>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Total Peran</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_roles']) }}</p>
                             </div>
                         </div>
@@ -140,7 +140,7 @@
                                 </div>
                             </div>
                             <div class="flex-1">
-                                <p class="text-sm font-medium text-gray-600 mb-1">Permissions</p>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Izin Akses</p>
                                 <p class="text-2xl font-bold text-gray-900">{{ number_format($stats['total_permissions']) }}</p>
                             </div>
                         </div>

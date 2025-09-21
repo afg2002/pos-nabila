@@ -24,6 +24,9 @@ class StockHistory extends Component
     public $dateTo = '';
     public $perPage = 10;
     
+    // Computed properties
+    protected $computedPropertyCache = [];
+    
 
     public $reasonCodeFilter = '';
     
@@ -39,6 +42,12 @@ class StockHistory extends Component
     public $editNotes = '';
     
     protected $listeners = ['stock-updated' => '$refresh'];
+    
+    // Define computed properties
+    public function getComputedPropertyNames()
+    {
+        return ['stockIn', 'stockOut', 'netMovement'];
+    }
     
     public function mount()
     {
@@ -317,9 +326,57 @@ class StockHistory extends Component
         }
     }
     
+    public function getStockInProperty()
+    {
+        return $this->getTotalIn();
+    }
+
+    public function getStockOutProperty()
+    {
+        return $this->getTotalOut();
+    }
+
+    public function getNetMovementProperty()
+    {
+        return $this->getNetMovement();
+    }
+
     public function render()
     {
-        $query = StockMovement::with(['product', 'performedBy', 'approvedBy'])
+        // Create cache key based on filters
+        $cacheKey = 'stock_movements_' . md5(serialize([
+            'search' => $this->search,
+            'productFilter' => $this->productFilter,
+            'movementTypeFilter' => $this->movementTypeFilter,
+            'reasonCodeFilter' => $this->reasonCodeFilter,
+            'dateFrom' => $this->dateFrom,
+            'dateTo' => $this->dateTo,
+            'page' => $this->getPage(),
+            'perPage' => $this->perPage
+        ]));
+
+        // For search queries or date filters, don't cache to ensure real-time results
+        if ($this->search || $this->dateFrom || $this->dateTo) {
+            $movements = $this->buildStockMovementQuery()->paginate($this->perPage);
+        } else {
+            // Cache for 3 minutes for non-search/non-filtered requests
+            $movements = cache()->remember($cacheKey, 180, function () {
+                return $this->buildStockMovementQuery()->paginate($this->perPage);
+            });
+        }
+
+        return view('livewire.stock-history', [
+            'movements' => $movements,
+            'products' => $this->getProducts(),
+            'reasonCodes' => $this->getReasonCodes(),
+            'movementTypes' => $this->getMovementTypes(),
+            'totalMovements' => $movements->total()
+        ]);
+    }
+
+    private function buildStockMovementQuery()
+    {
+        return StockMovement::with(['product', 'performedBy', 'approvedBy'])
             ->whereHas('product', function ($productQuery) {
                 $productQuery->whereNull('deleted_at');
             })
@@ -346,25 +403,65 @@ class StockHistory extends Component
                 $q->whereDate('created_at', '<=', $this->dateTo);
             })
             ->orderBy('created_at', 'desc');
-            
-        $movements = $query->paginate($this->perPage);
-        
-        // Get summary statistics
-        $totalMovements = $query->count();
-        $stockIn = StockMovement::where('type', 'IN')
-            ->when($this->dateFrom, fn($q) => $q->whereDate('created_at', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn($q) => $q->whereDate('created_at', '<=', $this->dateTo))
+    }
+
+    private function getProducts()
+    {
+        return Product::where('status', 'active')
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function getReasonCodes()
+    {
+        return [
+            'manual' => 'Manual Adjustment',
+            'sale' => 'Sale',
+            'purchase' => 'Purchase',
+            'return' => 'Return',
+            'damage' => 'Damage',
+            'expired' => 'Expired',
+            'transfer' => 'Transfer',
+            'other' => 'Other'
+        ];
+    }
+
+    private function getMovementTypes()
+    {
+        return [
+            'IN' => 'Stock In',
+            'OUT' => 'Stock Out',
+            'ADJUSTMENT' => 'Adjustment'
+        ];
+    }
+
+    public function getTotalIn()
+    {
+        return StockMovement::where('type', 'IN')
+            ->when($this->dateFrom, function ($q) {
+                $q->whereDate('created_at', '>=', $this->dateFrom);
+            })
+            ->when($this->dateTo, function ($q) {
+                $q->whereDate('created_at', '<=', $this->dateTo);
+            })
             ->sum('qty');
-        $stockOut = StockMovement::where('type', 'OUT')
-            ->when($this->dateFrom, fn($q) => $q->whereDate('created_at', '>=', $this->dateFrom))
-            ->when($this->dateTo, fn($q) => $q->whereDate('created_at', '<=', $this->dateTo))
-            ->sum('qty');
-        
-        return view('livewire.stock-history', [
-            'movements' => $movements,
-            'totalMovements' => $totalMovements,
-            'stockIn' => $stockIn,
-            'stockOut' => $stockOut,
-        ]);
+    }
+
+    public function getTotalOut()
+    {
+        return abs(StockMovement::where('type', 'OUT')
+            ->when($this->dateFrom, function ($q) {
+                $q->whereDate('created_at', '>=', $this->dateFrom);
+            })
+            ->when($this->dateTo, function ($q) {
+                $q->whereDate('created_at', '<=', $this->dateTo);
+            })
+            ->sum('qty'));
+    }
+
+    public function getNetMovement()
+    {
+        return $this->getTotalIn() - $this->getTotalOut();
     }
 }

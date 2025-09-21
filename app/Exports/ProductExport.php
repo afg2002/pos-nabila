@@ -46,7 +46,7 @@ class ProductExport implements FromCollection, WithHeadings, WithMapping, WithSt
     {
         // Hitung stok saat ini
         $currentStock = $product->stockMovements()
-            ->selectRaw('SUM(CASE WHEN type = "in" THEN quantity ELSE -quantity END) as current_stock')
+            ->selectRaw('SUM(CASE WHEN type = "in" THEN qty ELSE -qty END) as current_stock')
             ->value('current_stock') ?? 0;
             
         return [
@@ -54,10 +54,10 @@ class ProductExport implements FromCollection, WithHeadings, WithMapping, WithSt
             $product->barcode,
             $product->name,
             $product->category,
-            $product->unit,
-            number_format($product->base_cost, 0, ',', '.'),
-            number_format($product->price_retail, 0, ',', '.'),
-            number_format($product->price_grosir, 0, ',', '.'),
+            is_array($product->unit) ? $product->unit['name'] : $product->unit,
+            number_format((float)$product->base_cost, 0, ',', '.'),
+            number_format((float)$product->price_retail, 0, ',', '.'),
+            number_format((float)$product->price_grosir, 0, ',', '.'),
             $product->min_margin_pct . '%',
             $product->is_active ? 'Aktif' : 'Tidak Aktif',
             number_format($currentStock, 0, ',', '.'),

@@ -132,8 +132,38 @@ class RoleList extends Component
 
     public function render()
     {
+        // Create cache key based on filters
+        $cacheKey = 'roles_' . md5(serialize([
+            'search' => $this->search,
+            'showInactive' => $this->showInactive,
+            'filterByPermissions' => $this->filterByPermissions,
+            'sortField' => $this->sortField,
+            'sortDirection' => $this->sortDirection,
+            'page' => $this->getPage(),
+            'perPage' => $this->perPage
+        ]));
+
+        // For search queries, don't cache to ensure real-time results
+        if ($this->search) {
+            $roles = $this->buildRoleQuery();
+        } else {
+            // Cache for 10 minutes for non-search requests (roles don't change frequently)
+            $roles = cache()->remember($cacheKey, 600, function () {
+                return $this->buildRoleQuery();
+            });
+        }
+
+        $permissionGroups = cache()->remember('permission_groups', 3600, function () {
+            return ['users', 'roles', 'permissions', 'system'];
+        });
+
+        return view('livewire.roles.role-list', compact('roles', 'permissionGroups'));
+    }
+
+    private function buildRoleQuery()
+    {
         // Optimize query with proper select and subqueries for counts
-        $roles = Role::query()
+        return Role::query()
             ->select([
                 'id', 'name', 'display_name', 'description', 'is_active', 
                 'created_at', 'updated_at'
@@ -156,9 +186,5 @@ class RoleList extends Component
             ->withCount(['permissions', 'users']) // Use withCount for better performance
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
-
-        $permissionGroups = ['users', 'roles', 'permissions', 'system'];
-
-        return view('livewire.roles.role-list', compact('roles', 'permissionGroups'));
     }
 }

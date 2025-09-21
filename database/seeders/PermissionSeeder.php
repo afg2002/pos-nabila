@@ -68,9 +68,45 @@ class PermissionSeeder extends Seeder
             ['name' => 'dashboard.view', 'display_name' => 'View Dashboard', 'description' => 'Can view dashboard and analytics', 'group' => 'dashboard'],
             ['name' => 'dashboard.export', 'display_name' => 'Export Reports', 'description' => 'Can export dashboard reports', 'group' => 'dashboard'],
             
+            // Debt Reminder permissions
+            ['name' => 'debt_reminders.view', 'display_name' => 'View Debt Reminders', 'description' => 'Can view debt reminder list and details', 'group' => 'debt_reminders'],
+            ['name' => 'debt_reminders.create', 'display_name' => 'Create Debt Reminders', 'description' => 'Can create new debt reminders', 'group' => 'debt_reminders'],
+            ['name' => 'debt_reminders.edit', 'display_name' => 'Edit Debt Reminders', 'description' => 'Can edit existing debt reminders', 'group' => 'debt_reminders'],
+            ['name' => 'debt_reminders.delete', 'display_name' => 'Delete Debt Reminders', 'description' => 'Can delete debt reminders', 'group' => 'debt_reminders'],
+            ['name' => 'debt_reminders.send', 'display_name' => 'Send Debt Reminders', 'description' => 'Can send debt reminder notifications', 'group' => 'debt_reminders'],
+            
+            // Purchase Order permissions
+            ['name' => 'purchase_orders.view', 'display_name' => 'View Purchase Orders', 'description' => 'Can view purchase order list and details', 'group' => 'purchase_orders'],
+            ['name' => 'purchase_orders.create', 'display_name' => 'Create Purchase Orders', 'description' => 'Can create new purchase orders', 'group' => 'purchase_orders'],
+            ['name' => 'purchase_orders.edit', 'display_name' => 'Edit Purchase Orders', 'description' => 'Can edit existing purchase orders', 'group' => 'purchase_orders'],
+            ['name' => 'purchase_orders.delete', 'display_name' => 'Delete Purchase Orders', 'description' => 'Can delete purchase orders', 'group' => 'purchase_orders'],
+            ['name' => 'purchase_orders.approve', 'display_name' => 'Approve Purchase Orders', 'description' => 'Can approve purchase orders', 'group' => 'purchase_orders'],
+            
+            // Capital Tracking permissions
+            ['name' => 'capital_tracking.view', 'display_name' => 'View Capital Tracking', 'description' => 'Can view capital tracking records', 'group' => 'capital_tracking'],
+            ['name' => 'capital_tracking.create', 'display_name' => 'Create Capital Tracking', 'description' => 'Can create new capital tracking records', 'group' => 'capital_tracking'],
+            ['name' => 'capital_tracking.edit', 'display_name' => 'Edit Capital Tracking', 'description' => 'Can edit existing capital tracking records', 'group' => 'capital_tracking'],
+            ['name' => 'capital_tracking.delete', 'display_name' => 'Delete Capital Tracking', 'description' => 'Can delete capital tracking records', 'group' => 'capital_tracking'],
+            
+            // Cash Ledger permissions
+            ['name' => 'cash_ledger.view', 'display_name' => 'View Cash Ledger', 'description' => 'Can view cash ledger records', 'group' => 'cash_ledger'],
+            ['name' => 'cash_ledger.create', 'display_name' => 'Create Cash Ledger', 'description' => 'Can create new cash ledger records', 'group' => 'cash_ledger'],
+            ['name' => 'cash_ledger.edit', 'display_name' => 'Edit Cash Ledger', 'description' => 'Can edit existing cash ledger records', 'group' => 'cash_ledger'],
+            ['name' => 'cash_ledger.delete', 'display_name' => 'Delete Cash Ledger', 'description' => 'Can delete cash ledger records', 'group' => 'cash_ledger'],
+            
+            // Reports permissions
+            ['name' => 'reports.view', 'display_name' => 'View Reports', 'description' => 'Can view all reports', 'group' => 'reports'],
+            ['name' => 'reports.export', 'display_name' => 'Export Reports', 'description' => 'Can export reports to Excel/PDF', 'group' => 'reports'],
+            
+            // Incoming Goods Agenda permissions
+            ['name' => 'incoming_goods_agenda.view', 'display_name' => 'View Incoming Goods Agenda', 'description' => 'Can view incoming goods agenda', 'group' => 'incoming_goods_agenda'],
+            ['name' => 'incoming_goods_agenda.create', 'display_name' => 'Create Incoming Goods Agenda', 'description' => 'Can create new incoming goods agenda', 'group' => 'incoming_goods_agenda'],
+            ['name' => 'incoming_goods_agenda.edit', 'display_name' => 'Edit Incoming Goods Agenda', 'description' => 'Can edit existing incoming goods agenda', 'group' => 'incoming_goods_agenda'],
+            ['name' => 'incoming_goods_agenda.delete', 'display_name' => 'Delete Incoming Goods Agenda', 'description' => 'Can delete incoming goods agenda', 'group' => 'incoming_goods_agenda'],
+            
             // System permissions
             ['name' => 'system.settings', 'display_name' => 'System Settings', 'description' => 'Can access system settings', 'group' => 'system'],
-            ['name' => 'system.logs', 'display_name' => 'View Logs', 'description' => 'Can view system logs', 'group' => 'system'],
+            ['name' => 'system.logs', 'display_name' => 'View Logs', 'description' => 'Can view system logs', 'group' => 'system']
         ];
 
         foreach ($permissions as $permission) {

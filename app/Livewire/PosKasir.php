@@ -37,7 +37,13 @@ class PosKasir extends Component
     // UI State
     public $showCheckoutModal = false;
     public $showReceiptModal = false;
+    public $showCustomItemModal = false;
     public $lastSale = null;
+    
+    // Custom Item Properties
+    public $customItemName = '';
+    public $customItemPrice = 0;
+    public $customItemQuantity = 1;
     
     protected $rules = [
         'customerName' => 'nullable|string|max:255',
@@ -48,7 +54,10 @@ class PosKasir extends Component
         'amountPaid' => 'required|numeric|min:0',
         'discount' => 'nullable|numeric|min:0',
         'discountType' => 'required|in:amount,percentage',
-        'notes' => 'nullable|string|max:500'
+        'notes' => 'nullable|string|max:500',
+        'customItemName' => 'required|string|max:255',
+        'customItemPrice' => 'required|numeric|min:0.01',
+        'customItemQuantity' => 'required|integer|min:1'
     ];
     
     public function mount()
@@ -329,19 +338,13 @@ class PosKasir extends Component
             // Create sale record
             $sale = Sale::create([
                 'sale_number' => 'POS-' . date('Ymd') . '-' . str_pad(Sale::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT),
-                'customer_name' => $this->customerName,
-                'customer_phone' => $this->customerPhone,
                 'subtotal' => $this->subtotal,
-                'discount_amount' => $this->discountAmount,
+                'discount_total' => $this->discountAmount,
                 'final_total' => $this->total,
                 'payment_method' => $this->paymentMethod,
-                'amount_paid' => $this->amountPaid,
-                'change_amount' => $this->change,
-                'notes' => $this->notes,
-            'payment_method' => $this->paymentMethod,
-            'payment_notes' => $this->paymentNotes,
+                'payment_notes' => $this->paymentNotes,
                 'cashier_id' => Auth::id(),
-                // created_at akan otomatis diisi oleh Laravel
+                'status' => 'completed'
             ]);
             
             // Create sale items and update stock
@@ -355,20 +358,23 @@ class PosKasir extends Component
                     'total_price' => $item['price'] * $item['quantity']
                 ]);
                 
-                // Create stock movement (outgoing)
-                StockMovement::create([
-                    'product_id' => $item['product_id'],
-                    'type' => 'OUT',
-                    'qty' => -$item['quantity'], // Negatif untuk OUT
-                    'ref_type' => 'sale',
-                    'ref_id' => $sale->id,
-                    'note' => 'Penjualan #' . $sale->sale_number,
-                    'performed_by' => Auth::id()
-                ]);
-                
-                // Update product current_stock (sudah negatif di qty, jadi langsung tambahkan)
-                $product = Product::find($item['product_id']);
-                $product->increment('current_stock', -$item['quantity']);
+                // Only create stock movement and update stock for regular products (not custom items)
+                if (!isset($item['is_custom']) || !$item['is_custom']) {
+                    // Create stock movement (outgoing)
+                    StockMovement::create([
+                        'product_id' => $item['product_id'],
+                        'type' => 'OUT',
+                        'qty' => -$item['quantity'], // Negatif untuk OUT
+                        'ref_type' => 'sale',
+                        'ref_id' => $sale->id,
+                        'note' => 'Penjualan #' . $sale->sale_number,
+                        'performed_by' => Auth::id()
+                    ]);
+                    
+                    // Update product current_stock (sudah negatif di qty, jadi langsung tambahkan)
+                    $product = Product::find($item['product_id']);
+                    $product->increment('current_stock', -$item['quantity']);
+                }
             }
             
             DB::commit();
@@ -529,6 +535,67 @@ class PosKasir extends Component
         
         $productIds = array_column($this->cart, 'product_id');
         return Product::whereIn('id', $productIds)->get()->keyBy('id');
+    }
+    
+    /**
+     * Show custom item modal
+     */
+    public function showCustomItemModal()
+    {
+        $this->showCustomItemModal = true;
+        $this->resetCustomItemForm();
+    }
+    
+    /**
+     * Hide custom item modal
+     */
+    public function hideCustomItemModal()
+    {
+        $this->showCustomItemModal = false;
+        $this->resetCustomItemForm();
+    }
+    
+    /**
+     * Reset custom item form
+     */
+    public function resetCustomItemForm()
+    {
+        $this->customItemName = '';
+        $this->customItemPrice = 0;
+        $this->customItemQuantity = 1;
+        $this->resetErrorBag(['customItemName', 'customItemPrice', 'customItemQuantity']);
+    }
+    
+    /**
+     * Add custom item to cart
+     */
+    public function addCustomItem()
+    {
+        $this->validate([
+            'customItemName' => 'required|string|max:255',
+            'customItemPrice' => 'required|numeric|min:0.01',
+            'customItemQuantity' => 'required|integer|min:1'
+        ]);
+        
+        $cartKey = 'custom_' . time() . '_' . rand(1000, 9999);
+        
+        $this->cart[$cartKey] = [
+            'product_id' => null, // Custom items don't have product ID
+            'name' => $this->customItemName,
+            'sku' => 'CUSTOM',
+            'barcode' => 'CUSTOM-' . time(),
+            'price' => $this->customItemPrice,
+            'base_cost' => 0,
+            'quantity' => $this->customItemQuantity,
+            'available_stock' => 999999, // Unlimited stock for custom items
+            'pricing_tier' => 'custom',
+            'is_custom' => true
+        ];
+        
+        $this->calculateTotals();
+        $this->hideCustomItemModal();
+        
+        session()->flash('success', 'Item custom "' . $this->customItemName . '" berhasil ditambahkan!');
     }
     
     public function render()

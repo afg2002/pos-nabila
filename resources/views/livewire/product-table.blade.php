@@ -97,7 +97,7 @@
                 </button>
                 
                 <button wire:click="openBulkPriceModal" 
-                        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500">
                     <i class="fas fa-tags mr-2"></i>Bulk Update Harga
                 </button>
             @endcan
@@ -591,6 +591,46 @@
         </div>
     @endif
 
+    <!-- Modal Konfirmasi Hapus Unit -->
+    @if($confirmingUnitDelete)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="delete-unit-modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+                
+                <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900 sm:mx-0 sm:h-10 sm:w-10">
+                                <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400"></i>
+                            </div>
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white" id="delete-unit-modal-title">
+                                    Hapus Unit
+                                </h3>
+                                <div class="mt-2">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                                        Apakah Anda yakin ingin menghapus unit ini? Tindakan ini tidak dapat dibatalkan.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" wire:click="deleteUnit"
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            <i class="fas fa-trash mr-2"></i>
+                            Hapus
+                        </button>
+                        <button type="button" wire:click="$set('confirmingUnitDelete', false)"
+                                class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500 dark:hover:bg-gray-700">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <!-- Modal Detail Produk -->
     @if($showDetailModal && $selectedProduct)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeDetailModal">
@@ -648,7 +688,7 @@
                                     <div class="w-full max-w-sm space-y-3">
                                         <div>
                                             <input type="file" wire:model="newPhoto" accept="image/*" 
-                                                   @if($isUploadingPhoto || $isUpdatingPhoto) disabled @endif
+                                                   {{ ($isUploadingPhoto || $isUpdatingPhoto) ? 'disabled' : '' }}
                                                    class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50">
                                             @error('newPhoto') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                             
@@ -668,7 +708,7 @@
                                             <button wire:click="updateProductPhoto" 
                                                     wire:loading.attr="disabled" 
                                                     wire:target="updateProductPhoto"
-                                                    @if(!$newPhoto || $isUploadingPhoto) disabled @endif
+                                                    {{ (!$newPhoto || $isUploadingPhoto) ? 'disabled' : '' }}
                                                     class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center">
                                                 <span wire:loading.remove wire:target="updateProductPhoto">
                                                     <i class="fas fa-save mr-1"></i>Simpan
@@ -682,7 +722,7 @@
                                                 </span>
                                             </button>
                                             <button wire:click="togglePhotoEditMode" 
-                                                    @if($isUpdatingPhoto) disabled @endif
+                                                    {{ $isUpdatingPhoto ? 'disabled' : '' }}
                                                     class="px-3 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed">
                                                 <i class="fas fa-times mr-1"></i>Batal
                                             </button>
@@ -894,47 +934,81 @@
         </div>
     @endif
 
-    <!-- Modal Create Unit -->
+    <!-- Modal CRUD Unit -->
     @if($showUnitModal)
         <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="unit-modal-title" role="dialog" aria-modal="true">
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" wire:click="closeUnitModal"></div>
                 
-                <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                     <form wire:submit.prevent="saveUnit">
                         <div class="bg-white dark:bg-gray-800 px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                             <div class="mb-4">
                                 <h3 class="text-lg font-medium text-gray-900 dark:text-white" id="unit-modal-title">
-                                    Tambah Unit Baru
+                                    {{ $editingUnitId ? 'Edit Unit' : 'Tambah Unit Baru' }}
                                 </h3>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Buat satuan produk baru untuk digunakan dalam sistem
+                                    {{ $editingUnitId ? 'Perbarui informasi unit produk' : 'Buat satuan produk baru untuk digunakan dalam sistem' }}
                                 </p>
                             </div>
 
-                            <div class="space-y-4">
-                                <!-- Unit Name -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Unit *</label>
-                                    <input type="text" wire:model="newUnitName" placeholder="Contoh: Pieces, Kilogram, Liter"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    @error('newUnitName') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <!-- Form Section -->
+                                <div class="space-y-4">
+                                    <!-- Unit Name -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Unit *</label>
+                                        <input type="text" wire:model="newUnitName" placeholder="Contoh: Pieces, Kilogram, Liter"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        @error('newUnitName') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <!-- Unit Abbreviation -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Singkatan *</label>
+                                        <input type="text" wire:model="newUnitAbbreviation" placeholder="Contoh: pcs, kg, ltr"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        @error('newUnitAbbreviation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+
+                                    <!-- Unit Description -->
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deskripsi</label>
+                                        <textarea wire:model="newUnitDescription" rows="3" placeholder="Deskripsi opsional untuk unit ini"
+                                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+                                        @error('newUnitDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
                                 </div>
 
-                                <!-- Unit Abbreviation -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Singkatan *</label>
-                                    <input type="text" wire:model="newUnitAbbreviation" placeholder="Contoh: pcs, kg, ltr"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                    @error('newUnitAbbreviation') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-
-                                <!-- Unit Description -->
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deskripsi</label>
-                                    <textarea wire:model="newUnitDescription" rows="3" placeholder="Deskripsi opsional untuk unit ini"
-                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
-                                    @error('newUnitDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                <!-- Unit List Section -->
+                                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                                    <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Unit yang Tersedia</h4>
+                                    <div class="max-h-64 overflow-y-auto space-y-2">
+                                        @foreach($units as $unit)
+                                            <div class="flex items-center justify-between p-2 bg-white dark:bg-gray-600 rounded border {{ $editingUnitId == $unit->id ? 'ring-2 ring-blue-500' : '' }}">
+                                                <div class="flex-1">
+                                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $unit->name }}</div>
+                                                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ $unit->abbreviation }}</div>
+                                                </div>
+                                                <div class="flex space-x-1">
+                                                    <button type="button" wire:click="openEditUnitModal({{ $unit->id }})"
+                                                            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1">
+                                                        <i class="fas fa-edit text-xs"></i>
+                                                    </button>
+                                                    <button type="button" wire:click="confirmDeleteUnit({{ $unit->id }})"
+                                                            class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1">
+                                                        <i class="fas fa-trash text-xs"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                        
+                                        @if($units->isEmpty())
+                                            <div class="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                                                Belum ada unit yang tersedia
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -943,7 +1017,7 @@
                             <button type="submit" 
                                     class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
                                 <i class="fas fa-save mr-2"></i>
-                                Simpan Unit
+                                {{ $editingUnitId ? 'Update Unit' : 'Simpan Unit' }}
                             </button>
                             <button type="button" wire:click="closeUnitModal"
                                     class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:w-auto sm:text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500 dark:hover:bg-gray-700">
@@ -1148,7 +1222,7 @@
                                         <div class="flex justify-between items-center py-1 text-sm">
                                             <span class="text-gray-700">{{ $preview['name'] }}</span>
                                             <span class="text-blue-600">
-                                                Rp {{ number_format($preview['old_price'], 0, ',', '.') }} 
+                                                Rp {{ number_format($preview['current_price'], 0, ',', '.') }} 
                                                 → Rp {{ number_format($preview['new_price'], 0, ',', '.') }}
                                             </span>
                                         </div>

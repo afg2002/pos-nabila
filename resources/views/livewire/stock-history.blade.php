@@ -39,7 +39,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-green-600">Stok Masuk</p>
-                        <p class="text-2xl font-semibold text-green-900">{{ number_format($stockIn) }}</p>
+                        <p class="text-2xl font-semibold text-green-900">{{ number_format($this->stockIn) }}</p>
                     </div>
                 </div>
             </div>
@@ -53,7 +53,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-red-600">Stok Keluar</p>
-                        <p class="text-2xl font-semibold text-red-900">{{ number_format($stockOut) }}</p>
+                        <p class="text-2xl font-semibold text-red-900">{{ number_format($this->stockOut) }}</p>
                     </div>
                 </div>
             </div>
@@ -163,7 +163,7 @@
                                         <img src="{{ $movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
                                              alt="{{ $movement->product ? $movement->product->name : 'No Product' }}"
                                              class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                             onclick="openImageModal('{{ $movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $movement->product ? addslashes($movement->product->name) : 'No Product' }}')">
+                                             onclick="openImageModal({{ json_encode($movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')) }}, {{ json_encode($movement->product ? $movement->product->name : 'No Product') }})">
                                     </div>
                                     
                                     <div>
