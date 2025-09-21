@@ -52,6 +52,12 @@ class RoleForm extends Component
     {
         $role = Role::findOrFail($roleId);
         
+        // Prevent editing super-admin role
+        if ($role->name === 'super-admin') {
+            session()->flash('error', 'Cannot modify super-admin role.');
+            return;
+        }
+        
         $this->roleId = $role->id;
         $this->name = $role->name;
         $this->display_name = $role->display_name;
@@ -66,6 +72,14 @@ class RoleForm extends Component
         $this->resetForm();
         
         if ($roleId) {
+            $role = Role::findOrFail($roleId);
+            
+            // Prevent editing super-admin role
+            if ($role->name === 'super-admin') {
+                session()->flash('error', 'Cannot modify super-admin role.');
+                return;
+            }
+            
             $this->loadRole($roleId);
         }
         
@@ -120,29 +134,34 @@ class RoleForm extends Component
             return;
         }
 
-        if ($this->isEditing) {
-            $role = Role::findOrFail($this->roleId);
-            $role->update([
-                'name' => $this->name,
-                'display_name' => $this->display_name,
-                'description' => $this->description,
-                'is_active' => $this->is_active,
-            ]);
-        } else {
-            $role = Role::create([
-                'name' => $this->name,
-                'display_name' => $this->display_name,
-                'description' => $this->description,
-                'is_active' => $this->is_active,
-            ]);
+        try {
+            if ($this->isEditing) {
+                $role = Role::findOrFail($this->roleId);
+                $role->update([
+                    'name' => $this->name,
+                    'display_name' => $this->display_name,
+                    'description' => $this->description,
+                    'is_active' => $this->is_active,
+                ]);
+            } else {
+                $role = Role::create([
+                    'name' => $this->name,
+                    'display_name' => $this->display_name,
+                    'description' => $this->description,
+                    'is_active' => $this->is_active,
+                ]);
+            }
+
+            $role->permissions()->sync($this->selectedPermissions);
+
+            session()->flash('message', $this->isEditing ? 'Role updated successfully.' : 'Role created successfully.');
+            
+            $this->closeModal();
+            $this->dispatch('roleSaved');
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'An error occurred: ' . $e->getMessage());
         }
-
-        $role->permissions()->sync($this->selectedPermissions);
-
-        session()->flash('message', $this->isEditing ? 'Role updated successfully.' : 'Role created successfully.');
-        
-        $this->closeModal();
-        $this->dispatch('roleSaved');
     }
 
     public function render()

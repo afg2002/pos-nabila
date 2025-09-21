@@ -91,5 +91,11 @@
         Livewire.on('openUserForm', (event) => {
             @this.openModal(event.userId);
         });
+        
+        // Listen for userSaved event to close modal and refresh
+        Livewire.on('userSaved', () => {
+            // Modal will be closed by the component itself
+            // This is just for any additional UI updates if needed
+        });
     });
 </script>
