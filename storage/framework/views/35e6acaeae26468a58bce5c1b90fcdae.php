@@ -117,21 +117,21 @@
         <!-- Calendar View -->
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             <!-- Calendar Header -->
-            <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
+            <div class="bg-green-600 p-6 text-white">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center space-x-3">
-                        <div class="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                        <div class="p-2 bg-white/20 rounded-lg">
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
                         </div>
                         <div>
-                            <h2 class="text-xl font-bold">Kalender Agenda</h2>
-                            <p class="text-green-100 text-sm">Klik tanggal untuk menambah agenda</p>
+                            <h2 class="text-xl font-bold text-white">Kalender Agenda</h2>
+                            <p class="text-white/80 text-sm">Klik tanggal untuk menambah agenda</p>
                         </div>
                     </div>
                     <!-- Month Navigation -->
-                    <div class="flex items-center space-x-2 bg-white/10 rounded-lg p-1 backdrop-blur-sm">
+                    <div class="flex items-center space-x-2 bg-white/10 rounded-lg p-1">
                         <button type="button" 
                                 class="p-2 text-white hover:bg-white/20 rounded-md transition-all duration-200 transform hover:scale-110"
                                 wire:click="previousMonth">
@@ -139,7 +139,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                             </svg>
                         </button>
-                        <h3 class="text-lg font-semibold px-4 min-w-[140px] text-center text-white"><?php echo e(\Carbon\Carbon::parse($filterMonth . '-01')->format('F Y')); ?></h3>
+                        <h3 class="text-lg font-semibold px-4 min-w-[140px] text-center text-white bg-transparent"><?php echo e(\Carbon\Carbon::parse($filterMonth . '-01')->format('F Y')); ?></h3>
                         <button type="button" 
                                 class="p-2 text-white hover:bg-white/20 rounded-md transition-all duration-200 transform hover:scale-110"
                                 wire:click="nextMonth">
