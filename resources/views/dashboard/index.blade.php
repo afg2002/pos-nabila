@@ -54,7 +54,7 @@
 <script>
     // Auto refresh dashboard setiap 5 menit
     setInterval(function() {
-        Livewire.emit('refreshDashboard');
+        Livewire.find('dashboard').call('refreshData');
     }, 300000); // 5 menit
     
     // Handle export loading states

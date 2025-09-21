@@ -192,31 +192,150 @@
                 </div>
             </div>
 
-            <!-- Category Distribution Chart -->
+            <!-- Incoming Goods Agenda Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Distribusi Kategori</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Berdasarkan jumlah produk</p>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Incoming Goods</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Agenda barang masuk yang dijadwalkan</p>
                     </div>
                     <div class="flex space-x-2">
-                        <button wire:click="exportCategoryChart" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded transition-colors">
-                            <i class="fas fa-chart-pie mr-1"></i>Export
+                        <button wire:click="exportIncomingGoods" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-truck mr-1"></i>Export
                         </button>
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    <!--[if BLOCK]><![endif]--><?php if(isset($categoryChart)): ?>
-                        <?php echo $categoryChart->container(); ?>
+                    <!--[if BLOCK]><![endif]--><?php if(isset($incomingGoodsChart)): ?>
+                        <?php echo $incomingGoodsChart->container(); ?>
 
                     <?php else: ?>
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                            <i class="fas fa-chart-pie text-4xl mb-2"></i>
-                            <p>Belum ada data kategori</p>
-                            <p class="text-xs mt-1">Tambahkan produk untuk melihat distribusi</p>
+                            <i class="fas fa-truck text-4xl mb-2"></i>
+                            <p>Belum ada agenda barang masuk</p>
+                            <p class="text-xs mt-1">Data akan muncul setelah ada jadwal barang masuk</p>
                         </div>
                     <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
+            </div>
+
+            <!-- Purchase Order Status Chart -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Purchase Order</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Status pembayaran purchase order</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button wire:click="exportPurchaseOrders" class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-file-invoice mr-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="h-64 sm:h-80">
+                    <!--[if BLOCK]><![endif]--><?php if(isset($purchaseOrderChart)): ?>
+                        <?php echo $purchaseOrderChart->container(); ?>
+
+                    <?php else: ?>
+                        <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-file-invoice text-4xl mb-2"></i>
+                            <p>Belum ada purchase order</p>
+                            <p class="text-xs mt-1">Data akan muncul setelah ada PO yang dibuat</p>
+                        </div>
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                </div>
+            </div>
+        </div>
+
+        <!-- Hourly Sales Pattern Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pola Penjualan per Jam</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Distribusi transaksi berdasarkan jam</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button wire:click="exportHourlySales" class="text-sm bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded transition-colors">
+                        <i class="fas fa-clock mr-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="h-64 sm:h-80">
+                <!--[if BLOCK]><![endif]--><?php if(isset($hourlySalesChart)): ?>
+                    <?php echo $hourlySalesChart->container(); ?>
+
+                <?php else: ?>
+                    <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-clock text-4xl mb-2"></i>
+                        <p>Belum ada data penjualan per jam</p>
+                        <p class="text-xs mt-1">Data akan muncul setelah ada transaksi</p>
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+            </div>
+        </div>
+
+        <!-- Recent Sales Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Penjualan Terbaru</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">5 transaksi terakhir dalam periode yang dipilih</p>
+                </div>
+                <button wire:click="exportRecentSales" class="text-sm bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded transition-colors">
+                    <i class="fas fa-receipt mr-1"></i>Export
+                </button>
+            </div>
+            <div class="space-y-3">
+                <!--[if BLOCK]><![endif]--><?php if($recentSales && $recentSales->count() > 0): ?>
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $recentSales; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sale): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div wire:key="recent-sale-<?php echo e($sale->id); ?>" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-green-500">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
+                                    <i class="fas fa-shopping-cart text-green-600 dark:text-green-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white">#<?php echo e($sale->sale_number); ?></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        <?php echo e($sale->saleItems->count()); ?> item<?php echo e($sale->saleItems->count() > 1 ? 's' : ''); ?> • 
+                                        <?php echo e($sale->cashier->name ?? 'Unknown'); ?>
+
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-500">
+                                        <?php echo e($sale->created_at->format('d/m/Y H:i')); ?>
+
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-lg text-gray-900 dark:text-white">
+                                    Rp <?php echo e(number_format($sale->final_total, 0, ',', '.')); ?>
+
+                                </p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    <!--[if BLOCK]><![endif]--><?php if($sale->discount > 0): ?>
+                                        <span class="text-red-500">-Rp <?php echo e(number_format($sale->discount, 0, ',', '.')); ?></span>
+                                    <?php else: ?>
+                                        <span class="text-green-600">Tanpa diskon</span>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                </p>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                    <?php if($sale->status === 'completed'): ?> bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                    <?php elseif($sale->status === 'pending'): ?> bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    <?php else: ?> bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                    <?php endif; ?>">
+                                    <?php echo e(ucfirst($sale->status)); ?>
+
+                                </span>
+                            </div>
+                        </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                <?php else: ?>
+                    <div class="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-receipt text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">Belum ada penjualan</p>
+                        <p class="text-sm">Penjualan akan muncul setelah ada transaksi dalam periode yang dipilih</p>
+                    </div>
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
             </div>
         </div>
 
@@ -333,27 +452,41 @@
         </div>
     </div>
 </div>
+</div>
 
 <?php $__env->startPush('scripts'); ?>
+<!-- Chart Scripts -->
 <!--[if BLOCK]><![endif]--><?php if(isset($dailySalesChart)): ?>
     <?php echo $dailySalesChart->script(); ?>
 
 <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
 <!--[if BLOCK]><![endif]--><?php if(isset($stockMovementChart)): ?>
     <?php echo $stockMovementChart->script(); ?>
 
 <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
 <!--[if BLOCK]><![endif]--><?php if(isset($topProductsChart)): ?>
     <?php echo $topProductsChart->script(); ?>
 
 <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
-<!--[if BLOCK]><![endif]--><?php if(isset($categoryChart)): ?>
-    <?php echo $categoryChart->script(); ?>
+
+<!--[if BLOCK]><![endif]--><?php if(isset($incomingGoodsChart)): ?>
+    <?php echo $incomingGoodsChart->script(); ?>
+
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+<!--[if BLOCK]><![endif]--><?php if(isset($purchaseOrderChart)): ?>
+    <?php echo $purchaseOrderChart->script(); ?>
+
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+<!--[if BLOCK]><![endif]--><?php if(isset($hourlySalesChart)): ?>
+    <?php echo $hourlySalesChart->script(); ?>
 
 <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
 <script>
-    // Dashboard functionality
     document.addEventListener('DOMContentLoaded', function() {
         // Auto refresh every 5 minutes
         setInterval(function() {
@@ -397,25 +530,4 @@
         });
     });
 </script>
-
-<!--[if BLOCK]><![endif]--><?php if(isset($dailySalesChart)): ?>
-    <?php echo $dailySalesChart->script(); ?>
-
-<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
-
-<!--[if BLOCK]><![endif]--><?php if(isset($stockMovementChart)): ?>
-    <?php echo $stockMovementChart->script(); ?>
-
-<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
-
-<!--[if BLOCK]><![endif]--><?php if(isset($topProductsChart)): ?>
-    <?php echo $topProductsChart->script(); ?>
-
-<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
-
-<!--[if BLOCK]><![endif]--><?php if(isset($categoryChart)): ?>
-    <?php echo $categoryChart->script(); ?>
-
-<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
-
 <?php $__env->stopPush(); ?><?php /**PATH C:\laragon\www\pos-nabila\resources\views/livewire/dashboard.blade.php ENDPATH**/ ?>

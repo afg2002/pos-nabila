@@ -7,6 +7,8 @@ use App\Product;
 use App\Sale;
 use App\SaleItem;
 use App\StockMovement;
+use App\IncomingGoodsAgenda;
+use App\PurchaseOrder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
@@ -71,12 +73,23 @@ class Dashboard extends Component
     
     public function refreshData()
     {
-        // Clear cache for fresh data
-        Cache::forget('dashboard_stats_' . auth()->id());
-        Cache::forget('dashboard_charts_' . auth()->id());
+        // Clear all dashboard related cache
+        $userId = auth()->id();
+        $cacheKeys = [
+            'dashboard_stats_' . $userId,
+            'dashboard_charts_' . $userId,
+            'dashboard_stats_' . $userId . '_' . $this->dateFrom . '_' . $this->dateTo,
+            'dashboard_charts_' . $userId . '_' . $this->dateFrom . '_' . $this->dateTo
+        ];
         
+        foreach ($cacheKeys as $key) {
+            Cache::forget($key);
+        }
+        
+        // Reload all data
         $this->loadDashboardData();
         $this->generatePerformanceAlerts();
+        
         session()->flash('success', 'Data dashboard berhasil diperbarui!');
         
         // Dispatch browser event for real-time updates
@@ -503,20 +516,15 @@ class Dashboard extends Component
         return $this->exportExcel();
     }
     
-    public function exportCategoryChart()
-    {
-        session()->flash('success', 'Export category chart berhasil!');
-    }
+
     
     public function render()
     {
-        // Get cached chart data
-        $chartCacheKey = 'dashboard_charts_' . auth()->id() . '_' . $this->dateFrom . '_' . $this->dateTo;
-        $chartData = Cache::remember($chartCacheKey, 300, function () {
-            return $this->generateChartData();
-        });
+        // Always generate fresh chart data to avoid cache issues
+        $chartData = $this->generateChartData();
         
-        return view('livewire.dashboard', array_merge([
+        return view('livewire.dashboard', [
+            // Basic Stats
             'totalProducts' => $this->totalProducts,
             'totalSales' => $this->totalSales,
             'totalRevenue' => $this->totalRevenue,
@@ -528,19 +536,34 @@ class Dashboard extends Component
             'revenueGrowth' => $this->revenueGrowth,
             'topSellingCategory' => $this->topSellingCategory,
             'profitMargin' => $this->profitMargin,
+            
+            // Performance Metrics
             'todayStats' => $this->todayStats,
             'weekStats' => $this->weekStats,
             'monthStats' => $this->monthStats,
             'yearStats' => $this->yearStats,
             'performanceAlerts' => $this->performanceAlerts,
+            
+            // Settings
             'autoRefresh' => $this->autoRefresh,
-            'refreshInterval' => $this->refreshInterval
-        ], $chartData));
+            'refreshInterval' => $this->refreshInterval,
+            
+            // Chart Data
+            'topProductsData' => $chartData['topProductsData'],
+            'recentSales' => $chartData['recentSales'],
+            'dailySalesChart' => $chartData['dailySalesChart'],
+            'stockMovementChart' => $chartData['stockMovementChart'],
+            'topProductsChart' => $chartData['topProductsChart'],
+            'incomingGoodsChart' => $chartData['incomingGoodsChart'],
+            'purchaseOrderChart' => $chartData['purchaseOrderChart'],
+            'hourlySalesChart' => $chartData['hourlySalesChart']
+        ]);
     }
     
     private function generateChartData()
     {
-        $dateRange = [Carbon::now()->subDays(7), Carbon::now()];
+        // Use the selected date range from the component
+        $dateRange = [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'];
         
         // Get top products data
         $topProductsData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
@@ -552,8 +575,9 @@ class Dashboard extends Component
                               ->limit(5)
                               ->get();
         
-        // Get recent sales
+        // Get recent sales with proper date filtering
         $recentSales = Sale::with(['saleItems.product', 'cashier'])
+                          ->whereBetween('created_at', $dateRange)
                           ->orderByDesc('created_at')
                           ->limit(5)
                           ->get();
@@ -578,17 +602,43 @@ class Dashboard extends Component
                 ->setDataLabels(true);
         }
         
-        // Create enhanced stock movement chart
+        // Create enhanced stock movement chart focused on inventory management
         $stockMovementChart = null;
         if (!empty($this->stockData) && ($this->stockData['stockIn'] > 0 || $this->stockData['stockOut'] > 0)) {
-            $stockMovementChart = LarapexChart::donutChart()
-                ->setTitle('Pergerakan Stok')
-                ->setSubtitle('Analisis stok masuk vs keluar')
-                ->addData([$this->stockData['stockIn'], abs($this->stockData['stockOut'])])
-                ->setLabels(['Stok Masuk', 'Stok Keluar'])
-                ->setColors(['#10B981', '#EF4444'])
-                ->setHeight(350)
-                ->setDataLabels(true);
+            // Get detailed stock movement data with product information
+            $stockMovementDetails = StockMovement::join('products', 'stock_movements.product_id', '=', 'products.id')
+                ->whereBetween('stock_movements.created_at', $dateRange)
+                ->selectRaw('
+                    stock_movements.type,
+                    COUNT(*) as transaction_count,
+                    SUM(stock_movements.qty) as total_qty,
+                    AVG(stock_movements.qty) as avg_qty_per_transaction,
+                    COUNT(DISTINCT stock_movements.product_id) as unique_products
+                ')
+                ->groupBy('stock_movements.type')
+                ->get()
+                ->keyBy('type');
+            
+            $stockInDetails = $stockMovementDetails->get('IN');
+            $stockOutDetails = $stockMovementDetails->get('OUT');
+            
+            // Ensure we have valid data for donut chart
+            $stockInValue = (int) $this->stockData['stockIn'];
+            $stockOutValue = (int) abs($this->stockData['stockOut']);
+            
+            if ($stockInValue > 0 || $stockOutValue > 0) {
+                $stockMovementChart = LarapexChart::donutChart()
+                    ->setTitle('Pergerakan Stok Inventory')
+                    ->setSubtitle('Analisis stok masuk vs keluar untuk manajemen inventory')
+                    ->setDataset([$stockInValue, $stockOutValue])
+                    ->setLabels([
+                        'Stok Masuk (' . number_format($stockInValue) . ' unit)',
+                        'Stok Keluar (' . number_format($stockOutValue) . ' unit)'
+                    ])
+                    ->setColors(['#10B981', '#EF4444'])
+                    ->setHeight(350)
+                    ->setDataLabels(true);
+            }
         }
         
         // Create top products performance chart
@@ -607,44 +657,173 @@ class Dashboard extends Component
                 ->setDataLabels(true);
         }
         
-        // Create category performance chart
-        $categoryChart = null;
-        $categoryData = Product::selectRaw('category, COUNT(*) as product_count, SUM(current_stock) as total_stock')
-                             ->where('status', 'active')
-                             ->whereNull('deleted_at')
-                             ->groupBy('category')
-                             ->get();
+        // Create incoming goods agenda chart
+        $incomingGoodsChart = null;
+        $incomingGoodsData = IncomingGoodsAgenda::whereBetween('scheduled_date', $dateRange)
+            ->selectRaw('
+                status,
+                COUNT(*) as count,
+                SUM(total_amount) as total_value,
+                SUM(paid_amount) as paid_value
+            ')
+            ->groupBy('status')
+            ->get();
         
-        if ($categoryData->count() > 0) {
-            $categoryChart = LarapexChart::pieChart()
-                ->setTitle('Distribusi Produk per Kategori')
-                ->setSubtitle('Berdasarkan jumlah produk aktif')
-                ->addData($categoryData->pluck('product_count')->toArray())
-                ->setLabels($categoryData->pluck('category')->toArray())
-                ->setColors(['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'])
-                ->setHeight(350)
-                ->setDataLabels(true);
+        if ($incomingGoodsData->count() > 0) {
+            $statusLabels = [];
+            $statusCounts = [];
+            $statusColors = [];
+            
+            foreach ($incomingGoodsData as $data) {
+                $statusName = ucfirst($data->status);
+                $statusLabels[] = $statusName . ' (' . $data->count . ' item)';
+                $statusCounts[] = $data->count;
+                
+                // Set colors based on status
+                switch ($data->status) {
+                    case 'pending':
+                        $statusColors[] = '#F59E0B'; // Yellow
+                        break;
+                    case 'received':
+                        $statusColors[] = '#10B981'; // Green
+                        break;
+                    case 'paid':
+                        $statusColors[] = '#3B82F6'; // Blue
+                        break;
+                    default:
+                        $statusColors[] = '#6B7280'; // Gray
+                }
+            }
+            
+            // Ensure we have valid data for pie chart
+            $validCounts = array_map('intval', $statusCounts);
+            $totalCount = array_sum($validCounts);
+            
+            if ($totalCount > 0 && count($validCounts) > 0) {
+                $incomingGoodsChart = LarapexChart::pieChart()
+                    ->setTitle('Status Incoming Goods Agenda')
+                    ->setSubtitle('Distribusi status barang masuk yang dijadwalkan')
+                    ->setDataset($validCounts)
+                    ->setLabels($statusLabels)
+                    ->setColors($statusColors)
+                    ->setHeight(350)
+                    ->setDataLabels(true);
+            }
+        }
+
+        // Create purchase order status chart
+        $purchaseOrderChart = null;
+        $purchaseOrderData = PurchaseOrder::whereBetween('order_date', $dateRange)
+            ->selectRaw('
+                status,
+                payment_status,
+                COUNT(*) as count,
+                SUM(total_amount) as total_value,
+                SUM(paid_amount) as paid_value
+            ')
+            ->groupBy('status', 'payment_status')
+            ->get();
+        
+        if ($purchaseOrderData->count() > 0) {
+            // Group by payment status for better insights
+            $paymentStatusData = $purchaseOrderData->groupBy('payment_status')->map(function($group, $status) {
+                return [
+                    'status' => $status,
+                    'count' => $group->sum('count'),
+                    'total_value' => $group->sum('total_value'),
+                    'paid_value' => $group->sum('paid_value')
+                ];
+            });
+            
+            $poLabels = [];
+            $poCounts = [];
+            $poColors = [];
+            
+            foreach ($paymentStatusData as $data) {
+                $statusName = ucfirst(str_replace('_', ' ', $data['status']));
+                $poLabels[] = $statusName . ' (' . $data['count'] . ' PO)';
+                $poCounts[] = $data['count'];
+                
+                // Set colors based on payment status
+                switch ($data['status']) {
+                    case 'pending':
+                        $poColors[] = '#F59E0B'; // Yellow
+                        break;
+                    case 'partial_paid':
+                        $poColors[] = '#06B6D4'; // Cyan
+                        break;
+                    case 'paid':
+                        $poColors[] = '#10B981'; // Green
+                        break;
+                    case 'overdue':
+                        $poColors[] = '#EF4444'; // Red
+                        break;
+                    default:
+                        $poColors[] = '#6B7280'; // Gray
+                }
+            }
+            
+            // Ensure we have valid data for donut chart
+            $validPoCounts = array_map('intval', $poCounts);
+            $totalPoCount = array_sum($validPoCounts);
+            
+            if ($totalPoCount > 0 && count($validPoCounts) > 0) {
+                $purchaseOrderChart = LarapexChart::donutChart()
+                    ->setTitle('Status Pembayaran Purchase Order')
+                    ->setSubtitle('Distribusi status pembayaran PO dalam periode')
+                    ->setDataset($validPoCounts)
+                    ->setLabels($poLabels)
+                    ->setColors($poColors)
+                    ->setHeight(350)
+                    ->setDataLabels(true);
+            }
         }
         
-        // Create hourly sales pattern chart
+        // Create enhanced hourly sales pattern chart with dual metrics
         $hourlySalesChart = null;
         $hourlySales = Sale::whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count, SUM(final_total) as revenue')
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count, SUM(final_total) as revenue, AVG(final_total) as avg_transaction')
             ->groupBy('hour')
             ->orderBy('hour')
             ->get();
             
         if ($hourlySales->count() > 0) {
-            $hourlySalesChart = LarapexChart::areaChart()
-                ->setTitle('Pola Penjualan per Jam')
-                ->setSubtitle('Distribusi transaksi berdasarkan jam dalam sehari')
-                ->addData('Transaksi', $hourlySales->pluck('count')->toArray())
-                ->setXAxis($hourlySales->pluck('hour')->map(function($hour) {
-                    return $hour . ':00';
-                })->toArray())
-                ->setColors(['#06B6D4'])
-                ->setHeight(300)
-                ->setGrid(true);
+            // Check if we have significant revenue data to show dual metrics
+            $totalRevenue = $hourlySales->sum('revenue');
+            $maxRevenue = $hourlySales->max('revenue');
+            
+            if ($totalRevenue > 0 && $maxRevenue > 1000) {
+                // Show both transaction count and revenue for better insights
+                $hourlySalesChart = LarapexChart::areaChart()
+                    ->setTitle('Pola Penjualan dan Pendapatan per Jam')
+                    ->setSubtitle('Analisis transaksi dan pendapatan berdasarkan jam dalam periode yang dipilih')
+                    ->addData('Jumlah Transaksi', $hourlySales->pluck('count')->toArray())
+                    ->addData('Pendapatan (Ribuan)', $hourlySales->pluck('revenue')->map(function($revenue) {
+                        return round($revenue / 1000, 1); // Convert to thousands for better scale
+                    })->toArray())
+                    ->setXAxis($hourlySales->pluck('hour')->map(function($hour) {
+                        return sprintf('%02d:00', $hour);
+                    })->toArray())
+                    ->setColors(['#06B6D4', '#10B981'])
+                    ->setHeight(350)
+                    ->setGrid(true)
+                    ->setMarkers(['#06B6D4', '#10B981'], 4, 0)
+                    ->setDataLabels(true);
+            } else {
+                // Show only transaction count if revenue data is minimal
+                $hourlySalesChart = LarapexChart::areaChart()
+                    ->setTitle('Pola Penjualan per Jam')
+                    ->setSubtitle('Distribusi transaksi berdasarkan jam dalam periode yang dipilih')
+                    ->addData('Jumlah Transaksi', $hourlySales->pluck('count')->toArray())
+                    ->setXAxis($hourlySales->pluck('hour')->map(function($hour) {
+                        return sprintf('%02d:00', $hour);
+                    })->toArray())
+                    ->setColors(['#06B6D4'])
+                    ->setHeight(350)
+                    ->setGrid(true)
+                    ->setMarkers(['#06B6D4'], 4, 0)
+                    ->setDataLabels(true);
+            }
         }
         
         return [
@@ -653,7 +832,8 @@ class Dashboard extends Component
             'dailySalesChart' => $dailySalesChart,
             'stockMovementChart' => $stockMovementChart,
             'topProductsChart' => $topProductsChart,
-            'categoryChart' => $categoryChart,
+            'incomingGoodsChart' => $incomingGoodsChart,
+            'purchaseOrderChart' => $purchaseOrderChart,
             'hourlySalesChart' => $hourlySalesChart
         ];
     }

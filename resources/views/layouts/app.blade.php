@@ -12,8 +12,7 @@
     <link rel="stylesheet" href="{{ asset('css/font-awesome.css') }}">
     <!-- Custom Calendar Styles -->
     <link rel="stylesheet" href="{{ asset('css/custom-calendar.css') }}">
-    <!-- ApexCharts for LarapexChart -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Larapex Charts will handle ApexCharts automatically -->
     @livewireStyles
     <style>
         .sidebar-gradient {
@@ -765,5 +764,9 @@
             }
         });
     </script>
+    
+    <!-- Larapex Charts Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    @stack('scripts')
 </body>
 </html>

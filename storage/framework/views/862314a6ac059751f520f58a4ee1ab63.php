@@ -16,8 +16,11 @@
         colors: <?php echo $chart->colors(); ?>,
         series: <?php echo $chart->dataset(); ?>,
         dataLabels: <?php echo $chart->dataLabels(); ?>,
-        <!--[if BLOCK]><![endif]--><?php if($chart->labels()): ?>
-            labels: <?php echo json_encode($chart->labels(), true); ?>,
+        <?php
+            $chartLabels = $chart->labels();
+        ?>
+        <!--[if BLOCK]><![endif]--><?php if($chartLabels): ?>
+            labels: <?php echo json_encode($chartLabels, true); ?>,
         <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
         title: {
             text: "<?php echo $chart->title(); ?>"
@@ -32,8 +35,11 @@
         },
         grid: <?php echo $chart->grid(); ?>,
         markers: <?php echo $chart->markers(); ?>,
-        <!--[if BLOCK]><![endif]--><?php if($chart->stroke()): ?>
-            stroke: <?php echo $chart->stroke(); ?>,
+        <?php
+            $chartStroke = $chart->stroke();
+        ?>
+        <!--[if BLOCK]><![endif]--><?php if($chartStroke): ?>
+            stroke: <?php echo $chartStroke; ?>,
         <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
     }
 
@@ -41,4 +47,4 @@
     chart.render();
 
 </script>
-<?php /**PATH C:\laragon\www\pos-nabila\vendor\arielmejiadev\larapex-charts\src/../resources/views/chart/script.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\laragon\www\pos-nabila\resources\views/vendor/larapex-charts/chart/script.blade.php ENDPATH**/ ?>

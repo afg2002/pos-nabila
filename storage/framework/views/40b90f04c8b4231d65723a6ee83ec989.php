@@ -12,8 +12,7 @@
     <link rel="stylesheet" href="<?php echo e(asset('css/font-awesome.css')); ?>">
     <!-- Custom Calendar Styles -->
     <link rel="stylesheet" href="<?php echo e(asset('css/custom-calendar.css')); ?>">
-    <!-- ApexCharts for LarapexChart -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Larapex Charts will handle ApexCharts automatically -->
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
 
     <style>
@@ -768,5 +767,9 @@
             }
         });
     </script>
+    
+    <!-- Larapex Charts Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html><?php /**PATH C:\laragon\www\pos-nabila\resources\views/layouts/app.blade.php ENDPATH**/ ?>

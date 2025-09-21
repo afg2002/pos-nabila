@@ -187,30 +187,143 @@
                 </div>
             </div>
 
-            <!-- Category Distribution Chart -->
+            <!-- Incoming Goods Agenda Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <div class="flex items-center justify-between mb-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Distribusi Kategori</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Berdasarkan jumlah produk</p>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Incoming Goods</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Agenda barang masuk yang dijadwalkan</p>
                     </div>
                     <div class="flex space-x-2">
-                        <button wire:click="exportCategoryChart" class="text-sm bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded transition-colors">
-                            <i class="fas fa-chart-pie mr-1"></i>Export
+                        <button wire:click="exportIncomingGoods" class="text-sm bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-truck mr-1"></i>Export
                         </button>
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    @if(isset($categoryChart))
-                        {!! $categoryChart->container() !!}
+                    @if(isset($incomingGoodsChart))
+                        {!! $incomingGoodsChart->container() !!}
                     @else
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
-                            <i class="fas fa-chart-pie text-4xl mb-2"></i>
-                            <p>Belum ada data kategori</p>
-                            <p class="text-xs mt-1">Tambahkan produk untuk melihat distribusi</p>
+                            <i class="fas fa-truck text-4xl mb-2"></i>
+                            <p>Belum ada agenda barang masuk</p>
+                            <p class="text-xs mt-1">Data akan muncul setelah ada jadwal barang masuk</p>
                         </div>
                     @endif
                 </div>
+            </div>
+
+            <!-- Purchase Order Status Chart -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Status Purchase Order</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Status pembayaran purchase order</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button wire:click="exportPurchaseOrders" class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded transition-colors">
+                            <i class="fas fa-file-invoice mr-1"></i>Export
+                        </button>
+                    </div>
+                </div>
+                <div class="h-64 sm:h-80">
+                    @if(isset($purchaseOrderChart))
+                        {!! $purchaseOrderChart->container() !!}
+                    @else
+                        <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-file-invoice text-4xl mb-2"></i>
+                            <p>Belum ada purchase order</p>
+                            <p class="text-xs mt-1">Data akan muncul setelah ada PO yang dibuat</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Hourly Sales Pattern Chart -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Pola Penjualan per Jam</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Distribusi transaksi berdasarkan jam</p>
+                </div>
+                <div class="flex space-x-2">
+                    <button wire:click="exportHourlySales" class="text-sm bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1 rounded transition-colors">
+                        <i class="fas fa-clock mr-1"></i>Export
+                    </button>
+                </div>
+            </div>
+            <div class="h-64 sm:h-80">
+                @if(isset($hourlySalesChart))
+                    {!! $hourlySalesChart->container() !!}
+                @else
+                    <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-clock text-4xl mb-2"></i>
+                        <p>Belum ada data penjualan per jam</p>
+                        <p class="text-xs mt-1">Data akan muncul setelah ada transaksi</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Recent Sales Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Penjualan Terbaru</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">5 transaksi terakhir dalam periode yang dipilih</p>
+                </div>
+                <button wire:click="exportRecentSales" class="text-sm bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded transition-colors">
+                    <i class="fas fa-receipt mr-1"></i>Export
+                </button>
+            </div>
+            <div class="space-y-3">
+                @if($recentSales && $recentSales->count() > 0)
+                    @foreach($recentSales as $sale)
+                        <div wire:key="recent-sale-{{ $sale->id }}" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-green-500">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
+                                    <i class="fas fa-shopping-cart text-green-600 dark:text-green-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white">#{{ $sale->sale_number }}</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                                        {{ $sale->saleItems->count() }} item{{ $sale->saleItems->count() > 1 ? 's' : '' }} • 
+                                        {{ $sale->cashier->name ?? 'Unknown' }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-500">
+                                        {{ $sale->created_at->format('d/m/Y H:i') }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold text-lg text-gray-900 dark:text-white">
+                                    Rp {{ number_format($sale->final_total, 0, ',', '.') }}
+                                </p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    @if($sale->discount > 0)
+                                        <span class="text-red-500">-Rp {{ number_format($sale->discount, 0, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-green-600">Tanpa diskon</span>
+                                    @endif
+                                </p>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
+                                    @if($sale->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                    @elseif($sale->status === 'pending') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                    @endif">
+                                    {{ ucfirst($sale->status) }}
+                                </span>
+                            </div>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-receipt text-4xl mb-3"></i>
+                        <p class="text-lg font-medium">Belum ada penjualan</p>
+                        <p class="text-sm">Penjualan akan muncul setelah ada transaksi dalam periode yang dipilih</p>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -327,23 +440,35 @@
         </div>
     </div>
 </div>
+</div>
 
 @push('scripts')
-@if(isset($dailySalesChart))
+<!-- Chart Scripts -->
+@isset($dailySalesChart)
     {!! $dailySalesChart->script() !!}
-@endif
-@if(isset($stockMovementChart))
+@endisset
+
+@isset($stockMovementChart)
     {!! $stockMovementChart->script() !!}
-@endif
-@if(isset($topProductsChart))
+@endisset
+
+@isset($topProductsChart)
     {!! $topProductsChart->script() !!}
-@endif
-@if(isset($categoryChart))
-    {!! $categoryChart->script() !!}
-@endif
+@endisset
+
+@isset($incomingGoodsChart)
+    {!! $incomingGoodsChart->script() !!}
+@endisset
+
+@isset($purchaseOrderChart)
+    {!! $purchaseOrderChart->script() !!}
+@endisset
+
+@isset($hourlySalesChart)
+    {!! $hourlySalesChart->script() !!}
+@endisset
 
 <script>
-    // Dashboard functionality
     document.addEventListener('DOMContentLoaded', function() {
         // Auto refresh every 5 minutes
         setInterval(function() {
@@ -387,21 +512,4 @@
         });
     });
 </script>
-
-@if(isset($dailySalesChart))
-    {!! $dailySalesChart->script() !!}
-@endif
-
-@if(isset($stockMovementChart))
-    {!! $stockMovementChart->script() !!}
-@endif
-
-@if(isset($topProductsChart))
-    {!! $topProductsChart->script() !!}
-@endif
-
-@if(isset($categoryChart))
-    {!! $categoryChart->script() !!}
-@endif
-
 @endpush
