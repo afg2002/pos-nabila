@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\IncomingGoodsAgenda;
 use App\CapitalTracking;
+use App\ProductUnit;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Carbon\Carbon;
@@ -18,6 +19,7 @@ class IncomingGoodsAgendaManagement extends Component
     public $description = '';
     public $quantity = '';
     public $unit = '';
+    public $unit_id = '';
     public $unit_price = '';
     public $total_amount = '';
     public $scheduled_date = '';
@@ -51,7 +53,8 @@ class IncomingGoodsAgendaManagement extends Component
         'goods_name' => 'required|string|max:255',
         'description' => 'nullable|string|max:500',
         'quantity' => 'required|integer|min:1',
-        'unit' => 'required|string|max:50',
+        'unit' => 'nullable|string|max:50',
+        'unit_id' => 'required|exists:product_units,id',
         'unit_price' => 'required|numeric|min:0',
         'scheduled_date' => 'required|date|after_or_equal:today',
         'payment_due_date' => 'required|date|after_or_equal:scheduled_date',
@@ -67,7 +70,8 @@ class IncomingGoodsAgendaManagement extends Component
         'quantity.required' => 'Jumlah barang harus diisi.',
         'quantity.integer' => 'Jumlah barang harus berupa angka.',
         'quantity.min' => 'Jumlah barang minimal 1.',
-        'unit.required' => 'Satuan barang harus diisi.',
+        'unit_id.required' => 'Satuan barang harus dipilih.',
+        'unit_id.exists' => 'Satuan barang tidak valid.',
         'unit_price.required' => 'Harga per unit harus diisi.',
         'unit_price.numeric' => 'Harga per unit harus berupa angka.',
         'unit_price.min' => 'Harga per unit tidak boleh negatif.',
@@ -94,6 +98,16 @@ class IncomingGoodsAgendaManagement extends Component
     public function updatedUnitPrice()
     {
         $this->calculateTotal();
+    }
+
+    public function updatedUnitId()
+    {
+        if ($this->unit_id) {
+            $productUnit = ProductUnit::find($this->unit_id);
+            if ($productUnit) {
+                $this->unit = $productUnit->name;
+            }
+        }
     }
 
     private function calculateTotal()
@@ -126,6 +140,7 @@ class IncomingGoodsAgendaManagement extends Component
                         ->paginate(10);
 
         $capitalTrackings = CapitalTracking::where('is_active', true)->get();
+        $productUnits = ProductUnit::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
 
         // Get statistics
         $this->totalAgendas = IncomingGoodsAgenda::count();
@@ -177,6 +192,7 @@ class IncomingGoodsAgendaManagement extends Component
         return view('livewire.incoming-goods-agenda-management', [
             'agendas' => $agendas,
             'capitalTrackings' => $capitalTrackings,
+            'productUnits' => $productUnits,
             'scheduledTodayCount' => $scheduledTodayCount,
             'paymentDueTodayCount' => $paymentDueTodayCount,
             'overduePaymentCount' => $overduePaymentCount,
@@ -229,6 +245,7 @@ class IncomingGoodsAgendaManagement extends Component
         $this->description = '';
         $this->quantity = '';
         $this->unit = '';
+        $this->unit_id = '';
         $this->unit_price = '';
         $this->total_amount = '';
         $this->scheduled_date = '';
@@ -244,6 +261,15 @@ class IncomingGoodsAgendaManagement extends Component
     public function save()
     {
         $this->validate();
+        $this->calculateTotal();
+        
+        // Get unit name from selected ProductUnit
+        if ($this->unit_id) {
+            $productUnit = ProductUnit::find($this->unit_id);
+            if ($productUnit) {
+                $this->unit = $productUnit->name;
+            }
+        }
 
         try {
             if ($this->editingId) {
@@ -254,6 +280,7 @@ class IncomingGoodsAgendaManagement extends Component
                     'description' => $this->description,
                     'quantity' => $this->quantity,
                     'unit' => $this->unit,
+                    'unit_id' => $this->unit_id,
                     'unit_price' => $this->unit_price,
                     'total_amount' => $this->total_amount,
                     'scheduled_date' => $this->scheduled_date,
@@ -271,6 +298,7 @@ class IncomingGoodsAgendaManagement extends Component
                     'description' => $this->description,
                     'quantity' => $this->quantity,
                     'unit' => $this->unit,
+                    'unit_id' => $this->unit_id,
                     'unit_price' => $this->unit_price,
                     'total_amount' => $this->total_amount,
                     'scheduled_date' => $this->scheduled_date,
@@ -298,6 +326,12 @@ class IncomingGoodsAgendaManagement extends Component
         $this->description = $agenda->description;
         $this->quantity = $agenda->quantity;
         $this->unit = $agenda->unit;
+        $this->unit_id = $agenda->unit_id;
+        
+        // If unit_id exists, get unit name from productUnit relation
+        if ($agenda->unit_id && $agenda->productUnit) {
+            $this->unit = $agenda->productUnit->name;
+        }
         $this->unit_price = $agenda->unit_price;
         $this->total_amount = $agenda->total_amount;
         $this->scheduled_date = $agenda->scheduled_date->format('Y-m-d');

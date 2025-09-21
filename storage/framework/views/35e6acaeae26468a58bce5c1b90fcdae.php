@@ -416,7 +416,7 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
                                     <input type="number" 
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="quantity"
+                                           wire:model.live="quantity"
                                            min="1"
                                            required>
                                     <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['quantity'];
@@ -430,12 +430,15 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
-                                    <input type="text" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="unit"
-                                           placeholder="pcs, kg, liter, dll"
-                                           required>
-                                    <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['unit'];
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            wire:model="unit_id"
+                                            required>
+                                        <option value="">Pilih Satuan</option>
+                                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $productUnits; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $productUnit): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <option value="<?php echo e($productUnit->id); ?>"><?php echo e($productUnit->name); ?> (<?php echo e($productUnit->abbreviation); ?>)</option>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                    </select>
+                                    <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['unit_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -451,7 +454,7 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
                                     <input type="number" 
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="unit_price"
+                                           wire:model.live="unit_price"
                                            min="0"
                                            step="0.01"
                                            required>

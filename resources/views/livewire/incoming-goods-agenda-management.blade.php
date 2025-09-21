@@ -393,19 +393,22 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
                                     <input type="number" 
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="quantity"
+                                           wire:model.live="quantity"
                                            min="1"
                                            required>
                                     @error('quantity') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
-                                    <input type="text" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="unit"
-                                           placeholder="pcs, kg, liter, dll"
-                                           required>
-                                    @error('unit') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                            wire:model="unit_id"
+                                            required>
+                                        <option value="">Pilih Satuan</option>
+                                        @foreach($productUnits as $productUnit)
+                                            <option value="{{ $productUnit->id }}">{{ $productUnit->name }} ({{ $productUnit->abbreviation }})</option>
+                                        @endforeach
+                                    </select>
+                                    @error('unit_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                             
@@ -414,7 +417,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
                                     <input type="number" 
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="unit_price"
+                                           wire:model.live="unit_price"
                                            min="0"
                                            step="0.01"
                                            required>

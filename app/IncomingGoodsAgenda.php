@@ -18,6 +18,7 @@ class IncomingGoodsAgenda extends Model
         'description',
         'quantity',
         'unit',
+        'unit_id',
         'unit_price',
         'total_amount',
         'scheduled_date',
@@ -48,6 +49,14 @@ class IncomingGoodsAgenda extends Model
     public function capitalTracking(): BelongsTo
     {
         return $this->belongsTo(CapitalTracking::class);
+    }
+
+    /**
+     * Get the product unit associated with this agenda
+     */
+    public function productUnit(): BelongsTo
+    {
+        return $this->belongsTo(ProductUnit::class, 'unit_id');
     }
 
     /**

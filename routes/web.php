@@ -40,6 +40,13 @@ Route::middleware(['auth', 'permission:products.view'])->group(function () {
     })->name('products.import')->middleware('permission:products.create');
 });
 
+// Product Unit Management
+Route::middleware(['auth', 'permission:products.view'])->group(function () {
+    Route::get('/product-units', function () {
+        return view('product-units.index');
+    })->name('product-units.index');
+});
+
 // Inventory Management
 Route::middleware('auth')->group(function () {
     Route::get('/inventory', function () {
