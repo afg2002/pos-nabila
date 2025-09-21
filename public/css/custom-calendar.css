@@ -1,0 +1,133 @@
+/* Custom Calendar Styles */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #10b981 #f3f4f6;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #10b981;
+    border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #059669;
+}
+
+/* Calendar animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.calendar-fade-in {
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.agenda-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+    .grid.grid-cols-7 {
+        gap: 1px;
+    }
+    
+    .grid.grid-cols-7 > div {
+        min-height: 80px;
+        padding: 8px;
+    }
+    
+    .grid.grid-cols-7 .p-3 {
+        padding: 8px;
+        font-size: 12px;
+    }
+    
+    .text-lg {
+        font-size: 14px;
+    }
+    
+    .w-6.h-6 {
+        width: 16px;
+        height: 16px;
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 640px) {
+    .bg-gradient-to-r.from-green-600.to-emerald-600 .flex {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .grid.grid-cols-7 > div {
+        min-height: 60px;
+        padding: 4px;
+    }
+    
+    /* Remove any green background bleeding */
+    .bg-gray-50, .bg-white {
+        background-color: #ffffff !important;
+    }
+    
+    .day-header {
+        padding: 4px;
+        font-size: 10px;
+    }
+}
+
+/* Hover effects */
+.calendar-day:hover .add-button {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.agenda-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus states for accessibility */
+.calendar-day:focus {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+.add-button:focus {
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+}
+
+/* Loading states */
+.calendar-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.calendar-loading .calendar-day {
+    animation: pulse 1.5s ease-in-out infinite;
+}

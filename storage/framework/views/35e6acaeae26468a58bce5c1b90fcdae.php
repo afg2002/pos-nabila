@@ -115,21 +115,33 @@
     <!-- Content Area -->
     <!--[if BLOCK]><![endif]--><?php if($viewMode === 'calendar'): ?>
         <!-- Calendar View -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div class="p-6 border-b border-gray-200">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <!-- Calendar Header -->
+            <div class="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-gray-900">Kalender Agenda</h2>
-                    <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold">Kalender Agenda</h2>
+                            <p class="text-green-100 text-sm">Klik tanggal untuk menambah agenda</p>
+                        </div>
+                    </div>
+                    <!-- Month Navigation -->
+                    <div class="flex items-center space-x-2 bg-white/10 rounded-lg p-1 backdrop-blur-sm">
                         <button type="button" 
-                                class="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                                class="p-2 text-white hover:bg-white/20 rounded-md transition-all duration-200 transform hover:scale-110"
                                 wire:click="previousMonth">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                             </svg>
                         </button>
-                        <h3 class="text-lg font-medium text-gray-900"><?php echo e(\Carbon\Carbon::parse($filterMonth . '-01')->format('F Y')); ?></h3>
+                        <h3 class="text-lg font-semibold px-4 min-w-[140px] text-center text-white"><?php echo e(\Carbon\Carbon::parse($filterMonth . '-01')->format('F Y')); ?></h3>
                         <button type="button" 
-                                class="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                                class="p-2 text-white hover:bg-white/20 rounded-md transition-all duration-200 transform hover:scale-110"
                                 wire:click="nextMonth">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
@@ -139,34 +151,109 @@
                 </div>
             </div>
             
-            <div class="p-6">
-                <div class="grid grid-cols-7 gap-1 mb-4">
-                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <div class="p-2 text-center text-sm font-medium text-gray-500"><?php echo e($day); ?></div>
+            <!-- Calendar Body -->
+            <div class="p-6 bg-white">
+                <!-- Day Headers -->
+                <div class="grid grid-cols-7 gap-2 mb-4">
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="p-3 text-center text-sm font-semibold text-gray-600 bg-white rounded-lg shadow-sm border">
+                            <?php echo e($day); ?>
+
+                        </div>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
                 
-                <div class="grid grid-cols-7 gap-1">
+                <!-- Calendar Grid -->
+                <div class="grid grid-cols-7 gap-2">
                     <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $calendarData; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <div class="min-h-[100px] p-2 border border-gray-100 <?php echo e($day['isCurrentMonth'] ? 'bg-white' : 'bg-gray-50'); ?> <?php echo e($day['isToday'] ? 'ring-2 ring-blue-500' : ''); ?>">
-                            <div class="text-sm <?php echo e($day['isCurrentMonth'] ? 'text-gray-900' : 'text-gray-400'); ?> font-medium mb-1">
-                                <?php echo e($day['day']); ?>
+                        <div class="group relative min-h-[120px] p-3 rounded-xl border-2 transition-all duration-300 cursor-pointer transform hover:scale-[1.02] hover:shadow-lg
+                                    <?php echo e($day['isCurrentMonth'] ? 'bg-white border-gray-200 hover:border-green-300' : 'bg-gray-100 border-gray-100 hover:border-gray-300'); ?> 
+                                    <?php echo e($day['isToday'] ? 'ring-2 ring-green-500 border-green-300 bg-green-50' : ''); ?>"
+                             wire:click="selectDate('<?php echo e($day['date']); ?>')">
+                            
+                            <!-- Date Number with Indicator -->
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="relative">
+                                    <span class="text-lg font-bold <?php echo e($day['isCurrentMonth'] ? ($day['isToday'] ? 'text-green-700' : 'text-gray-900') : 'text-gray-400'); ?>">
+                                        <?php echo e($day['day']); ?>
 
+                                    </span>
+                                    
+                                    <!-- Agenda Count Indicator -->
+                                    <!--[if BLOCK]><![endif]--><?php if(isset($day['agendas']) && count($day['agendas']) > 0): ?>
+                                        <div class="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                                            <?php echo e(count($day['agendas'])); ?>
+
+                                        </div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                </div>
+                                
+                                <!-- Add Button (appears on hover) -->
+                                <button class="opacity-0 group-hover:opacity-100 w-6 h-6 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110"
+                                        wire:click.stop="selectDate('<?php echo e($day['date']); ?>')">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                </button>
                             </div>
-                            <!--[if BLOCK]><![endif]--><?php if(isset($day['agendas']) && count($day['agendas']) > 0): ?>
-                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $day['agendas']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $agenda): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                    <div class="text-xs p-1 mb-1 rounded cursor-pointer <?php echo e($agenda->isDueToday ? 'bg-orange-100 text-orange-800' : ($agenda->isOverdue ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800')); ?>"
-                                         wire:click="selectDate('<?php echo e($day['date']); ?>')">
-                                        <div class="font-medium"><?php echo e(Str::limit($agenda->supplier_name, 12)); ?></div>
-                                        <div class="text-xs opacity-75"><?php echo e(Str::limit($agenda->goods_name ?? $agenda->item_name ?? 'Barang', 12)); ?></div>
-                                        <!--[if BLOCK]><![endif]--><?php if($agenda->quantity && $agenda->unit): ?>
-                                            <div class="text-xs opacity-60"><?php echo e($agenda->quantity); ?> <?php echo e($agenda->unit); ?></div>
-                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                            
+                            <!-- Agenda Items -->
+                            <div class="space-y-1 max-h-[80px] overflow-y-auto custom-scrollbar">
+                                <!--[if BLOCK]><![endif]--><?php if(isset($day['agendas']) && count($day['agendas']) > 0): ?>
+                                    <?php
+                                        $displayedAgendas = $day['agendas']->take(2);
+                                        $remainingCount = count($day['agendas']) - 2;
+                                    ?>
+                                    
+                                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $displayedAgendas; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $agenda): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <div class="text-xs p-1.5 rounded-md cursor-pointer transition-all duration-200 hover:shadow-sm border
+                                                    <?php echo e($agenda->isDueToday ? 'bg-orange-50 text-orange-700 border-orange-200' : 
+                                                       ($agenda->isOverdue ? 'bg-red-50 text-red-700 border-red-200' : 
+                                                        'bg-blue-50 text-blue-700 border-blue-200')); ?>"
+                                             wire:click.stop="selectDate('<?php echo e($day['date']); ?>')">
+                                            <div class="font-medium truncate text-xs"><?php echo e(Str::limit($agenda->supplier_name, 12)); ?></div>
+                                            <div class="opacity-80 truncate text-xs"><?php echo e(Str::limit($agenda->goods_name ?? $agenda->item_name ?? 'Barang', 12)); ?></div>
+                                        </div>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                    
+                                    <!--[if BLOCK]><![endif]--><?php if($remainingCount > 0): ?>
+                                        <div class="text-xs text-center text-gray-600 font-medium py-1 bg-gray-100 rounded-md border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors"
+                                             wire:click.stop="selectDate('<?php echo e($day['date']); ?>')">
+                                            +<?php echo e($remainingCount); ?> agenda lagi
+                                        </div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                <?php else: ?>
+                                    <!-- Empty State -->
+                                    <div class="opacity-0 group-hover:opacity-50 text-xs text-gray-400 text-center py-4 transition-opacity duration-200">
+                                        <svg class="w-4 h-4 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                        </svg>
+                                        Klik untuk tambah
                                     </div>
-                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
-                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                            </div>
                         </div>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                </div>
+                
+                <!-- Legend -->
+                <div class="mt-6 flex flex-wrap items-center justify-center space-x-6 text-sm">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-4 h-4 bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded"></div>
+                        <span class="text-gray-600">Normal</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-4 h-4 bg-gradient-to-r from-orange-100 to-yellow-100 border border-orange-200 rounded"></div>
+                        <span class="text-gray-600">Jatuh Tempo Hari Ini</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-4 h-4 bg-gradient-to-r from-red-100 to-pink-100 border border-red-200 rounded"></div>
+                        <span class="text-gray-600">Terlambat</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <div class="w-4 h-4 bg-green-50 border-2 border-green-500 rounded"></div>
+                        <span class="text-gray-600">Hari Ini</span>
+                    </div>
                 </div>
             </div>
         </div>

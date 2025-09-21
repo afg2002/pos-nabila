@@ -145,16 +145,33 @@ class IncomingGoodsAgendaManagement extends Component
         // Calendar data for current month
         $calendarData = [];
         if ($this->viewMode === 'calendar') {
-            $startOfMonth = Carbon::parse($this->filterMonth . '-01')->startOfMonth();
-            $endOfMonth = $startOfMonth->copy()->endOfMonth();
+            $currentMonth = Carbon::parse($this->filterMonth . '-01');
+            $startOfMonth = $currentMonth->copy()->startOfMonth();
+            $endOfMonth = $currentMonth->copy()->endOfMonth();
             
-            $calendarAgendas = IncomingGoodsAgenda::whereBetween('scheduled_date', [$startOfMonth, $endOfMonth])
-                                                  ->get()
-                                                  ->groupBy(function($item) {
-                                                      return $item->scheduled_date->format('Y-m-d');
-                                                  });
+            // Get agendas for the month
+            $agendas = IncomingGoodsAgenda::whereBetween('scheduled_date', [$startOfMonth, $endOfMonth])
+                                         ->get()
+                                         ->groupBy(function($item) {
+                                             return $item->scheduled_date->format('Y-m-d');
+                                         });
             
-            $calendarData = $calendarAgendas;
+            // Generate calendar grid like AgendaCalendar
+            $startDate = $startOfMonth->copy()->startOfWeek(Carbon::MONDAY);
+            $endDate = $endOfMonth->copy()->endOfWeek(Carbon::SUNDAY);
+            
+            $current = $startDate->copy();
+            while ($current <= $endDate) {
+                $dateStr = $current->format('Y-m-d');
+                $calendarData[] = [
+                    'date' => $dateStr,
+                    'day' => $current->day,
+                    'isCurrentMonth' => $current->month === $currentMonth->month,
+                    'isToday' => $current->isToday(),
+                    'agendas' => $agendas->get($dateStr, collect())
+                ];
+                $current->addDay();
+            }
         }
 
         return view('livewire.incoming-goods-agenda-management', [
@@ -177,6 +194,7 @@ class IncomingGoodsAgendaManagement extends Component
     public function selectDate($date)
     {
         $this->selectedDate = $date;
+        $this->openModal($date); // Automatically open modal when date is selected
         $this->resetPage();
     }
 

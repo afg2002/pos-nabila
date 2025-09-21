@@ -10,6 +10,8 @@
     <link href="<?php echo e(asset('css/app.css')); ?>" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="<?php echo e(asset('css/font-awesome.css')); ?>">
+    <!-- Custom Calendar Styles -->
+    <link rel="stylesheet" href="<?php echo e(asset('css/custom-calendar.css')); ?>">
     <!-- ApexCharts for LarapexChart -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>

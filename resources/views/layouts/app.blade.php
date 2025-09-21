@@ -10,6 +10,8 @@
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="{{ asset('css/font-awesome.css') }}">
+    <!-- Custom Calendar Styles -->
+    <link rel="stylesheet" href="{{ asset('css/custom-calendar.css') }}">
     <!-- ApexCharts for LarapexChart -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     @livewireStyles
