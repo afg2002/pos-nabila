@@ -2,36 +2,35 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Product;
 use App\Sale;
 use App\SaleItem;
 use App\StockMovement;
-use App\IncomingGoodsAgenda;
+use App\Models\IncomingGoodsAgenda;
 use App\PurchaseOrder;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Facades\Excel;
-use ArielMejiaDev\LarapexCharts\Facades\LarapexChart;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\PurchaseOrderItem;
+use App\CashLedger;
 use App\Exports\SalesReportExport;
 use App\Exports\StockReportExport;
-use Illuminate\Support\Facades\Cache;
+use ArielMejiaDev\LarapexCharts\LarapexChart;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use Livewire\Component;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Dashboard extends Component
 {
     public $dateFrom;
     public $dateTo;
     public $reportType = 'sales';
-    public $refreshInterval = 30; // seconds
     public $autoRefresh = false;
-    
-    // Enhanced Dashboard Stats
+    public $refreshInterval = 30;
+
+    // Basic Stats
     public $totalProducts = 0;
     public $totalSales = 0;
     public $totalRevenue = 0;
     public $lowStockProducts = 0;
-    public $lowStockProductsList = [];
     public $criticalStockProducts = 0;
     public $outOfStockProducts = 0;
     public $averageOrderValue = 0;
@@ -39,175 +38,100 @@ class Dashboard extends Component
     public $revenueGrowth = 0;
     public $topSellingCategory = '';
     public $profitMargin = 0;
-    
+
+    // Enhanced Stats for Ecer/Grosir
+    public $totalEcer = 0;
+    public $totalGrosir = 0;
+    public $ecerCount = 0;
+    public $grosirCount = 0;
+    public $grossProfit = 0;
+    public $grossProfitMargin = 0;
+
     // Performance Metrics
     public $todayStats = [];
     public $weekStats = [];
     public $monthStats = [];
     public $yearStats = [];
-    
+    public $performanceAlerts = [];
+
     // Chart Data
     public $salesData = [];
     public $stockData = [];
     public $topProductsData = [];
     public $recentSales = [];
-    public $performanceAlerts = [];
-    
+
+    // Monthly Trend Chart Properties
+    public $monthlyTrendChart;
+    public $monthlyTrendData = [];
+
     public function mount()
     {
-        $this->dateFrom = Carbon::now()->startOfMonth()->format('Y-m-d');
+        $this->dateFrom = Carbon::now()->subDays(7)->format('Y-m-d');
         $this->dateTo = Carbon::now()->format('Y-m-d');
-        $this->loadDashboardData();
-        $this->generatePerformanceAlerts();
+        $this->refreshData();
     }
-    
+
     public function updatedDateFrom()
     {
-        $this->loadDashboardData();
+        $this->refreshData();
     }
-    
+
     public function updatedDateTo()
     {
-        $this->loadDashboardData();
+        $this->refreshData();
     }
-    
+
     public function refreshData()
     {
-        // Clear all dashboard related cache
-        $userId = auth()->id();
-        $cacheKeys = [
-            'dashboard_stats_' . $userId,
-            'dashboard_charts_' . $userId,
-            'dashboard_stats_' . $userId . '_' . $this->dateFrom . '_' . $this->dateTo,
-            'dashboard_charts_' . $userId . '_' . $this->dateFrom . '_' . $this->dateTo
-        ];
-        
-        foreach ($cacheKeys as $key) {
-            Cache::forget($key);
-        }
-        
-        // Reload all data
         $this->loadDashboardData();
+        $this->loadEnhancedStats();
+        $this->loadPerformanceMetrics();
+        $this->loadMonthlyTrendData();
         $this->generatePerformanceAlerts();
-        
-        session()->flash('success', 'Data dashboard berhasil diperbarui!');
-        
-        // Dispatch browser event for real-time updates
-        $this->dispatch('dashboard-refreshed');
+        $this->loadChartData();
     }
-    
+
     public function toggleAutoRefresh()
     {
         $this->autoRefresh = !$this->autoRefresh;
-        $message = $this->autoRefresh ? 'Auto refresh diaktifkan' : 'Auto refresh dinonaktifkan';
-        session()->flash('success', $message);
     }
-    
-    public function loadDashboardData()
+
+    private function loadDashboardData()
     {
-        $this->loadEnhancedStats();
-        $this->loadPerformanceMetrics();
-        $this->loadChartData();
-    }
-    
-    private function loadEnhancedStats()
-    {
-        // Use caching for better performance
-        $cacheKey = 'dashboard_stats_' . auth()->id() . '_' . $this->dateFrom . '_' . $this->dateTo;
-        
-        $stats = Cache::remember($cacheKey, 300, function () { // 5 minutes cache
-            $dateRange = [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'];
-            $previousPeriod = $this->getPreviousPeriodRange();
-            
-            return [
-                'totalProducts' => Product::where('status', 'active')->whereNull('deleted_at')->count(),
-                'totalSales' => Sale::whereBetween('created_at', $dateRange)->count(),
-                'totalRevenue' => Sale::whereBetween('created_at', $dateRange)->sum('final_total'),
-                'lowStockProducts' => Product::where('status', 'active')->whereNull('deleted_at')->where('current_stock', '<', 10)->count(),
-                'lowStockProductsList' => Product::where('status', 'active')->whereNull('deleted_at')->where('current_stock', '<', 10)->get(),
-                'criticalStockProducts' => Product::where('status', 'active')->whereNull('deleted_at')->where('current_stock', '<', 5)->count(),
-                'outOfStockProducts' => Product::where('status', 'active')->whereNull('deleted_at')->where('current_stock', '<=', 0)->count(),
-                'averageOrderValue' => Sale::whereBetween('created_at', $dateRange)->avg('final_total') ?? 0,
-                'previousSales' => Sale::whereBetween('created_at', $previousPeriod)->count(),
-                'previousRevenue' => Sale::whereBetween('created_at', $previousPeriod)->sum('final_total'),
-                'topCategory' => $this->getTopSellingCategory($dateRange),
-                'profitMargin' => $this->calculateProfitMargin($dateRange)
-            ];
-        });
-        
-        // Assign stats to properties
-        $this->totalProducts = $stats['totalProducts'];
-        $this->totalSales = $stats['totalSales'];
-        $this->totalRevenue = $stats['totalRevenue'];
-        $this->lowStockProducts = $stats['lowStockProducts'];
-        $this->lowStockProductsList = $stats['lowStockProductsList'];
-        $this->criticalStockProducts = $stats['criticalStockProducts'];
-        $this->outOfStockProducts = $stats['outOfStockProducts'];
-        $this->averageOrderValue = $stats['averageOrderValue'];
-        $this->topSellingCategory = $stats['topCategory'];
-        $this->profitMargin = $stats['profitMargin'];
-        
-        // Calculate growth percentages
-        $this->salesGrowth = $stats['previousSales'] > 0 
-            ? (($stats['totalSales'] - $stats['previousSales']) / $stats['previousSales']) * 100 
-            : 0;
-            
-        $this->revenueGrowth = $stats['previousRevenue'] > 0 
-            ? (($stats['totalRevenue'] - $stats['previousRevenue']) / $stats['previousRevenue']) * 100 
-            : 0;
-    }
-    
-    private function loadPerformanceMetrics()
-    {
-        $now = Carbon::now();
-        
-        // Today's performance
-        $this->todayStats = [
-            'sales' => Sale::whereDate('created_at', $now->toDateString())->count(),
-            'revenue' => Sale::whereDate('created_at', $now->toDateString())->sum('final_total'),
-            'transactions' => Sale::whereDate('created_at', $now->toDateString())->count(),
-            'avg_order' => Sale::whereDate('created_at', $now->toDateString())->avg('final_total') ?? 0
+        $dateRange = [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59'];
+
+        // Basic product stats
+        $this->totalProducts = Product::where('is_active', true)->count();
+        $this->lowStockProducts = Product::where('is_active', true)->where('current_stock', '<=', 10)->count();
+        $this->criticalStockProducts = Product::where('is_active', true)->where('current_stock', '<', 5)->count();
+        $this->outOfStockProducts = Product::where('is_active', true)->where('current_stock', 0)->count();
+
+        // Sales stats
+        $salesData = Sale::whereBetween('created_at', $dateRange)
+            ->selectRaw('COUNT(*) as count, SUM(final_total) as revenue')
+            ->first();
+
+        $this->totalSales = $salesData->count ?? 0;
+        $this->totalRevenue = $salesData->revenue ?? 0;
+        $this->averageOrderValue = $this->totalSales > 0 ? $this->totalRevenue / $this->totalSales : 0;
+
+        // Growth calculations
+        $previousPeriod = [
+            Carbon::parse($this->dateFrom)->subDays(7)->format('Y-m-d H:i:s'),
+            Carbon::parse($this->dateTo)->subDays(7)->format('Y-m-d H:i:s')
         ];
-        
-        // This week's performance
-        $weekStart = $now->copy()->startOfWeek();
-        $this->weekStats = [
-            'sales' => Sale::whereBetween('created_at', [$weekStart, $now])->count(),
-            'revenue' => Sale::whereBetween('created_at', [$weekStart, $now])->sum('final_total'),
-            'avg_daily' => Sale::whereBetween('created_at', [$weekStart, $now])->sum('final_total') / 7
-        ];
-        
-        // This month's performance
-        $monthStart = $now->copy()->startOfMonth();
-        $this->monthStats = [
-            'sales' => Sale::whereBetween('created_at', [$monthStart, $now])->count(),
-            'revenue' => Sale::whereBetween('created_at', [$monthStart, $now])->sum('final_total'),
-            'target_progress' => $this->calculateMonthlyTargetProgress()
-        ];
-        
-        // This year's performance
-        $yearStart = $now->copy()->startOfYear();
-        $this->yearStats = [
-            'sales' => Sale::whereBetween('created_at', [$yearStart, $now])->count(),
-            'revenue' => Sale::whereBetween('created_at', [$yearStart, $now])->sum('final_total'),
-            'monthly_avg' => Sale::whereBetween('created_at', [$yearStart, $now])->sum('final_total') / $now->month
-        ];
-    }
-    
-    private function getPreviousPeriodRange()
-    {
-        $from = Carbon::parse($this->dateFrom);
-        $to = Carbon::parse($this->dateTo);
-        $diff = $from->diffInDays($to);
-        
-        $previousFrom = $from->copy()->subDays($diff + 1);
-        $previousTo = $from->copy()->subDay();
-        
-        return [$previousFrom->format('Y-m-d H:i:s'), $previousTo->format('Y-m-d H:i:s')];
-    }
-    
-    private function getTopSellingCategory($dateRange)
-    {
+
+        $previousSalesData = Sale::whereBetween('created_at', $previousPeriod)
+            ->selectRaw('COUNT(*) as count, SUM(final_total) as revenue')
+            ->first();
+
+        $previousSales = $previousSalesData->count ?? 0;
+        $previousRevenue = $previousSalesData->revenue ?? 0;
+
+        $this->salesGrowth = $previousSales > 0 ? (($this->totalSales - $previousSales) / $previousSales) * 100 : 0;
+        $this->revenueGrowth = $previousRevenue > 0 ? (($this->totalRevenue - $previousRevenue) / $previousRevenue) * 100 : 0;
+
+        // Top selling category - menggunakan kolom category langsung dari products
         $topCategory = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
             ->whereBetween('sales.created_at', $dateRange)
@@ -215,38 +139,144 @@ class Dashboard extends Component
             ->groupBy('products.category')
             ->orderByDesc('total_qty')
             ->first();
-            
-        return $topCategory ? $topCategory->category : 'N/A';
+
+        $this->topSellingCategory = $topCategory->category ?? 'N/A';
+
+        // Profit margin calculation
+        $this->profitMargin = $this->calculateProfitMargin($dateRange);
     }
-    
+
+    private function loadEnhancedStats()
+    {
+        $this->loadEcerGrosirBreakdown();
+    }
+
+    private function loadPerformanceMetrics()
+    {
+        // Today's stats
+        $today = Carbon::today();
+        $this->todayStats = [
+            'sales' => Sale::whereDate('created_at', $today)->count(),
+            'transactions' => Sale::whereDate('created_at', $today)->count(),
+            'revenue' => Sale::whereDate('created_at', $today)->sum('final_total'),
+            'avg_order' => Sale::whereDate('created_at', $today)->avg('final_total') ?? 0,
+        ];
+
+        // This week's stats
+        $weekStart = Carbon::now()->startOfWeek();
+        $this->weekStats = [
+            'sales' => Sale::whereBetween('created_at', [$weekStart, Carbon::now()])->count(),
+            'revenue' => Sale::whereBetween('created_at', [$weekStart, Carbon::now()])->sum('final_total'),
+            'avg_order' => Sale::whereBetween('created_at', [$weekStart, Carbon::now()])->avg('final_total') ?? 0,
+        ];
+
+        // This month's stats
+        $monthStart = Carbon::now()->startOfMonth();
+        $this->monthStats = [
+            'sales' => Sale::whereBetween('created_at', [$monthStart, Carbon::now()])->count(),
+            'revenue' => Sale::whereBetween('created_at', [$monthStart, Carbon::now()])->sum('final_total'),
+            'avg_order' => Sale::whereBetween('created_at', [$monthStart, Carbon::now()])->avg('final_total') ?? 0,
+        ];
+
+        // This year's stats
+        $yearStart = Carbon::now()->startOfYear();
+        $this->yearStats = [
+            'sales' => Sale::whereBetween('created_at', [$yearStart, Carbon::now()])->count(),
+            'revenue' => Sale::whereBetween('created_at', [$yearStart, Carbon::now()])->sum('final_total'),
+            'avg_order' => Sale::whereBetween('created_at', [$yearStart, Carbon::now()])->avg('final_total') ?? 0,
+        ];
+    }
+
     private function calculateProfitMargin($dateRange)
     {
         $salesData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
             ->whereBetween('sales.created_at', $dateRange)
-            ->selectRaw('SUM(sale_items.unit_price * sale_items.qty) as total_revenue, SUM(products.base_cost * sale_items.qty) as total_cost')
+            ->selectRaw('
+                SUM(sale_items.unit_price * sale_items.qty) as total_revenue,
+                SUM(products.base_cost * sale_items.qty) as total_cost
+            ')
             ->first();
-            
+
         if ($salesData && $salesData->total_revenue > 0) {
             return (($salesData->total_revenue - $salesData->total_cost) / $salesData->total_revenue) * 100;
         }
-        
+
         return 0;
     }
-    
+
+    private function loadEcerGrosirBreakdown()
+    {
+        $dateRange = [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59'];
+        
+        // Get ecer sales (retail) - based on price_tier in sale_items
+        $ecerSales = Sale::whereBetween('created_at', $dateRange)
+            ->whereHas('saleItems', function($query) {
+                $query->where('price_tier', 'ecer');
+            })
+            ->selectRaw('COUNT(*) as count, SUM(final_total) as total')
+            ->first();
+        
+        // Get grosir sales (wholesale) - based on price_tier in sale_items
+        $grosirSales = Sale::whereBetween('created_at', $dateRange)
+            ->whereHas('saleItems', function($query) {
+                $query->where('price_tier', 'grosir');
+            })
+            ->selectRaw('COUNT(*) as count, SUM(final_total) as total')
+            ->first();
+        
+        $this->ecerCount = $ecerSales->count ?? 0;
+        $this->totalEcer = $ecerSales->total ?? 0;
+        $this->grosirCount = $grosirSales->count ?? 0;
+        $this->totalGrosir = $grosirSales->total ?? 0;
+        
+        // Calculate gross profit using PO costs with base_cost fallback
+        $this->calculateGrossProfit($dateRange);
+    }
+
+    private function calculateGrossProfit($dateRange)
+    {
+        // Get sales with cost data from PO or base_cost
+        $salesData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->leftJoin('purchase_order_items', function($join) {
+                $join->on('products.id', '=', 'purchase_order_items.product_id')
+                     ->whereRaw('purchase_order_items.created_at = (
+                         SELECT MAX(poi2.created_at) 
+                         FROM purchase_order_items poi2 
+                         WHERE poi2.product_id = products.id
+                     )');
+            })
+            ->leftJoin('purchase_orders', 'purchase_order_items.purchase_order_id', '=', 'purchase_orders.id')
+            ->whereBetween('sales.created_at', $dateRange)
+            ->selectRaw('
+                SUM(sale_items.unit_price * sale_items.qty) as total_revenue,
+                SUM(
+                    COALESCE(purchase_order_items.unit_cost, products.base_cost, 0) * sale_items.qty
+                ) as total_cost
+            ')
+            ->first();
+        
+        $totalRevenue = $salesData->total_revenue ?? 0;
+        $totalCost = $salesData->total_cost ?? 0;
+        
+        $this->grossProfit = $totalRevenue - $totalCost;
+        $this->grossProfitMargin = $totalRevenue > 0 ? (($this->grossProfit / $totalRevenue) * 100) : 0;
+    }
+
     private function calculateMonthlyTargetProgress()
     {
         // Assuming a monthly target of 10,000,000 (10 million)
         $monthlyTarget = 10000000;
         $currentRevenue = $this->monthStats['revenue'] ?? 0;
-        
+
         return $monthlyTarget > 0 ? ($currentRevenue / $monthlyTarget) * 100 : 0;
     }
-    
+
     private function generatePerformanceAlerts()
     {
         $this->performanceAlerts = [];
-        
+
         // Critical stock alert
         if ($this->criticalStockProducts > 0) {
             $this->performanceAlerts[] = [
@@ -255,10 +285,10 @@ class Dashboard extends Component
                 'title' => 'Stok Kritis',
                 'message' => "{$this->criticalStockProducts} produk memiliki stok sangat rendah (< 5 unit)",
                 'action' => 'Lihat Produk',
-                'url' => '/products?filter=critical_stock'
+                'url' => '/products?filter=critical_stock',
             ];
         }
-        
+
         // Out of stock alert
         if ($this->outOfStockProducts > 0) {
             $this->performanceAlerts[] = [
@@ -267,10 +297,10 @@ class Dashboard extends Component
                 'title' => 'Stok Habis',
                 'message' => "{$this->outOfStockProducts} produk kehabisan stok",
                 'action' => 'Restok Sekarang',
-                'url' => '/products?filter=out_of_stock'
+                'url' => '/products?filter=out_of_stock',
             ];
         }
-        
+
         // Sales growth alert
         if ($this->salesGrowth < -10) {
             $this->performanceAlerts[] = [
@@ -279,7 +309,7 @@ class Dashboard extends Component
                 'title' => 'Penjualan Menurun',
                 'message' => "Penjualan turun {$this->salesGrowth}% dibanding periode sebelumnya",
                 'action' => 'Analisis Trend',
-                'url' => '/reports?type=sales_analysis'
+                'url' => '/reports?type=sales_analysis',
             ];
         } elseif ($this->salesGrowth > 20) {
             $this->performanceAlerts[] = [
@@ -288,10 +318,10 @@ class Dashboard extends Component
                 'title' => 'Penjualan Meningkat',
                 'message' => "Penjualan naik {$this->salesGrowth}% dibanding periode sebelumnya",
                 'action' => 'Lihat Detail',
-                'url' => '/reports?type=growth_analysis'
+                'url' => '/reports?type=growth_analysis',
             ];
         }
-        
+
         // Profit margin alert
         if ($this->profitMargin < 15) {
             $this->performanceAlerts[] = [
@@ -300,229 +330,83 @@ class Dashboard extends Component
                 'title' => 'Margin Keuntungan Rendah',
                 'message' => "Margin keuntungan hanya {$this->profitMargin}%",
                 'action' => 'Optimasi Harga',
-                'url' => '/products?action=optimize_pricing'
+                'url' => '/products?action=optimize_pricing',
             ];
         }
     }
-    
+
     private function loadChartData()
     {
         // Sales Chart Data (Daily sales in date range)
         $salesData = Sale::whereBetween('created_at', [$this->dateFrom, $this->dateTo])
-                        ->selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(final_total) as revenue')
-                        ->groupBy('date')
-                        ->orderBy('date')
-                        ->get();
-        
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count, SUM(final_total) as revenue')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
         // Store sales data for chart creation in render method
         $this->salesData = $salesData;
-        
-        // Create LarapexChart for revenue (optional - can be combined with sales)
-        // $this->revenueChart = LarapexChart::barChart()
-        //     ->setTitle('Pendapatan Harian')
-        //     ->addData('Pendapatan', $salesData->pluck('revenue')->toArray())
-        //     ->setXAxis($salesData->pluck('date')->map(function($date) {
-        //         return Carbon::parse($date)->format('d/m');
-        //     })->toArray())
-        //     ->setColors(['#10B981']);
-        
+
         // Top Products Data
         $topProducts = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                              ->join('products', 'sale_items.product_id', '=', 'products.id')
-                              ->whereBetween('sales.created_at', [$this->dateFrom, $this->dateTo])
-                              ->selectRaw('products.name, SUM(sale_items.qty) as total_qty, SUM(sale_items.qty * sale_items.unit_price) as total_revenue')
-                              ->groupBy('products.id', 'products.name')
-                              ->orderByDesc('total_qty')
-                              ->limit(5)
-                              ->get();
-        
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->whereBetween('sales.created_at', [$this->dateFrom, $this->dateTo])
+            ->selectRaw('products.id, products.name, SUM(sale_items.qty) as total_qty, SUM(sale_items.qty * sale_items.unit_price) as total_revenue')
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('total_qty')
+            ->limit(5)
+            ->get();
+
         // Top products data (keep for table display)
         $this->topProductsData = $topProducts;
-        
+
         // Stock Movement Data (In vs Out)
         $stockIn = StockMovement::where('type', 'IN')
-                               ->whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
-                               ->sum('qty');
-        
+            ->whereBetween('created_at', [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59'])
+            ->sum('qty');
+
         $stockOut = StockMovement::where('type', 'OUT')
-                                ->whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
-                                ->sum('qty');
-        
+            ->whereBetween('created_at', [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59'])
+            ->sum('qty');
+
         // Store stock data for chart creation in render method
         $this->stockData = [
             'stockIn' => $stockIn,
-            'stockOut' => $stockOut
+            'stockOut' => $stockOut,
         ];
-        
+
         // Load recent sales
         $this->recentSales = Sale::with('saleItems')
-            ->whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
+            ->whereBetween('created_at', [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
     }
-    
-    public function exportExcel()
+
+    public function exportMonthlyTrend()
     {
         try {
-            if ($this->reportType === 'sales') {
-                return Excel::download(
-                    new SalesReportExport($this->dateFrom, $this->dateTo),
-                    'laporan-penjualan-' . $this->dateFrom . '-to-' . $this->dateTo . '.xlsx'
-                );
-            } else {
-                return Excel::download(
-                    new StockReportExport($this->dateFrom, $this->dateTo),
-                    'laporan-stok-' . $this->dateFrom . '-to-' . $this->dateTo . '.xlsx'
-                );
-            }
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal export Excel: ' . $e->getMessage());
-        }
-    }
-    
-    public function exportPdf()
-    {
-        try {
-            if ($this->reportType === 'sales') {
-                $sales = Sale::with(['items.product', 'cashier'])
-                           ->whereBetween('created_at', [$this->dateFrom, $this->dateTo])
-                           ->orderBy('created_at', 'desc')
-                           ->get();
-                
-                $pdf = Pdf::loadView('reports.sales-pdf', [
-                    'sales' => $sales,
-                    'dateFrom' => $this->dateFrom,
-                    'dateTo' => $this->dateTo,
-                    'totalRevenue' => $this->totalRevenue,
-                    'totalSales' => $this->totalSales
-                ]);
-                
-                return response()->streamDownload(
-                    fn () => print($pdf->output()),
-                    'laporan-penjualan-' . $this->dateFrom . '-to-' . $this->dateTo . '.pdf'
-                );
-            } else {
-                $products = Product::with(['stockMovements' => function($query) {
-                    $query->whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59']);
-                }])->where('is_active', true)->get();
-                
-                $pdf = Pdf::loadView('reports.stock-pdf', [
-                    'products' => $products,
-                    'dateFrom' => $this->dateFrom,
-                    'dateTo' => $this->dateTo
-                ]);
-                
-                return response()->streamDownload(
-                    fn () => print($pdf->output()),
-                    'laporan-stok-' . $this->dateFrom . '-to-' . $this->dateTo . '.pdf'
-                );
-            }
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal export PDF: ' . $e->getMessage());
-        }
-    }
-    
-    public function exportSalesChart()
-    {
-        session()->flash('success', 'Export sales chart berhasil!');
-    }
-    
-    public function exportStockChart()
-    {
-        session()->flash('success', 'Export stock chart berhasil!');
-    }
-    
-    public function exportTopProducts()
-    {
-        try {
-            // Get top products data
-            $topProducts = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                              ->join('products', 'sale_items.product_id', '=', 'products.id')
-                              ->whereBetween('sales.created_at', [Carbon::now()->subDays(7), Carbon::now()])
-                              ->selectRaw('products.name, products.sku, SUM(sale_items.qty) as total_qty, SUM(sale_items.qty * sale_items.unit_price) as total_revenue')
-                              ->groupBy('products.id', 'products.name', 'products.sku')
-                              ->orderByDesc('total_qty')
-                              ->limit(10)
-                              ->get();
+            $filename = 'monthly-trend-' . Carbon::now()->format('Y-m-d') . '.pdf';
             
-            $data = [];
-            $data[] = ['Nama Produk', 'SKU', 'Qty Terjual', 'Total Revenue'];
-            
-            foreach ($topProducts as $product) {
-                $data[] = [
-                    $product->name,
-                    $product->sku,
-                    $product->total_qty,
-                    'Rp ' . number_format($product->total_revenue, 0, ',', '.')
-                ];
-            }
-            
-            return Excel::download(
-                new class($data) implements \Maatwebsite\Excel\Concerns\FromArray {
-                    private $data;
-                    public function __construct($data) { $this->data = $data; }
-                    public function array(): array { return $this->data; }
-                },
-                'top-products-' . date('Y-m-d') . '.xlsx'
-            );
-        } catch (\Exception $e) {
-            session()->flash('error', 'Gagal export top products: ' . $e->getMessage());
-        }
-    }
-    
-    public function exportRecentSales()
-    {
-        try {
-            // Get recent sales data
-            $recentSales = Sale::with(['saleItems.product'])
-                              ->orderByDesc('created_at')
-                              ->limit(50)
-                              ->get();
-            
-            $pdf = Pdf::loadView('reports.recent-sales-pdf', [
-                'sales' => $recentSales,
-                'generatedAt' => now()->format('d/m/Y H:i:s')
+            $pdf = Pdf::loadView('reports.monthly-trend', [
+                'monthlyData' => $this->monthlyTrendData,
+                'dateGenerated' => Carbon::now()->format('d/m/Y H:i'),
             ]);
             
-            return response()->streamDownload(
-                fn () => print($pdf->output()),
-                'recent-sales-' . date('Y-m-d') . '.pdf'
-            );
+            return response()->streamDownload(function () use ($pdf) {
+                echo $pdf->output();
+            }, $filename);
+            
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal export recent sales: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengexport data trend bulanan: ' . $e->getMessage());
         }
     }
-    
-    public function exportDashboardPDF()
-    {
-        return $this->exportPdf();
-    }
-    
-    public function exportDashboardExcel()
-    {
-        return $this->exportExcel();
-    }
-    
-    public function exportSalesReport()
-    {
-        $this->reportType = 'sales';
-        return $this->exportExcel();
-    }
-    
-    public function exportStockReport()
-    {
-        $this->reportType = 'stock';
-        return $this->exportExcel();
-    }
-    
 
-    
     public function render()
     {
         // Always generate fresh chart data to avoid cache issues
         $chartData = $this->generateChartData();
-        
+
         return view('livewire.dashboard', [
             // Basic Stats
             'totalProducts' => $this->totalProducts,
@@ -536,63 +420,68 @@ class Dashboard extends Component
             'revenueGrowth' => $this->revenueGrowth,
             'topSellingCategory' => $this->topSellingCategory,
             'profitMargin' => $this->profitMargin,
-            
+
+            // Enhanced Stats
+            'totalEcer' => $this->totalEcer,
+            'totalGrosir' => $this->totalGrosir,
+            'ecerCount' => $this->ecerCount,
+            'grosirCount' => $this->grosirCount,
+            'grossProfit' => $this->grossProfit,
+            'grossProfitMargin' => $this->grossProfitMargin,
+
             // Performance Metrics
             'todayStats' => $this->todayStats,
             'weekStats' => $this->weekStats,
             'monthStats' => $this->monthStats,
             'yearStats' => $this->yearStats,
             'performanceAlerts' => $this->performanceAlerts,
-            
+
             // Settings
             'autoRefresh' => $this->autoRefresh,
             'refreshInterval' => $this->refreshInterval,
-            
+
             // Chart Data
             'topProductsData' => $chartData['topProductsData'],
             'recentSales' => $chartData['recentSales'],
             'dailySalesChart' => $chartData['dailySalesChart'],
             'stockMovementChart' => $chartData['stockMovementChart'],
             'topProductsChart' => $chartData['topProductsChart'],
-            'incomingGoodsChart' => $chartData['incomingGoodsChart'],
-            'purchaseOrderChart' => $chartData['purchaseOrderChart'],
-            'hourlySalesChart' => $chartData['hourlySalesChart']
         ]);
     }
-    
+
     private function generateChartData()
     {
         // Use the selected date range from the component
-        $dateRange = [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'];
-        
+        $dateRange = [$this->dateFrom.' 00:00:00', $this->dateTo.' 23:59:59'];
+
         // Get top products data
         $topProductsData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                              ->join('products', 'sale_items.product_id', '=', 'products.id')
-                              ->whereBetween('sales.created_at', $dateRange)
-                              ->selectRaw('products.id, products.name, products.sku, SUM(sale_items.qty) as total_qty, SUM(sale_items.unit_price * sale_items.qty) as total_revenue')
-                              ->groupBy('products.id', 'products.name', 'products.sku')
-                              ->orderByDesc('total_qty')
-                              ->limit(5)
-                              ->get();
-        
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->whereBetween('sales.created_at', $dateRange)
+            ->selectRaw('products.id, products.name, products.sku, SUM(sale_items.qty) as total_qty, SUM(sale_items.unit_price * sale_items.qty) as total_revenue')
+            ->groupBy('products.id', 'products.name', 'products.sku')
+            ->orderByDesc('total_qty')
+            ->limit(5)
+            ->get();
+
         // Get recent sales with proper date filtering
         $recentSales = Sale::with(['saleItems.product', 'cashier'])
-                          ->whereBetween('created_at', $dateRange)
-                          ->orderByDesc('created_at')
-                          ->limit(5)
-                          ->get();
-        
+            ->whereBetween('created_at', $dateRange)
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
         // Create enhanced sales trend chart
         $dailySalesChart = null;
         if (!empty($this->salesData) && $this->salesData->count() > 0) {
-            $dailySalesChart = LarapexChart::lineChart()
+            $dailySalesChart = (new LarapexChart)->lineChart()
                 ->setTitle('Trend Penjualan & Pendapatan')
                 ->setSubtitle('Analisis performa harian dalam periode yang dipilih')
                 ->addData('Transaksi', $this->salesData->pluck('count')->toArray())
-                ->addData('Pendapatan (Rb)', $this->salesData->pluck('revenue')->map(function($revenue) {
+                ->addData('Pendapatan (Rb)', $this->salesData->pluck('revenue')->map(function ($revenue) {
                     return round($revenue / 1000, 1);
                 })->toArray())
-                ->setXAxis($this->salesData->pluck('date')->map(function($date) {
+                ->setXAxis($this->salesData->pluck('date')->map(function ($date) {
                     return Carbon::parse($date)->format('d/m');
                 })->toArray())
                 ->setColors(['#3B82F6', '#10B981'])
@@ -601,240 +490,121 @@ class Dashboard extends Component
                 ->setMarkers(['#3B82F6', '#10B981'], 6, 0)
                 ->setDataLabels(true);
         }
-        
+
         // Create enhanced stock movement chart focused on inventory management
         $stockMovementChart = null;
         if (!empty($this->stockData) && ($this->stockData['stockIn'] > 0 || $this->stockData['stockOut'] > 0)) {
-            // Get detailed stock movement data with product information
-            $stockMovementDetails = StockMovement::join('products', 'stock_movements.product_id', '=', 'products.id')
-                ->whereBetween('stock_movements.created_at', $dateRange)
-                ->selectRaw('
-                    stock_movements.type,
-                    COUNT(*) as transaction_count,
-                    SUM(stock_movements.qty) as total_qty,
-                    AVG(stock_movements.qty) as avg_qty_per_transaction,
-                    COUNT(DISTINCT stock_movements.product_id) as unique_products
-                ')
-                ->groupBy('stock_movements.type')
-                ->get()
-                ->keyBy('type');
-            
-            $stockInDetails = $stockMovementDetails->get('IN');
-            $stockOutDetails = $stockMovementDetails->get('OUT');
-            
-            // Ensure we have valid data for donut chart
             $stockInValue = (int) $this->stockData['stockIn'];
             $stockOutValue = (int) abs($this->stockData['stockOut']);
-            
+
             if ($stockInValue > 0 || $stockOutValue > 0) {
-                $stockMovementChart = LarapexChart::donutChart()
+                $stockMovementChart = (new LarapexChart)->donutChart()
                     ->setTitle('Pergerakan Stok Inventory')
                     ->setSubtitle('Analisis stok masuk vs keluar untuk manajemen inventory')
                     ->setDataset([$stockInValue, $stockOutValue])
                     ->setLabels([
-                        'Stok Masuk (' . number_format($stockInValue) . ' unit)',
-                        'Stok Keluar (' . number_format($stockOutValue) . ' unit)'
+                        'Stok Masuk ('.number_format($stockInValue).' unit)',
+                        'Stok Keluar ('.number_format($stockOutValue).' unit)',
                     ])
                     ->setColors(['#10B981', '#EF4444'])
                     ->setHeight(350)
                     ->setDataLabels(true);
             }
         }
-        
+
         // Create top products performance chart
         $topProductsChart = null;
         if ($topProductsData->count() > 0) {
-            $topProductsChart = LarapexChart::barChart()
+            $topProductsChart = (new LarapexChart)->barChart()
                 ->setTitle('Top 5 Produk Terlaris')
-                ->setSubtitle('Berdasarkan volume penjualan 7 hari terakhir')
+                ->setSubtitle('Berdasarkan volume penjualan dalam periode yang dipilih')
                 ->addData('Qty Terjual', $topProductsData->pluck('total_qty')->toArray())
-                ->setXAxis($topProductsData->pluck('name')->map(function($name) {
-                    return strlen($name) > 15 ? substr($name, 0, 15) . '...' : $name;
+                ->setXAxis($topProductsData->pluck('name')->map(function ($name) {
+                    return strlen($name) > 15 ? substr($name, 0, 15).'...' : $name;
                 })->toArray())
                 ->setColors(['#8B5CF6'])
                 ->setHeight(350)
                 ->setGrid(true, true)
                 ->setDataLabels(true);
         }
-        
-        // Create incoming goods agenda chart
-        $incomingGoodsChart = null;
-        $incomingGoodsData = IncomingGoodsAgenda::whereBetween('scheduled_date', $dateRange)
-            ->selectRaw('
-                status,
-                COUNT(*) as count,
-                SUM(total_amount) as total_value,
-                SUM(paid_amount) as paid_value
-            ')
-            ->groupBy('status')
-            ->get();
-        
-        if ($incomingGoodsData->count() > 0) {
-            $statusLabels = [];
-            $statusCounts = [];
-            $statusColors = [];
-            
-            foreach ($incomingGoodsData as $data) {
-                $statusName = ucfirst($data->status);
-                $statusLabels[] = $statusName . ' (' . $data->count . ' item)';
-                $statusCounts[] = $data->count;
-                
-                // Set colors based on status
-                switch ($data->status) {
-                    case 'pending':
-                        $statusColors[] = '#F59E0B'; // Yellow
-                        break;
-                    case 'received':
-                        $statusColors[] = '#10B981'; // Green
-                        break;
-                    case 'paid':
-                        $statusColors[] = '#3B82F6'; // Blue
-                        break;
-                    default:
-                        $statusColors[] = '#6B7280'; // Gray
-                }
-            }
-            
-            // Ensure we have valid data for pie chart
-            $validCounts = array_map('intval', $statusCounts);
-            $totalCount = array_sum($validCounts);
-            
-            if ($totalCount > 0 && count($validCounts) > 0) {
-                $incomingGoodsChart = LarapexChart::pieChart()
-                    ->setTitle('Status Incoming Goods Agenda')
-                    ->setSubtitle('Distribusi status barang masuk yang dijadwalkan')
-                    ->setDataset($validCounts)
-                    ->setLabels($statusLabels)
-                    ->setColors($statusColors)
-                    ->setHeight(350)
-                    ->setDataLabels(true);
-            }
-        }
 
-        // Create purchase order status chart
-        $purchaseOrderChart = null;
-        $purchaseOrderData = PurchaseOrder::whereBetween('order_date', $dateRange)
-            ->selectRaw('
-                status,
-                payment_status,
-                COUNT(*) as count,
-                SUM(total_amount) as total_value,
-                SUM(paid_amount) as paid_value
-            ')
-            ->groupBy('status', 'payment_status')
-            ->get();
-        
-        if ($purchaseOrderData->count() > 0) {
-            // Group by payment status for better insights
-            $paymentStatusData = $purchaseOrderData->groupBy('payment_status')->map(function($group, $status) {
-                return [
-                    'status' => $status,
-                    'count' => $group->sum('count'),
-                    'total_value' => $group->sum('total_value'),
-                    'paid_value' => $group->sum('paid_value')
-                ];
-            });
-            
-            $poLabels = [];
-            $poCounts = [];
-            $poColors = [];
-            
-            foreach ($paymentStatusData as $data) {
-                $statusName = ucfirst(str_replace('_', ' ', $data['status']));
-                $poLabels[] = $statusName . ' (' . $data['count'] . ' PO)';
-                $poCounts[] = $data['count'];
-                
-                // Set colors based on payment status
-                switch ($data['status']) {
-                    case 'pending':
-                        $poColors[] = '#F59E0B'; // Yellow
-                        break;
-                    case 'partial_paid':
-                        $poColors[] = '#06B6D4'; // Cyan
-                        break;
-                    case 'paid':
-                        $poColors[] = '#10B981'; // Green
-                        break;
-                    case 'overdue':
-                        $poColors[] = '#EF4444'; // Red
-                        break;
-                    default:
-                        $poColors[] = '#6B7280'; // Gray
-                }
-            }
-            
-            // Ensure we have valid data for donut chart
-            $validPoCounts = array_map('intval', $poCounts);
-            $totalPoCount = array_sum($validPoCounts);
-            
-            if ($totalPoCount > 0 && count($validPoCounts) > 0) {
-                $purchaseOrderChart = LarapexChart::donutChart()
-                    ->setTitle('Status Pembayaran Purchase Order')
-                    ->setSubtitle('Distribusi status pembayaran PO dalam periode')
-                    ->setDataset($validPoCounts)
-                    ->setLabels($poLabels)
-                    ->setColors($poColors)
-                    ->setHeight(350)
-                    ->setDataLabels(true);
-            }
-        }
-        
-        // Create enhanced hourly sales pattern chart with dual metrics
-        $hourlySalesChart = null;
-        $hourlySales = Sale::whereBetween('created_at', [$this->dateFrom . ' 00:00:00', $this->dateTo . ' 23:59:59'])
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count, SUM(final_total) as revenue, AVG(final_total) as avg_transaction')
-            ->groupBy('hour')
-            ->orderBy('hour')
-            ->get();
-            
-        if ($hourlySales->count() > 0) {
-            // Check if we have significant revenue data to show dual metrics
-            $totalRevenue = $hourlySales->sum('revenue');
-            $maxRevenue = $hourlySales->max('revenue');
-            
-            if ($totalRevenue > 0 && $maxRevenue > 1000) {
-                // Show both transaction count and revenue for better insights
-                $hourlySalesChart = LarapexChart::areaChart()
-                    ->setTitle('Pola Penjualan dan Pendapatan per Jam')
-                    ->setSubtitle('Analisis transaksi dan pendapatan berdasarkan jam dalam periode yang dipilih')
-                    ->addData('Jumlah Transaksi', $hourlySales->pluck('count')->toArray())
-                    ->addData('Pendapatan (Ribuan)', $hourlySales->pluck('revenue')->map(function($revenue) {
-                        return round($revenue / 1000, 1); // Convert to thousands for better scale
-                    })->toArray())
-                    ->setXAxis($hourlySales->pluck('hour')->map(function($hour) {
-                        return sprintf('%02d:00', $hour);
-                    })->toArray())
-                    ->setColors(['#06B6D4', '#10B981'])
-                    ->setHeight(350)
-                    ->setGrid(true)
-                    ->setMarkers(['#06B6D4', '#10B981'], 4, 0)
-                    ->setDataLabels(true);
-            } else {
-                // Show only transaction count if revenue data is minimal
-                $hourlySalesChart = LarapexChart::areaChart()
-                    ->setTitle('Pola Penjualan per Jam')
-                    ->setSubtitle('Distribusi transaksi berdasarkan jam dalam periode yang dipilih')
-                    ->addData('Jumlah Transaksi', $hourlySales->pluck('count')->toArray())
-                    ->setXAxis($hourlySales->pluck('hour')->map(function($hour) {
-                        return sprintf('%02d:00', $hour);
-                    })->toArray())
-                    ->setColors(['#06B6D4'])
-                    ->setHeight(350)
-                    ->setGrid(true)
-                    ->setMarkers(['#06B6D4'], 4, 0)
-                    ->setDataLabels(true);
-            }
-        }
-        
         return [
             'topProductsData' => $topProductsData,
             'recentSales' => $recentSales,
             'dailySalesChart' => $dailySalesChart,
             'stockMovementChart' => $stockMovementChart,
             'topProductsChart' => $topProductsChart,
-            'incomingGoodsChart' => $incomingGoodsChart,
-            'purchaseOrderChart' => $purchaseOrderChart,
-            'hourlySalesChart' => $hourlySalesChart
+            'monthlyTrendChart' => $this->monthlyTrendChart,
         ];
+    }
+
+    private function loadMonthlyTrendData()
+    {
+        try {
+            // Get monthly sales data for the last 12 months
+            $monthlyData = collect();
+            $currentDate = Carbon::now();
+            
+            for ($i = 11; $i >= 0; $i--) {
+                $month = $currentDate->copy()->subMonths($i);
+                $startOfMonth = $month->copy()->startOfMonth();
+                $endOfMonth = $month->copy()->endOfMonth();
+                
+                // Get total sales for the month
+                $monthlySales = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                    ->sum('total_amount');
+                
+                // Get transaction count for the month
+                $monthlyTransactions = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                    ->count();
+                
+                // Get ecer and grosir breakdown
+                $monthlyEcer = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                    ->where('sale_type', 'ecer')
+                    ->sum('total_amount');
+                
+                $monthlyGrosir = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
+                    ->where('sale_type', 'grosir')
+                    ->sum('total_amount');
+                
+                $monthlyData->push([
+                    'month' => $month->format('M Y'),
+                    'month_short' => $month->format('M'),
+                    'total_sales' => $monthlySales,
+                    'transactions' => $monthlyTransactions,
+                    'ecer' => $monthlyEcer,
+                    'grosir' => $monthlyGrosir,
+                ]);
+            }
+            
+            $this->monthlyTrendData = $monthlyData;
+            
+            // Create the chart
+            if ($monthlyData->count() > 0) {
+                $this->monthlyTrendChart = (new LarapexChart)->lineChart()
+                    ->setTitle('Trend Omset Bulanan')
+                    ->setSubtitle('Perbandingan omset 12 bulan terakhir')
+                    ->addData('Total Omset (Juta)', $monthlyData->pluck('total_sales')->map(function ($sales) {
+                        return round($sales / 1000000, 2);
+                    })->toArray())
+                    ->addData('Ecer (Juta)', $monthlyData->pluck('ecer')->map(function ($sales) {
+                        return round($sales / 1000000, 2);
+                    })->toArray())
+                    ->addData('Grosir (Juta)', $monthlyData->pluck('grosir')->map(function ($sales) {
+                        return round($sales / 1000000, 2);
+                    })->toArray())
+                    ->setXAxis($monthlyData->pluck('month_short')->toArray())
+                    ->setColors(['#3B82F6', '#10B981', '#8B5CF6'])
+                    ->setHeight(400)
+                    ->setGrid(true)
+                    ->setMarkers(['#3B82F6', '#10B981', '#8B5CF6'], 4, 0)
+                    ->setDataLabels(true);
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('Error loading monthly trend data: ' . $e->getMessage());
+            $this->monthlyTrendData = collect();
+            $this->monthlyTrendChart = null;
+        }
     }
 }

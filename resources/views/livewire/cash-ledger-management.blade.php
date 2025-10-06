@@ -13,14 +13,46 @@
                     <p class="text-gray-600">Kelola catatan pemasukan dan pengeluaran kas</p>
                 </div>
             </div>
-            <button type="button" 
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
-                    wire:click="openModal">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                Tambah Transaksi
-            </button>
+            <div class="flex items-center space-x-3">
+                <!-- Export Buttons -->
+                <div class="flex items-center space-x-2">
+                    <button type="button" 
+                            class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                            wire:click="exportExcel"
+                            title="Export ke Excel">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Excel
+                    </button>
+                    <button type="button" 
+                            class="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                            wire:click="exportPdf"
+                            title="Export ke PDF">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        PDF
+                    </button>
+                    <button type="button" 
+                            class="inline-flex items-center px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                            wire:click="printReport"
+                            title="Print Laporan">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        Print
+                    </button>
+                </div>
+                <button type="button" 
+                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+                        wire:click="openModal">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Tambah Transaksi
+                </button>
+            </div>
         </div>
     </div>
 
@@ -135,6 +167,21 @@
                 </select>
             </div>
             <div>
+                <label for="filterWarehouse" class="block text-sm font-medium text-gray-700 mb-2">Gudang/Cabang</label>
+                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                        id="filterWarehouse" wire:model.live="filterWarehouse">
+                    <option value="">Semua Gudang</option>
+                    @foreach($warehouses as $warehouse)
+                        <option value="{{ $warehouse->id }}">
+                            {{ $warehouse->name }}
+                            @if($warehouse->branch)
+                                - {{ $warehouse->branch }}
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
                 <label for="searchTerm" class="block text-sm font-medium text-gray-700 mb-2">Cari</label>
                 <input type="text" 
                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
@@ -151,7 +198,177 @@
                 </button>
             </div>
         </div>
+        
+        <!-- Annual Summary Toggle -->
+        <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button type="button" 
+                            class="inline-flex items-center px-4 py-2 {{ $showAnnualSummary ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-purple-100 hover:bg-purple-200 text-purple-700' }} font-medium rounded-lg transition-colors duration-200"
+                            wire:click="toggleAnnualSummary">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        {{ $showAnnualSummary ? 'Sembunyikan' : 'Tampilkan' }} Ringkasan Tahunan
+                    </button>
+                    
+                    @if($showAnnualSummary)
+                        <div class="flex items-center space-x-2">
+                            <label for="selectedYear" class="text-sm font-medium text-gray-700">Tahun:</label>
+                            <select class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
+                                    id="selectedYear" wire:model.live="selectedYear">
+                                @for($year = date('Y'); $year >= 2020; $year--)
+                                    <option value="{{ $year }}">{{ $year }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- Annual Summary Section -->
+    @if($showAnnualSummary)
+        @php
+            $annualSummary = $this->getAnnualSummary($selectedYear);
+        @endphp
+        
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-2">Ringkasan Tahunan {{ $selectedYear }} 📊</h2>
+                <p class="text-gray-600">Analisis lengkap pemasukan dan pengeluaran selama tahun {{ $selectedYear }}</p>
+            </div>
+
+            <!-- Annual Overview Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-100 text-sm font-medium">Total Pemasukan</p>
+                            <p class="text-2xl font-bold">Rp {{ number_format($annualSummary['total_income'], 0, ',', '.') }}</p>
+                        </div>
+                        <div class="p-3 bg-green-400 bg-opacity-30 rounded-lg">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-red-100 text-sm font-medium">Total Pengeluaran</p>
+                            <p class="text-2xl font-bold">Rp {{ number_format($annualSummary['total_expense'], 0, ',', '.') }}</p>
+                        </div>
+                        <div class="p-3 bg-red-400 bg-opacity-30 rounded-lg">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-{{ $annualSummary['net_profit'] >= 0 ? 'blue' : 'orange' }}-500 to-{{ $annualSummary['net_profit'] >= 0 ? 'blue' : 'orange' }}-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-{{ $annualSummary['net_profit'] >= 0 ? 'blue' : 'orange' }}-100 text-sm font-medium">{{ $annualSummary['net_profit'] >= 0 ? 'Keuntungan' : 'Kerugian' }} Bersih</p>
+                            <p class="text-2xl font-bold">Rp {{ number_format(abs($annualSummary['net_profit']), 0, ',', '.') }}</p>
+                        </div>
+                        <div class="p-3 bg-{{ $annualSummary['net_profit'] >= 0 ? 'blue' : 'orange' }}-400 bg-opacity-30 rounded-lg">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-100 text-sm font-medium">Total Transaksi</p>
+                            <p class="text-3xl font-bold">{{ number_format($annualSummary['transaction_count']) }}</p>
+                        </div>
+                        <div class="p-3 bg-purple-400 bg-opacity-30 rounded-lg">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Breakdown -->
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Breakdown Bulanan 📅</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bulan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemasukan</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengeluaran</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Net</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($annualSummary['monthly_data'] as $monthData)
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {{ $monthData['month_name'] }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">
+                                        Rp {{ number_format($monthData['income'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">
+                                        Rp {{ number_format($monthData['expense'], 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium {{ $monthData['net'] >= 0 ? 'text-blue-600' : 'text-orange-600' }}">
+                                        Rp {{ number_format(abs($monthData['net']), 0, ',', '.') }}
+                                        @if($monthData['net'] < 0) (Rugi) @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Income Categories -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Kategori Pemasukan 💰</h3>
+                    <div class="space-y-3">
+                        @forelse($annualSummary['income_by_category'] as $category => $amount)
+                            <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                                <span class="text-sm font-medium text-gray-900">{{ $category ?: 'Tidak Dikategorikan' }}</span>
+                                <span class="text-sm font-bold text-green-600">Rp {{ number_format($amount, 0, ',', '.') }}</span>
+                            </div>
+                        @empty
+                            <p class="text-gray-500 text-sm">Tidak ada data pemasukan</p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <!-- Expense Categories -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Kategori Pengeluaran 💸</h3>
+                    <div class="space-y-3">
+                        @forelse($annualSummary['expense_by_category'] as $category => $amount)
+                            <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                                <span class="text-sm font-medium text-gray-900">{{ $category ?: 'Tidak Dikategorikan' }}</span>
+                                <span class="text-sm font-bold text-red-600">Rp {{ number_format($amount, 0, ',', '.') }}</span>
+                            </div>
+                        @empty
+                            <p class="text-gray-500 text-sm">Tidak ada data pengeluaran</p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- Table -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -164,6 +381,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deskripsi</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modal Usaha</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
@@ -213,6 +431,18 @@
                                 <div class="text-sm text-gray-900">{{ $ledger->capitalTracking->name ?? 'N/A' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">
+                                    @if($ledger->warehouse)
+                                        {{ $ledger->warehouse->name }}
+                                        @if($ledger->warehouse->branch)
+                                            <span class="text-xs text-gray-500">({{ $ledger->warehouse->branch }})</span>
+                                        @endif
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-blue-600">
                                     Rp {{ number_format($ledger->balance_after, 0, ',', '.') }}
                                 </div>
@@ -240,7 +470,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-12 text-center">
+                            <td colspan="8" class="px-6 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-gray-500">
                                     <svg class="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
@@ -362,6 +592,20 @@
                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('description') border-red-500 @enderror" 
                                        id="description" wire:model="description" placeholder="Deskripsi transaksi">
                                 @error('description')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="mt-4">
+                                <label for="warehouse_id" class="block text-sm font-medium text-gray-700 mb-2">Gudang/Cabang</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @error('warehouse_id') border-red-500 @enderror" 
+                                        id="warehouse_id" wire:model="warehouse_id">
+                                    <option value="">Pilih Gudang/Cabang</option>
+                                    @foreach($warehouses as $warehouse)
+                                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }} ({{ $warehouse->branch }})</option>
+                                    @endforeach
+                                </select>
+                                @error('warehouse_id')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
                             </div>

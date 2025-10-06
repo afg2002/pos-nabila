@@ -7,6 +7,7 @@ use App\IncomingGoods;
 use App\PaymentSchedule;
 use App\Models\AgendaEvent;
 use App\Models\AuditLog;
+use App\Services\AgendaCashflowService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -19,6 +20,7 @@ class AgendaCalendar extends Component
     public $viewMode = 'month'; // month, week, day
     public $showModal = false;
     public $selectedEvents = [];
+    public $showCashflowTab = false; // New property for cashflow tab
     
     // Form properties for creating/editing events
     public $showEventModal = false;
@@ -464,14 +466,51 @@ class AgendaCalendar extends Component
         return $events->sortBy('date');
     }
 
+    public function toggleCashflowTab()
+    {
+        $this->showCashflowTab = !$this->showCashflowTab;
+    }
+
+    public function getDailyCashflowProperty()
+    {
+        $service = new AgendaCashflowService();
+        return $service->getDailyTotals($this->selectedDate);
+    }
+
+    public function getWeeklyCashflowProperty()
+    {
+        $service = new AgendaCashflowService();
+        $startOfWeek = Carbon::parse($this->selectedDate)->startOfWeek();
+        $endOfWeek = Carbon::parse($this->selectedDate)->endOfWeek();
+        
+        return $service->getWeeklyTotals($startOfWeek, $endOfWeek);
+    }
+
+    public function getMonthlyCashflowProperty()
+    {
+        $service = new AgendaCashflowService();
+        $date = Carbon::parse($this->selectedDate);
+        
+        return $service->getMonthlyTotals($date->year, $date->month);
+    }
+
     public function render()
     {
-        return view('livewire.agenda-calendar', [
+        $data = [
             'calendarDays' => $this->calendarDays,
             'weekDays' => $this->weekDays,
             'upcomingEvents' => $this->upcomingEvents,
             'currentMonthName' => $this->currentDate->format('F Y'),
             'currentWeekRange' => $this->currentDate->startOfWeek(Carbon::MONDAY)->format('M d') . ' - ' . $this->currentDate->endOfWeek(Carbon::SUNDAY)->format('M d, Y')
-        ]);
+        ];
+
+        // Add cashflow data if tab is active
+        if ($this->showCashflowTab) {
+            $data['dailyCashflow'] = $this->dailyCashflow;
+            $data['weeklyCashflow'] = $this->weeklyCashflow;
+            $data['monthlyCashflow'] = $this->monthlyCashflow;
+        }
+
+        return view('livewire.agenda-calendar', $data);
     }
 }

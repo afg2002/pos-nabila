@@ -107,6 +107,13 @@ class PermissionSeeder extends Seeder
             ['name' => 'reports.view', 'display_name' => 'View Reports', 'description' => 'Can view all reports', 'group' => 'reports'],
             ['name' => 'reports.export', 'display_name' => 'Export Reports', 'description' => 'Can export reports to Excel/PDF', 'group' => 'reports'],
             
+            // Warehouse permissions
+            ['name' => 'warehouses.view', 'display_name' => 'View Warehouses', 'description' => 'Can view warehouse list and details', 'group' => 'warehouses'],
+            ['name' => 'warehouses.create', 'display_name' => 'Create Warehouse', 'description' => 'Can create new warehouses', 'group' => 'warehouses'],
+            ['name' => 'warehouses.edit', 'display_name' => 'Edit Warehouse', 'description' => 'Can edit existing warehouses', 'group' => 'warehouses'],
+            ['name' => 'warehouses.delete', 'display_name' => 'Delete Warehouse', 'description' => 'Can delete warehouses', 'group' => 'warehouses'],
+            ['name' => 'warehouses.manage', 'display_name' => 'Manage Warehouses', 'description' => 'Can fully manage warehouse operations', 'group' => 'warehouses'],
+
             // Incoming Goods Agenda permissions
             ['name' => 'incoming_goods_agenda.view', 'display_name' => 'View Incoming Goods Agenda', 'description' => 'Can view incoming goods agenda', 'group' => 'incoming_goods_agenda'],
             ['name' => 'incoming_goods_agenda.create', 'display_name' => 'Create Incoming Goods Agenda', 'description' => 'Can create new incoming goods agenda', 'group' => 'incoming_goods_agenda'],

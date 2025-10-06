@@ -135,9 +135,9 @@
     <?php if(auth()->guard()->check()): ?>
         <div class="min-h-screen">
             <!-- Sidebar -->
-            <div id="sidebar" class="sidebar-toggle fixed inset-y-0 left-0 z-50 w-64 sidebar-gradient shadow-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <div id="sidebar" class="sidebar-toggle fixed inset-y-0 left-0 z-50 w-64 sidebar-gradient shadow-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col">
                 <!-- Sidebar Header -->
-                <div class="flex items-center justify-center h-16 px-4 bg-black bg-opacity-20">
+                <div class="flex items-center justify-center h-16 px-4 bg-black bg-opacity-20 flex-shrink-0">
                     <div class="flex items-center">
                         <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                             <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,8 +148,8 @@
                     </div>
                 </div>
 
-                <!-- Sidebar Navigation -->
-                <nav class="mt-8 px-4">
+                <!-- Sidebar Navigation - Scrollable -->
+                <nav class="flex-1 overflow-y-auto px-4 py-4">
                     <div class="space-y-2">
                         <!-- Dashboard -->
                         <a href="<?php echo e(route('dashboard')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('dashboard') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
@@ -187,7 +187,17 @@
                             Products
                         </a>
 
-                         <!-- Inventory Management -->
+                         <!-- Warehouse Management -->
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'warehouses.view')): ?>
+                            <a href="<?php echo e(route('warehouses.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('warehouses.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
+                                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                </svg>
+                                Warehouses
+                            </a>
+                        <?php endif; ?>
+
+                        <!-- Inventory Management -->
                         <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'inventory.view')): ?>
                             <a href="<?php echo e(route('inventory.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('inventory.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,8 +301,8 @@
                     </div>
                 </nav>
 
-                <!-- User Profile Section -->
-                <div class="absolute bottom-0 w-full p-4">
+                <!-- User Profile Section - Fixed at bottom -->
+                <div class="flex-shrink-0 p-4 border-t border-blue-400 border-opacity-30">
                     <div class="bg-white bg-opacity-10 rounded-lg p-3">
                         <div class="flex items-center">
                             <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
@@ -354,6 +364,8 @@
                                                             Roles & Permissions
                                                         <?php elseif(request()->routeIs('profile.*')): ?>
                                                             Profile Settings
+                                                        <?php elseif(request()->routeIs('warehouses.*')): ?>
+                                                            Warehouse Management
                                                         <?php else: ?>
                                                             <?php echo e(ucwords(str_replace(['-', '_'], ' ', request()->route()->getName()))); ?>
 

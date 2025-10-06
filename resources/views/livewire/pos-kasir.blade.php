@@ -38,7 +38,6 @@
                                wire:model.live="barcode" 
                                placeholder="Scan atau ketik barcode..."
                                class="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                               autofocus
                                autocomplete="off"
                                maxlength="50">
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -50,6 +49,20 @@
                     </div>
                 </div>
                 
+                <!-- Warehouse Selector -->
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-warehouse mr-2"></i>Pilih Gudang
+                    </label>
+                    <select wire:model.live="warehouseId"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Pilih Gudang</option>
+                        @foreach($warehouses as $warehouse)
+                            <option value="{{ $warehouse->id }}">{{ $warehouse->name }} ({{ $warehouse->code }})</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <!-- Product Search -->
                 <div class="mt-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Cari Produk</label>
@@ -63,9 +76,16 @@
                 <div class="mt-4">
                     <button type="button" 
                             wire:click="showCustomItemModal"
-                            class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center">
-                        <i class="fas fa-plus mr-2"></i>
-                        Tambah Item Custom
+                            wire:loading.attr="disabled"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center disabled:opacity-50">
+                        <span wire:loading.remove wire:target="showCustomItemModal">
+                            <i class="fas fa-plus mr-2"></i>
+                            Tambah Item Custom
+                        </span>
+                        <span wire:loading wire:target="showCustomItemModal">
+                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                            Loading...
+                        </span>
                     </button>
                 </div>
             </div>
@@ -123,7 +143,23 @@
                                 </div>
                             </div>
                             <div class="text-xs text-gray-500 mt-1">
-                                Stok: {{ $product->current_stock }} {{ $product->unit ? $product->unit->abbreviation : 'pcs' }}
+                                @php
+                                    $warehouseStock = $warehouseId ? 
+                                        \App\ProductWarehouseStock::where('product_id', $product->id)
+                                            ->where('warehouse_id', $warehouseId)
+                                            ->value('stock_on_hand') ?? 0 : 
+                                        $product->current_stock;
+                                    $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
+                                    $profitMargin = $costPrice > 0 && $displayPrice > 0 ? (($displayPrice - $costPrice) / $displayPrice) * 100 : 0;
+                                @endphp
+                                <div>Stok: {{ number_format($warehouseStock) }} {{ $product->unit ? $product->unit->abbreviation : 'pcs' }}</div>
+                                @if($warehouseId && $warehouseStock != $product->current_stock)
+                                    <div class="text-blue-600">(Total: {{ number_format($product->current_stock) }})</div>
+                                @endif
+                                @if($costPrice > 0)
+                                    <div class="text-orange-600 mt-1">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
+                                    <div class="text-green-600">Profit: {{ number_format($profitMargin, 1) }}%</div>
+                                @endif
                             </div>
                         </div>
                     @endforeach
@@ -263,6 +299,15 @@
                                             @endif
                                         </div>
                                     </div>
+                                    <div class="text-xs text-gray-500 mt-2">
+                                        @php
+                                            $selectedWarehouseStock = null;
+                                            if (! empty($warehouseId)) {
+                                                $selectedWarehouseStock = optional($product->warehouseStocks->first())->stock_on_hand ?? 0;
+                                            }
+                                        @endphp
+                                        Stok gudang: {{ number_format($selectedWarehouseStock ?? $product->current_stock) }}
+                                    </div>
                                     <button wire:click="removeFromCart('{{ $key }}')"
                                             class="text-red-500 hover:text-red-700">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,7 +387,17 @@
                                     @if(isset($item['is_custom']) && $item['is_custom'])
                                         <span class="text-xs text-green-600 font-medium">Item Custom</span>
                                     @else
-                                        <span class="text-xs text-gray-500">Stok: {{ $item['available_stock'] }}</span>
+                                        <div class="text-xs text-gray-500">
+                                            <div>Stok: {{ $item['available_stock'] }}</div>
+                                            @php
+                                                $product = \App\Product::find($item['product_id']);
+                                                $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
+                                                $profit = ($item['price'] - $costPrice) * $item['quantity'];
+                                                $margin = $costPrice > 0 ? (($item['price'] - $costPrice) / $item['price']) * 100 : 0;
+                                            @endphp
+                                            <div class="text-orange-600">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
+                                            <div class="text-green-600">Profit: Rp {{ number_format($profit, 0, ',', '.') }} ({{ number_format($margin, 1) }}%)</div>
+                                        </div>
                                     @endif
                                     <div class="text-right">
                                         <div class="text-xs text-gray-500">
@@ -390,6 +445,29 @@
                                 <span>-Rp {{ number_format($discountAmount, 0, ',', '.') }}</span>
                             </div>
                         @endif
+                        @php
+                            $totalCost = 0;
+                            $totalProfit = 0;
+                            foreach($cart as $item) {
+                                if (!isset($item['is_custom']) || !$item['is_custom']) {
+                                    $product = \App\Product::find($item['product_id']);
+                                    $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
+                                    $itemCost = $costPrice * $item['quantity'];
+                                    $itemProfit = ($item['price'] - $costPrice) * $item['quantity'];
+                                    $totalCost += $itemCost;
+                                    $totalProfit += $itemProfit;
+                                }
+                            }
+                            $profitMargin = $subtotal > 0 ? ($totalProfit / $subtotal) * 100 : 0;
+                        @endphp
+                        <div class="flex justify-between text-sm text-orange-600">
+                            <span>Total Modal:</span>
+                            <span>Rp {{ number_format($totalCost, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm text-green-600">
+                            <span>Total Profit:</span>
+                            <span>Rp {{ number_format($totalProfit, 0, ',', '.') }} ({{ number_format($profitMargin, 1) }}%)</span>
+                        </div>
                         <div class="flex justify-between text-lg font-semibold border-t pt-2">
                             <span>Total:</span>
                             <span>Rp {{ number_format($total, 0, ',', '.') }}</span>
@@ -409,7 +487,7 @@
 
     <!-- Checkout Modal -->
     @if($showCheckoutModal)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                 <h3 class="text-lg font-semibold mb-4">Checkout</h3>
                 
@@ -506,16 +584,16 @@
                 
                 <!-- Items -->
                 <div class="border-t border-b border-gray-300 py-3 mb-4">
-                    @foreach($lastSale->items as $item)
+                    @foreach($lastSale->saleItems as $item)
                         <div class="flex justify-between text-sm mb-1">
                             <div class="flex-1">
-                                <div>{{ $item->product->name }}</div>
+                                <div>{{ $item->is_custom ? $item->custom_item_name : $item->product->name }}</div>
                                 <div class="text-xs text-gray-500">
-                                    {{ $item->quantity }} x Rp {{ number_format($item->unit_price, 0, ',', '.') }}
+                                    {{ $item->qty }} x Rp {{ number_format($item->unit_price, 0, ',', '.') }}
                                 </div>
                             </div>
                             <div class="text-right">
-                                Rp {{ number_format($item->total_price, 0, ',', '.') }}
+                                Rp {{ number_format($item->subtotal, 0, ',', '.') }}
                             </div>
                         </div>
                     @endforeach
@@ -724,6 +802,10 @@
             
             // Clear barcode input after successful scan
             barcodeInput.addEventListener('blur', function(e) {
+                // If any modal is open, do not refocus barcode input
+                if (document.querySelector('.modal')) {
+                    return;
+                }
                 // Don't auto-focus if user is interacting with other form elements or pricing tier is updating
                 const activeElement = document.activeElement;
                 const isFormInteraction = activeElement && (
@@ -781,7 +863,7 @@
 
 <!-- Custom Item Modal -->
 @if($showCustomItemModal)
-<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+<div class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-gray-900">Tambah Item Custom</h3>

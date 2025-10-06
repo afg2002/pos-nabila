@@ -106,6 +106,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cash-ledger', function () {
         return view('cash-ledger.index');
     })->name('cash-ledger.index');
+    
+    // Cash Ledger Export Routes
+    Route::get('/cash-ledger/export/excel', [\App\Livewire\CashLedgerManagement::class, 'exportExcel'])->name('cash-ledger.export.excel');
+    Route::get('/cash-ledger/export/pdf', [\App\Livewire\CashLedgerManagement::class, 'exportPdf'])->name('cash-ledger.export.pdf');
+    Route::get('/cash-ledger/print', [\App\Livewire\CashLedgerManagement::class, 'printReport'])->name('cash-ledger.print');
 });
 
 // Debt Reminder Management
@@ -127,6 +132,56 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', function () {
         return view('profile.index');
     })->name('profile.index');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard.index');
+    })->name('dashboard');
+    Route::get('/pos', function () {
+        return view('pos.index');
+    })->name('pos.index');
+    
+    Route::get('/inventory', function () {
+        return view('inventory.index');
+    })->name('inventory.index');
+    Route::get('/products', function () {
+        return view('products.index');
+    })->name('products.index');
+    Route::get('/categories', function () {
+        return view('categories.index');
+    })->name('categories.index');
+    Route::get('/units', function () {
+        return view('product-units.index');
+    })->name('units.index');
+    Route::get('/suppliers', function () {
+        return view('suppliers.index');
+    })->name('suppliers.index');
+    Route::get('/customers', function () {
+        return view('customers.index');
+    })->name('customers.index');
+    Route::get('/transactions', function () {
+        return view('transactions.index');
+    })->name('transactions.index');
+    Route::get('/cash-ledger', function () {
+        return view('cash-ledger.index');
+    })->name('cash-ledger.index');
+    Route::get('/purchase-orders', function () {
+        return view('purchase-orders.index');
+    })->name('purchase-orders.index');
+    Route::get('/incoming-goods', function () {
+        return view('incoming-goods-agenda.index');
+    })->name('incoming-goods.index');
+    Route::get('/warehouses', function () {
+        return view('warehouses.index');
+    })->name('warehouses.index');
+    
+    // Warehouse management routes
+    Route::resource('warehouses', 'App\\Http\\Controllers\\WarehouseController')->middleware('auth');
+    
+    Route::get('/reports', function () {
+        return view('reports.index');
+    })->name('reports.index');
 });
 
 Auth::routes();

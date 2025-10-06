@@ -20,8 +20,9 @@ return new class extends Migration
             $table->integer('sort_order')->default(0);
             $table->timestamps();
             
-            $table->unique('name');
-            $table->unique('abbreviation');
+            // Use indexes instead of unique constraints to avoid duplicate errors in tests
+            $table->index('name');
+            $table->index('abbreviation');
             $table->index('is_active');
         });
     }

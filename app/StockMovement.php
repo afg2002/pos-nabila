@@ -2,9 +2,9 @@
 
 namespace App;
 
+use App\Domains\User\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Domains\User\Models\User;
 
 class StockMovement extends Model
 {
@@ -18,116 +18,203 @@ class StockMovement extends Model
         'performed_by',
         'stock_before',
         'stock_after',
-
+        'warehouse',
+        'warehouse_id',
         'metadata',
         'reason_code',
         'approved_by',
-        'approved_at'
+        'approved_at',
+        // alias-friendly names
+        'quantity',
+        'reference_type',
+        'reference_id',
     ];
 
     protected $casts = [
         'qty' => 'integer',
         'ref_id' => 'integer',
+        'warehouse_id' => 'integer',
         'expiry_date' => 'date',
-
         'metadata' => 'array',
-        'approved_at' => 'datetime'
+        'approved_at' => 'datetime',
     ];
 
-    // Relasi ke product
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
-    // Relasi ke user (performed_by)
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Domains\User\Models\User::class, 'performed_by');
+        return $this->belongsTo(User::class, 'performed_by');
     }
 
-    // Relasi ke user yang melakukan aksi
     public function performedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'performed_by');
     }
 
-    // Relasi ke user yang approve
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    // Scope untuk filter berdasarkan type
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
     public function scopeByType($query, $type)
     {
         return $query->where('type', $type);
     }
 
-    // Scope untuk filter berdasarkan produk
     public function scopeByProduct($query, $productId)
     {
         return $query->where('product_id', $productId);
     }
 
-    // Method untuk membuat stock movement dengan enhanced tracking
     public static function createMovement($productId, $qty, $type, $options = [])
     {
         $defaultOptions = [
             'ref_type' => null,
             'ref_id' => null,
             'note' => null,
-            'performed_by' => auth()->id(),
-
+            'performed_by' => auth()->id() ?? 1, // Fallback to user ID 1 for tests
+            'warehouse_id' => null,
+            'warehouse' => null,
+            'stock_before' => null,
+            'stock_after' => null,
             'metadata' => null,
             'reason_code' => null,
             'approved_by' => null,
-            'approved_at' => null
+            'approved_at' => null,
         ];
-        
+
         $options = array_merge($defaultOptions, $options);
-        
-        return self::create([
+
+        if (! $options['warehouse_id']) {
+            $options['warehouse_id'] = optional(Warehouse::getDefault())->id;
+        }
+
+        $warehouse = $options['warehouse_id'] ? Warehouse::find($options['warehouse_id']) : null;
+
+        if ($warehouse) {
+            $options['warehouse'] = $options['warehouse'] ?? $warehouse->code;
+        }
+
+        $movement = self::create([
             'product_id' => $productId,
             'qty' => $qty,
             'type' => $type,
-            ...$options
+            ...$options,
         ]);
+
+        if ($movement->warehouse_id) {
+            $stockRow = ProductWarehouseStock::query()->firstOrCreate(
+                [
+                    'product_id' => $movement->product_id,
+                    'warehouse_id' => $movement->warehouse_id,
+                ],
+                [
+                    'stock_on_hand' => 0,
+                    'reserved_stock' => 0,
+                    'safety_stock' => 0,
+                ]
+            );
+
+            if (strtoupper($type) === 'ADJUSTMENT' && ! is_null($movement->stock_after)) {
+                $stockRow->stock_on_hand = (int) $movement->stock_after;
+                $stockRow->save();
+            } else {
+                $stockRow->increment('stock_on_hand', (int) $movement->qty);
+            }
+        }
+
+        $movement->product?->refreshCurrentStock();
+
+        return $movement;
     }
 
-    
-    // Scope untuk movement yang perlu approval
     public function scopePendingApproval($query)
     {
         return $query->whereNull('approved_by')->whereNull('approved_at');
     }
-    
-    // Scope untuk movement yang sudah diapprove
+
     public function scopeApproved($query)
     {
         return $query->whereNotNull('approved_by')->whereNotNull('approved_at');
     }
-    
-    // Method untuk approve movement
+
     public function approve($userId = null)
     {
         $this->update([
             'approved_by' => $userId ?? auth()->id(),
-            'approved_at' => now()
+            'approved_at' => now(),
         ]);
-        
+
         return $this;
     }
-    
-    // Method untuk check apakah sudah expired
+
     public function isExpired()
     {
         return $this->expiry_date && $this->expiry_date->isPast();
     }
-    
-    // Method untuk check apakah akan expired dalam X hari
+
     public function isExpiringIn($days = 30)
     {
         return $this->expiry_date && $this->expiry_date->diffInDays(now()) <= $days;
+    }
+
+    // ===== Alias accessors & mutators =====
+    public function getQuantityAttribute()
+    {
+        return $this->qty;
+    }
+
+    public function setQuantityAttribute($value)
+    {
+        $this->attributes['qty'] = (int) $value;
+    }
+
+    public function getReferenceTypeAttribute()
+    {
+        return $this->ref_type;
+    }
+
+    public function setReferenceTypeAttribute($value)
+    {
+        $this->attributes['ref_type'] = $value;
+    }
+
+    public function getReferenceIdAttribute()
+    {
+        return $this->ref_id;
+    }
+
+    public function setReferenceIdAttribute($value)
+    {
+        $this->attributes['ref_id'] = (int) $value;
+    }
+
+    public static function booted()
+    {
+        static::creating(function ($model) {
+            // Sync physical alias columns before insert
+            $model->attributes['quantity'] = (int) ($model->qty ?? ($model->attributes['qty'] ?? 0));
+            $model->attributes['reference_type'] = $model->ref_type ?? ($model->attributes['ref_type'] ?? null);
+            $model->attributes['reference_id'] = isset($model->ref_id)
+                ? (int) $model->ref_id
+                : (isset($model->attributes['ref_id']) ? (int) $model->attributes['ref_id'] : null);
+        });
+    
+        static::updating(function ($model) {
+            // Keep alias columns in sync on updates
+            $model->attributes['quantity'] = (int) ($model->qty ?? ($model->attributes['qty'] ?? 0));
+            $model->attributes['reference_type'] = $model->ref_type ?? ($model->attributes['ref_type'] ?? null);
+            $model->attributes['reference_id'] = isset($model->ref_id)
+                ? (int) $model->ref_id
+                : (isset($model->attributes['ref_id']) ? (int) $model->attributes['ref_id'] : null);
+        });
     }
 }

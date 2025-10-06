@@ -262,7 +262,7 @@ class ReportManagement extends Component
             
             foreach ($sale->saleItems as $item) {
                 if ($item->product) {
-                    $itemCost = $item->product->cost_price * $item->quantity;
+                    $itemCost = $item->product->getEffectiveCostPrice() * $item->quantity;
                     $itemRevenue = $item->price * $item->quantity;
                     $itemProfit = $itemRevenue - $itemCost;
                     

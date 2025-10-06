@@ -6,6 +6,8 @@ use App\Domains\User\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use App\Warehouse;
 
 class CashLedger extends Model
 {
@@ -24,6 +26,7 @@ class CashLedger extends Model
         'reference_type',
         'reference_id',
         'capital_tracking_id',
+        'warehouse_id',
         'notes',
         'created_by',
     ];
@@ -49,6 +52,14 @@ class CashLedger extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the warehouse associated with this entry
+     */
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     /**

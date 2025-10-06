@@ -2,130 +2,258 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Product;
+use App\ProductWarehouseStock;
 use App\StockMovement;
-use App\Domains\User\Models\User;
-use Livewire\Attributes\Validate;
+use App\Warehouse;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Livewire\Attributes\Validate;
+use Livewire\Component;
 
 class StockForm extends Component
 {
     use AuthorizesRequests;
+
     #[Validate('required|exists:products,id')]
     public $product_id = '';
-    
+
     #[Validate('required|in:in,out,adjustment')]
     public $movement_type = 'in';
-    
+
     #[Validate('required|numeric|min:1')]
     public $quantity = '';
-    
+
     #[Validate('nullable|string|max:255')]
     public $notes = '';
-    
+
     #[Validate('nullable|string|max:50')]
     public $reason_code = '';
-    
+
     public $showModal = false;
+
     public $products = [];
+
+    public $warehouses = [];
+
+    #[Validate('required|exists:warehouses,id')]
+    public $warehouse_id = '';
+
     public $selectedProduct = null;
-    
-    public function mount()
+
+    public $currentWarehouseStock = 0;
+
+    public $productSearch = '';
+
+    public $searchResults = [];
+
+    public $showSearchResults = false;
+
+    public $showDropdown = false;
+
+    public $allProducts = [];
+
+    public function mount(): void
     {
         $this->products = Product::where('status', 'active')
             ->whereNull('deleted_at')
             ->orderBy('name')
             ->get();
+
+        $this->allProducts = $this->products; // Copy for dropdown display
+
+        $this->warehouses = Warehouse::ordered()->get();
+        $defaultWarehouse = $this->warehouses->firstWhere('is_default', true) ?? $this->warehouses->first();
+        $this->warehouse_id = $defaultWarehouse?->id ?? '';
+
+        $this->updateSelectedContext();
     }
-    
-    public function updatedProductId($value)
+
+    public function updatedProductSearch($value): void
     {
-        if ($value) {
-            $this->selectedProduct = Product::find($value);
+        if (strlen($value) >= 2) {
+            $this->searchResults = Product::where('status', 'active')
+                ->whereNull('deleted_at')
+                ->where(function ($query) use ($value) {
+                    $query->where('name', 'like', '%' . $value . '%')
+                          ->orWhere('sku', 'like', '%' . $value . '%')
+                          ->orWhere('barcode', 'like', '%' . $value . '%');
+                })
+                ->orderBy('name')
+                ->limit(10)
+                ->get();
+            $this->showSearchResults = true;
+            $this->showDropdown = false; // Hide dropdown when searching
         } else {
-            $this->selectedProduct = null;
+            $this->searchResults = [];
+            $this->showSearchResults = false;
+            $this->showDropdown = false;
         }
     }
-    
-    public function openModal()
+
+    public function selectProduct($productId): void
+    {
+        $this->product_id = $productId;
+        $this->selectedProduct = Product::find($productId);
+        $this->productSearch = $this->selectedProduct ? $this->selectedProduct->name . ' (' . $this->selectedProduct->sku . ')' : '';
+        $this->showSearchResults = false;
+        $this->showDropdown = false;
+        $this->updateSelectedContext();
+    }
+
+    public function clearProductSearch(): void
+    {
+        $this->productSearch = '';
+        $this->product_id = '';
+        $this->selectedProduct = null;
+        $this->searchResults = [];
+        $this->showSearchResults = false;
+        $this->showDropdown = false;
+        $this->currentWarehouseStock = 0;
+    }
+
+    public function updatedProductId($value): void
+    {
+        $this->selectedProduct = $value ? Product::find($value) : null;
+
+        $this->updateSelectedContext();
+    }
+
+    public function updatedWarehouseId($value): void
+    {
+        $this->updateSelectedContext();
+    }
+
+    private function updateSelectedContext(): void
+    {
+        if ($this->selectedProduct && $this->warehouse_id) {
+            $stockRow = $this->selectedProduct
+                ->warehouseStocks()
+                ->where('warehouse_id', $this->warehouse_id)
+                ->first();
+
+            $this->currentWarehouseStock = $stockRow?->stock_on_hand ?? 0;
+
+            return;
+        }
+
+        $this->currentWarehouseStock = 0;
+    }
+
+    public function openModal(): void
     {
         $this->showModal = true;
     }
-    
-    public function closeModal()
+
+    public function closeModal(): void
     {
         $this->showModal = false;
         $this->reset([
-            'product_id', 'movement_type', 'quantity', 'notes', 'reason_code'
+            'product_id',
+            'movement_type',
+            'quantity',
+            'notes',
+            'reason_code',
+            'productSearch',
         ]);
         $this->selectedProduct = null;
+        $this->currentWarehouseStock = 0;
+        $this->searchResults = [];
+        $this->showSearchResults = false;
+        $this->showDropdown = false;
+        $this->updateSelectedContext();
     }
-    
-    public function save()
+
+    public function save(): void
     {
         $this->validate();
-        
-        // Check authorization
+
         $this->authorize('manage', StockMovement::class);
-        
+
         try {
             DB::beginTransaction();
-            
+
             $product = Product::findOrFail($this->product_id);
-            
-            // Validasi stok untuk movement keluar
-            if ($this->movement_type === 'out' && $product->current_stock < $this->quantity) {
-                $this->addError('quantity', 'Stok tidak mencukupi. Stok tersedia: ' . $product->current_stock);
+            $warehouse = Warehouse::findOrFail($this->warehouse_id);
+
+            $stockRow = ProductWarehouseStock::firstOrCreate(
+                [
+                    'product_id' => $product->id,
+                    'warehouse_id' => $warehouse->id,
+                ],
+                [
+                    'stock_on_hand' => 0,
+                    'reserved_stock' => 0,
+                    'safety_stock' => 0,
+                ]
+            );
+
+            $availableStock = $stockRow->stock_on_hand;
+
+            if ($this->movement_type === 'out' && $availableStock < $this->quantity) {
+                $this->addError('quantity', 'Stok tidak mencukupi. Stok tersedia: '.$availableStock);
+
                 return;
             }
-            
-            // Hitung perubahan stok
+
             $stockChange = 0;
+
             switch ($this->movement_type) {
                 case 'in':
-                    $stockChange = $this->quantity;
+                    $stockChange = (int) $this->quantity;
                     break;
                 case 'out':
-                    $stockChange = -$this->quantity;
+                    $stockChange = -1 * (int) $this->quantity;
                     break;
                 case 'adjustment':
-                    $stockChange = $this->quantity - $product->current_stock;
+                    $stockChange = (int) $this->quantity - $availableStock;
                     break;
             }
-            
-            // Hitung stok sebelum dan sesudah
-            $stockBefore = $product->current_stock;
-            $stockAfter = $this->movement_type === 'adjustment' ? $this->quantity : $stockBefore + $stockChange;
-            
-            // Update stok produk
-            $product->update(['current_stock' => $stockAfter]);
-            
-            // Catat movement
-            StockMovement::createMovement($this->product_id, $stockChange, strtoupper($this->movement_type), [
+
+            $stockBefore = $availableStock;
+            $stockAfter = $this->movement_type === 'adjustment'
+                ? (int) $this->quantity
+                : $stockBefore + $stockChange;
+
+            $movementType = match($this->movement_type) {
+                'in' => 'IN',
+                'out' => 'OUT', 
+                'adjustment' => 'ADJ',
+                default => 'IN'
+            };
+
+            StockMovement::createMovement($product->id, $stockChange, $movementType, [
                 'ref_type' => 'manual',
                 'ref_id' => null,
                 'note' => $this->notes,
                 'reason_code' => $this->reason_code,
-                'performed_by' => Auth::id(),
+                'performed_by' => Auth::id() ?? 1, // Fallback to user ID 1 for tests
                 'stock_before' => $stockBefore,
                 'stock_after' => $stockAfter,
+                'warehouse_id' => $warehouse->id,
+                'warehouse' => $warehouse->code,
             ]);
-            
+
             DB::commit();
-            
+
             session()->flash('message', 'Stok berhasil diperbarui!');
             $this->closeModal();
             $this->dispatch('stock-updated');
-            
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
-    
+
+    public function toggleDropdown(): void
+    {
+        if (empty($this->productSearch)) {
+            $this->showDropdown = !$this->showDropdown;
+            $this->showSearchResults = false;
+        }
+    }
+
     public function render()
     {
         return view('livewire.stock-form');

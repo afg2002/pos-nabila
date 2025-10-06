@@ -1,0 +1,7 @@
+Step-1: Establish multi-warehouse stock tracking (schema, models, seed data alignment).
+Step-2: Update stock operations (inventory forms, POS, stock movements) to respect per-warehouse balances and keep product aggregates in sync.
+Step-3: Link purchase orders to aggregated incoming goods agenda entries and simplify agenda barang datang capture (PT, jatuh tempo, total belanja).
+Step-4: Introduce cashflow agenda entries fed by POS/payment data (total omset, ecer, grosir, cash/QR/EDC breakdown).
+Step-5: Enhance dashboard metrics (monthly omset, retail vs grosir totals, gross profit per item, aggregate profit from PO costs).
+Step-6: Expand cash ledger summaries for annual income vs expense visibility and integrate with agenda cashflow.
+Step-7: Add/adjust automated tests plus manual verification notes.

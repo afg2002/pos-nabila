@@ -20,29 +20,77 @@ class PurchaseOrderItem extends Model
         'total_cost',
         'received_quantity',
         'notes',
+        // allow alias input from UI/tests
+        'unit_price',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
-        'unit_cost' => 'decimal:2',
-        'total_cost' => 'decimal:2',
         'received_quantity' => 'integer',
+        'unit_cost' => 'decimal:2',
+        'unit_price' => 'decimal:2',
+        'total_cost' => 'decimal:2',
     ];
 
-    /**
-     * Get the purchase order that owns this item
-     */
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
     }
 
-    /**
-     * Get the product associated with this item (if exists)
-     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    // Alias: unit_price <=> unit_cost
+    public function getUnitPriceAttribute()
+    {
+        // Prioritize persisted unit_price column if available
+        if (array_key_exists('unit_price', $this->attributes) && $this->attributes['unit_price'] !== null) {
+            return (float) $this->attributes['unit_price'];
+        }
+        return (float) ($this->attributes['unit_cost'] ?? 0);
+    }
+
+    // Mutator: when unit_price is set, keep unit_cost and unit_price in sync
+    public function setUnitPriceAttribute($value)
+    {
+        $numeric = (float) $value;
+        $this->attributes['unit_price'] = $numeric;
+        $this->attributes['unit_cost'] = $numeric;
+    }
+
+    // Mutator: when unit_cost is set, mirror to unit_price
+    public function setUnitCostAttribute($value)
+    {
+        $numeric = (float) $value;
+        $this->attributes['unit_cost'] = $numeric;
+        $this->attributes['unit_price'] = $numeric;
+    }
+
+    // Auto-calc total_cost when saving
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            // Ensure unit_cost mirrors unit_price if provided
+            if (isset($model->attributes['unit_price'])) {
+                $model->attributes['unit_cost'] = (float) $model->attributes['unit_price'];
+            }
+            $qty = (int) ($model->quantity ?? 0);
+            $unit = (float) ($model->unit_cost ?? 0);
+            $model->total_cost = $qty * $unit;
+        });
+
+        static::updating(function ($model) {
+            // Keep unit_cost mirrors unit_price if provided on update
+            if (isset($model->attributes['unit_price'])) {
+                $model->attributes['unit_cost'] = (float) $model->attributes['unit_price'];
+            }
+            // Keep total_cost in sync
+            $qty = (int) ($model->quantity ?? 0);
+            $unit = (float) ($model->unit_cost ?? 0);
+            $model->total_cost = $qty * $unit;
+        });
     }
 
     /**
@@ -54,7 +102,7 @@ class PurchaseOrderItem extends Model
     }
 
     /**
-     * Check if item is fully received
+     * Check if fully received
      */
     public function getIsFullyReceivedAttribute(): bool
     {
@@ -62,7 +110,7 @@ class PurchaseOrderItem extends Model
     }
 
     /**
-     * Get receive percentage
+     * Calculate receive percentage
      */
     public function getReceivePercentageAttribute(): float
     {

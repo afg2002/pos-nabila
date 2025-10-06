@@ -2,7 +2,8 @@
 
 namespace Database\Factories;
 
-use App\Product;
+use App\Models\Product;
+use App\Models\ProductUnit;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ProductFactory extends Factory
@@ -81,17 +82,40 @@ class ProductFactory extends Factory
         // Calculate grosir price (10-30% markup) - lowest markup
         $grosirPrice = $baseCost * $this->faker->randomFloat(2, 1.1, 1.3);
         
-        // Determine appropriate unit for category (using unit_id)
+        // Determine appropriate unit for category (using unit name mapping)
         $categoryUnits = [
-            'Makanan' => [1, 7, 8], // Pieces, Pack, Kg
-            'Minuman' => [1, 6, 7], // Pieces, Liter, Pack
-            'Elektronik' => [1, 4], // Pieces, Box
-            'Pakaian' => [1, 7], // Pieces, Pack
-            'Alat Tulis' => [1, 7, 4, 2], // Pieces, Pack, Box, Lusin
-            'Kesehatan' => [1, 7, 4] // Pieces, Pack, Box
+            'Makanan' => ['Pieces', 'Lusin', 'Kg'],
+            'Minuman' => ['Pieces', 'Lusin', 'Kg'],
+            'Elektronik' => ['Pieces', 'Box'],
+            'Pakaian' => ['Pieces', 'Lusin'],
+            'Alat Tulis' => ['Pieces', 'Lusin', 'Box', 'Pack'],
+            'Kesehatan' => ['Pieces', 'Box', 'Pack']
         ];
         
-        $unitId = $this->faker->randomElement($categoryUnits[$category]);
+        // Ensure default units exist and pick a valid unit_id for the chosen category
+        $defaultUnits = [
+            ['name' => 'Pieces', 'abbreviation' => 'pcs'],
+            ['name' => 'Lusin', 'abbreviation' => 'lsn'],
+            ['name' => 'Kg', 'abbreviation' => 'kg'],
+            ['name' => 'Box', 'abbreviation' => 'box'],
+            ['name' => 'Pack', 'abbreviation' => 'pack'],
+        ];
+        
+        foreach ($defaultUnits as $u) {
+            ProductUnit::firstOrCreate(
+                ['name' => $u['name']],
+                [
+                    'abbreviation' => $u['abbreviation'],
+                    'description' => null,
+                    'is_active' => true,
+                    'sort_order' => 0,
+                ]
+            );
+        }
+        
+        $candidateUnitNames = $categoryUnits[$category];
+        $candidateUnitIds = ProductUnit::whereIn('name', $candidateUnitNames)->pluck('id')->all();
+        $unitId = $this->faker->randomElement($candidateUnitIds);
         
         // Stock levels based on category
         $stockRanges = [
@@ -125,6 +149,7 @@ class ProductFactory extends Factory
             'default_price_type' => $defaultPriceType,
             'min_margin_pct' => $this->faker->randomFloat(2, 10, 25),
             'current_stock' => $stock,
+            'min_stock' => $this->faker->numberBetween(5, 20), // Random min stock between 5-20
             'is_active' => $this->faker->boolean(95), // 95% active
             'created_at' => now(),
             'updated_at' => now(),
@@ -134,16 +159,19 @@ class ProductFactory extends Factory
     public function configure()
     {
         return $this->afterCreating(function (Product $product) {
-            // Create initial stock movement with system user (ID 1)
-            \App\StockMovement::create([
-                'product_id' => $product->id,
-                'qty' => $product->current_stock,
-                'type' => 'IN',
-                'ref_type' => 'initial_stock',
-                'ref_id' => null,
-                'note' => 'Initial stock from seeder',
-                'performed_by' => 1, // Assuming user ID 1 exists (admin)
-            ]);
+            // Only create stock movement if we have a valid user
+            $user = \App\Domains\User\Models\User::first();
+            if ($user) {
+                \App\StockMovement::create([
+                    'product_id' => $product->id,
+                    'qty' => $product->current_stock,
+                    'type' => 'IN',
+                    'ref_type' => 'initial_stock',
+                    'ref_id' => null,
+                    'note' => 'Initial stock from seeder',
+                    'performed_by' => $user->id,
+                ]);
+            }
         });
     }
 }

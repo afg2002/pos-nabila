@@ -6,6 +6,7 @@ use App\PurchaseOrder;
 use App\PurchaseOrderItem;
 use App\CapitalTracking;
 use App\Product;
+use App\IncomingGoodsAgenda;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,12 @@ class PurchaseOrderManagement extends Component
     public $deleteId = null;
     public $viewingPO = null;
     public $showDetailModal = false;
+    
+    // Payment modal properties
+    public $showPaymentModal = false;
+    public $selectedPO = null;
+    public $paymentAmount = '';
+    public $paymentNotes = '';
 
     protected $rules = [
         'supplier_name' => 'required|string|max:255',
@@ -285,11 +292,51 @@ class PurchaseOrderManagement extends Component
                     $purchaseOrder->createScheduledReminders();
                 }
 
+                // Create consolidated agenda record from PO
+                $this->createAgendaFromPO($purchaseOrder);
+
                 session()->flash('message', 'Purchase Order berhasil dibuat!');
             }
         });
 
         $this->closeModal();
+    }
+
+    /**
+     * Create consolidated agenda record from Purchase Order
+     */
+    private function createAgendaFromPO(PurchaseOrder $purchaseOrder)
+    {
+        // Get default warehouse for receiving goods
+        $defaultWarehouse = \App\Warehouse::getDefault();
+        
+        // For consolidated agenda, we'll use the first product from PO items
+        $firstItem = $purchaseOrder->items->first();
+        $product = $firstItem ? \App\Product::where('name', $firstItem->product_name)->first() : null;
+
+        // Create a consolidated agenda entry for the entire PO
+        IncomingGoodsAgenda::create([
+            'purchase_order_id' => $purchaseOrder->id,
+            'source' => 'purchase_order',
+            'supplier_name' => $purchaseOrder->supplier_name,
+            'goods_name' => 'PO #' . $purchaseOrder->po_number . ' - Multiple Items',
+            'description' => 'Consolidated agenda from Purchase Order: ' . $purchaseOrder->items->pluck('product_name')->join(', '),
+            'quantity' => $purchaseOrder->items->sum('quantity'),
+            'unit' => 'items',
+            'unit_id' => null, // No specific unit for consolidated entry
+            'unit_price' => $purchaseOrder->total_amount / $purchaseOrder->items->sum('quantity'),
+            'total_amount' => $purchaseOrder->total_amount,
+            'scheduled_date' => $purchaseOrder->expected_date,
+            'payment_due_date' => $purchaseOrder->payment_due_date,
+            'status' => 'scheduled',
+            'notes' => 'Auto-generated from PO: ' . ($purchaseOrder->notes ?? ''),
+            'contact_person' => $purchaseOrder->supplier_contact,
+            'phone_number' => null,
+            'paid_amount' => $purchaseOrder->paid_amount,
+            'capital_tracking_id' => $purchaseOrder->capital_tracking_id,
+            'warehouse_id' => $defaultWarehouse?->id,
+            'product_id' => $product?->id,
+        ]);
     }
 
     public function edit($id)
@@ -360,10 +407,57 @@ class PurchaseOrderManagement extends Component
 
     public function updatePaymentStatus($id, $paymentStatus)
     {
-        $purchaseOrder = PurchaseOrder::findOrFail($id);
-        $purchaseOrder->updatePaymentStatus($paymentStatus);
-        
-        session()->flash('message', "Status pembayaran berhasil diubah menjadi {$paymentStatus}!");
+        try {
+            $purchaseOrder = PurchaseOrder::findOrFail($id);
+            $purchaseOrder->updatePaymentStatus($paymentStatus);
+            
+            session()->flash('message', "Status pembayaran berhasil diubah menjadi {$paymentStatus}!");
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function openPaymentModal($id)
+    {
+        $this->selectedPO = PurchaseOrder::findOrFail($id);
+        $this->paymentAmount = $this->selectedPO->remaining_amount;
+        $this->showPaymentModal = true;
+    }
+
+    public function closePaymentModal()
+    {
+        $this->showPaymentModal = false;
+        $this->selectedPO = null;
+        $this->paymentAmount = '';
+        $this->paymentNotes = '';
+    }
+
+    public function processPayment()
+    {
+        $this->validate([
+            'paymentAmount' => 'required|numeric|min:0.01',
+        ]);
+
+        try {
+            $this->selectedPO->makePayment($this->paymentAmount, $this->paymentNotes);
+            
+            session()->flash('message', 'Pembayaran berhasil diproses sebesar Rp ' . number_format($this->paymentAmount, 0, ',', '.'));
+            $this->closePaymentModal();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function makePayment($id, $amount, $notes = null)
+    {
+        try {
+            $purchaseOrder = PurchaseOrder::findOrFail($id);
+            $purchaseOrder->makePayment($amount, $notes);
+            
+            session()->flash('message', 'Pembayaran berhasil diproses sebesar Rp ' . number_format($amount, 0, ',', '.'));
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
 
     public function exportPurchaseOrders()

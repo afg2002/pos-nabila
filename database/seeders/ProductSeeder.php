@@ -84,7 +84,7 @@ class ProductSeeder extends Seeder
                 'barcode' => '1234567890005',
                 'name' => 'Pulpen Gel Pilot G2 Set 12 Warna',
                 'category' => 'Alat Tulis',
-                'unit_id' => 7, // Pack
+                'unit_id' => 5, // Pack
                 'base_cost' => 25000,
                 'price_retail' => 45000,
                 'price_semi_grosir' => 38000,

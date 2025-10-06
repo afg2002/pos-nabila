@@ -1,0 +1,52 @@
+# POS Nabila Enhancement TODO Checklist
+
+Legend: [x] Done  [~] In Progress  [ ] Pending
+
+Step-1: Multi-Warehouse Foundations
+- [x] Create `warehouses` table + default warehouse seed
+- [x] Create `product_warehouse_stock` table and back-fill from `products.current_stock`
+- [x] Add `warehouse_id` to `stock_movements` and migrate legacy `warehouse` strings
+- [x] Add models: Warehouse, ProductWarehouseStock
+- [x] Update Product to sum per-warehouse stock and keep aggregate synced
+- [x] Update StockMovement::createMovement to update per-warehouse stock rows
+
+Step-2: Inventory/Stock Ops per Warehouse
+- [x] Update Livewire `StockForm` to select warehouse and validate per-location stock
+- [x] Update blade `stock-form` modal to show warehouse selector + per-location stock
+- [x] POS: respect per-warehouse availability in cart/checkout
+- [x] Stock History filters and exports include warehouse context
+
+Step-3: Incoming Goods Agenda linked to Purchase Orders
+- [x] Add consolidated agenda record from PO (PT/Supplier, Jatuh Tempo, Jumlah Total)
+- [x] Link receiving to increase stock for selected warehouse
+- [x] Payment updates reflect on agenda status and PO payment status
+
+Step-4: Agenda Cashflow
+- [x] Aggregate daily totals (omset total, ecer, grosir)
+- [x] Split grosir by channel (cash, QR, EDC)
+- [x] Feed from POS + Cash Ledger, show in agenda view/tab
+
+Step-5: Dashboard Enhancements
+- [x] Monthly omset (revenue) with trend
+- [x] Total ecer + grosir, and separately total ecer, total grosir
+- [x] Gross profit (harga jual - modal) per item and totals
+- [x] Profit sourced from PO costs when present; fallback to product base_cost
+- [x] Update dashboard view to display ecer/grosir breakdown cards
+- [x] Add monthly trend chart visualization
+
+Step-6: Cash Ledger (Buku Kas)
+- [x] Annual income and expense summaries (Already implemented in CashLedgerManagement with getAnnualSummary method)
+- [x] Filters by warehouse/branch (Already implemented with warehouse_id filter in CashLedgerManagement)
+- [x] Export/print friendly views (Already implemented with printReport method and cash-ledger-print.blade.php)
+
+Step-7: Tests & Verification
+- [x] Feature tests for warehouse stock updates via StockForm and movements (POSWarehouseStockTest - All 10 tests passed!)
+- [x] POS flow: per-warehouse stock decrement and validation (Fixed stock movement logic & cart validation)
+- [ ] Agenda-PO linkage tests (create, receive, pay)
+- [ ] Dashboard calculations unit tests for profit and breakdowns
+
+Notes / Follow-ups
+- After merging Step-1/2 changes, run: php artisan migrate
+- If UI assets don’t reflect, run: npm run dev (or npm run build)
+- Re-run Pint if you touch PHP files: vendor/bin/pint --dirty
+

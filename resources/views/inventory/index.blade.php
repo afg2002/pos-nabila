@@ -9,8 +9,13 @@
         </div>
         
         <div class="p-6">
+            <!-- Warehouse Stock View Component -->
+            @livewire('warehouse-stock-view')
+            
             <!-- Stock Form Component -->
-            @livewire('stock-form')
+            <div class="mt-8">
+                @livewire('stock-form')
+            </div>
             
             <!-- Stock History Component -->
             <div class="mt-8">

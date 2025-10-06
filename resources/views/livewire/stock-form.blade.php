@@ -37,24 +37,133 @@
                                     Update Stok Produk
                                 </h3>
                                 <div class="mt-4 space-y-4">
-                                    <!-- Product Selection -->
+                                    <!-- Warehouse Selection -->
                                     <div>
-                                        <label for="product_id" class="block text-sm font-medium text-gray-700 mb-1">
-                                            Produk *
+                                        <label for="warehouse_id" class="block text-sm font-medium text-gray-700 mb-1">
+                                            Lokasi Gudang *
                                         </label>
-                                        <select wire:model.live="product_id" id="product_id" 
+                                        <select wire:model.live="warehouse_id" id="warehouse_id"
                                                 class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                            <option value="">Pilih Produk</option>
-                                            @foreach($products as $product)
-                                                <option value="{{ $product->id }}">
-                                                    {{ $product->name }} ({{ $product->sku }}) - Stok: {{ $product->current_stock }}
+                                            <option value="">Pilih Gudang</option>
+                                            @foreach($warehouses as $warehouse)
+                                                <option value="{{ $warehouse->id }}">
+                                                    {{ $warehouse->name }} ({{ $warehouse->code }})
                                                 </option>
                                             @endforeach
                                         </select>
-                                        @error('product_id') 
-                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
+                                        @error('warehouse_id')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                         @enderror
                                     </div>
+
+                                    <!-- Product Selection with Search -->
+                    <div>
+                        <label for="product_search" class="block text-sm font-medium text-gray-700 mb-1">
+                            Produk *
+                        </label>
+                        <div class="relative" x-data="{ showResults: @entangle('showSearchResults'), showDropdown: @entangle('showDropdown') }">
+                            <div class="relative">
+                                <input type="text" 
+                                       wire:model.live.debounce.300ms="productSearch" 
+                                       id="product_search"
+                                       placeholder="Cari nama produk, SKU, atau barcode..."
+                                       class="block w-full px-3 py-2 pr-8 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                       autocomplete="off">
+                                
+                                <!-- Dropdown Arrow Button -->
+                                <button type="button" 
+                                        wire:click="toggleDropdown"
+                                        class="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
+                                    @if($productSearch)
+                                        <!-- Clear button when there's text -->
+                                        <svg wire:click.stop="clearProductSearch" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    @else
+                                        <!-- Dropdown arrow when no text -->
+                                        <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    @endif
+                                </button>
+                            </div>
+                            
+                            <!-- Search Results Dropdown -->
+                            @if($showSearchResults && count($searchResults) > 0)
+                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    @foreach($searchResults as $product)
+                                        <button type="button" 
+                                                wire:click="selectProduct({{ $product->id }})"
+                                                class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                            <div class="flex justify-between items-center">
+                                                <div>
+                                                    <div class="font-medium text-gray-900">{{ $product->name }}</div>
+                                                    <div class="text-sm text-gray-500">SKU: {{ $product->sku }}</div>
+                                                    @if($product->barcode)
+                                                        <div class="text-xs text-gray-400">Barcode: {{ $product->barcode }}</div>
+                                                    @endif
+                                                </div>
+                                                <div class="text-sm text-gray-500">
+                                                    {{ $product->category ?? 'No Category' }}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @elseif($showSearchResults && strlen($productSearch) >= 2)
+                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                    <div class="px-3 py-2 text-gray-500 text-sm">
+                                        Tidak ada produk ditemukan untuk "{{ $productSearch }}"
+                                    </div>
+                                </div>
+                            @endif
+                            
+                            <!-- All Products Dropdown (when no search) -->
+                            @if($showDropdown && empty($productSearch))
+                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    @if(count($allProducts) > 0)
+                                        @foreach($allProducts as $product)
+                                            <button type="button" 
+                                                    wire:click="selectProduct({{ $product->id }})"
+                                                    class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                <div class="flex justify-between items-center">
+                                                    <div>
+                                                        <div class="font-medium text-gray-900">{{ $product->name }}</div>
+                                                        <div class="text-sm text-gray-500">SKU: {{ $product->sku }}</div>
+                                                        @if($product->barcode)
+                                                            <div class="text-xs text-gray-400">Barcode: {{ $product->barcode }}</div>
+                                                        @endif
+                                                    </div>
+                                                    <div class="text-sm text-gray-500">
+                                                        {{ $product->category ?? 'No Category' }}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        @endforeach
+                                    @else
+                                        <div class="px-3 py-2 text-gray-500 text-sm">
+                                            Tidak ada produk tersedia
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
+                        </div>
+                        
+                        @error('product_id') 
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
+                        @enderror
+                        
+                        @if($selectedProduct)
+                            <div class="mt-2 p-2 bg-blue-50 rounded-md">
+                                <div class="text-sm text-blue-800">
+                                    <strong>{{ $selectedProduct->name }}</strong> ({{ $selectedProduct->sku }})
+                                </div>
+                                <div class="text-xs text-blue-600 mt-1">
+                                    Stok lokasi terpilih: <span class="font-semibold">{{ number_format($currentWarehouseStock) }}</span>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
 
                                     <!-- Movement Type -->
                                     <div>
@@ -70,60 +179,30 @@
                                         @error('movement_type') 
                                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
                                         @enderror
+                  
                                     </div>
 
                                     <!-- Quantity -->
                                     <div>
                                         <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">
-                                            @if($movement_type === 'adjustment')
-                                                Stok Baru *
-                                            @else
-                                                Jumlah *
-                                            @endif
+                                            Jumlah *
                                         </label>
-                                        <input type="number" wire:model="quantity" id="quantity" min="0" step="1"
+                                        <input type="number" id="quantity" wire:model.live="quantity"
                                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                               placeholder="Masukkan jumlah">
+                                               min="1" placeholder="Masukkan jumlah">
                                         @error('quantity') 
                                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
                                         @enderror
-                                        
-                                        @if($selectedProduct && $movement_type === 'out')
-                                            <p class="mt-1 text-xs text-gray-500">
-                                                Stok tersedia: {{ $selectedProduct->current_stock }}
-                                            </p>
-                                        @endif
                                     </div>
-
-
-
-
 
                                     <!-- Reason Code -->
                                     <div>
                                         <label for="reason_code" class="block text-sm font-medium text-gray-700 mb-1">
                                             Kode Alasan
                                         </label>
-                                        <select wire:model="reason_code" id="reason_code"
-                                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                            <option value="">Pilih alasan</option>
-                                            @if($movement_type === 'in')
-                                                <option value="PURCHASE">Pembelian</option>
-                                                <option value="RETURN">Retur dari Customer</option>
-                                                <option value="TRANSFER_IN">Transfer Masuk</option>
-                                                <option value="PRODUCTION">Hasil Produksi</option>
-                                            @elseif($movement_type === 'out')
-                                                <option value="SALE">Penjualan</option>
-                                                <option value="RETURN">Retur ke Supplier</option>
-                                                <option value="TRANSFER_OUT">Transfer Keluar</option>
-                                                <option value="DAMAGED">Rusak/Hilang</option>
-                                                <option value="EXPIRED">Kadaluarsa</option>
-                                            @else
-                                                <option value="CORRECTION">Koreksi Stok</option>
-                                                <option value="AUDIT">Hasil Audit</option>
-                                                <option value="SYSTEM">Penyesuaian Sistem</option>
-                                            @endif
-                                        </select>
+                                        <input type="text" id="reason_code" wire:model.live="reason_code"
+                                               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                               placeholder="Contoh: stock_opname, retur, expired">
                                         @error('reason_code') 
                                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
                                         @enderror

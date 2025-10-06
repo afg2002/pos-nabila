@@ -62,7 +62,7 @@
                     <button type="submit" 
                             wire:loading.attr="disabled" 
                             wire:target="import"
-                            :disabled="!$wire.file"
+                            x-bind:disabled="!$wire.file"
                             class="inline-flex items-center px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                         <div wire:loading wire:target="import" class="mr-2">
                             <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

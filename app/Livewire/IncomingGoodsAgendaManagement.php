@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
-use App\IncomingGoodsAgenda;
 use App\CapitalTracking;
+use App\IncomingGoodsAgenda;
 use App\ProductUnit;
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Carbon\Carbon;
 
 class IncomingGoodsAgendaManagement extends Component
 {
@@ -15,38 +15,74 @@ class IncomingGoodsAgendaManagement extends Component
 
     // Form properties
     public $supplier_name = '';
+
     public $goods_name = '';
+
     public $description = '';
+
     public $quantity = '';
+
     public $unit = '';
+
     public $unit_id = '';
+
     public $unit_price = '';
+
     public $total_amount = '';
+
     public $scheduled_date = '';
+
     public $payment_due_date = '';
+
     public $notes = '';
+
     public $contact_person = '';
+
     public $phone_number = '';
+
     public $capital_tracking_id = '';
+
+    public $warehouse_id = '';
+
+    public $product_id = '';
+
     public $editingId = null;
 
     // Modal states
     public $showModal = false;
+
     public $showPaymentModal = false;
+
     public $showDeleteModal = false;
+
     public $selectedAgenda = null;
+
     public $confirmingDelete = false;
+
     public $deleteId = null;
+
     public $paymentId = null;
+
     public $paymentAmount = '';
+
+    public $paymentNotes = '';
+
+    public $paymentCapitalId = '';
 
     // Calendar and filters
     public $currentDate;
+
     public $selectedDate = '';
+
     public $filterStatus = '';
+
     public $filterMonth = '';
+
     public $viewMode = 'calendar'; // calendar or list
+
     public $totalAgendas = 0;
+
+    public $search = '';
 
     protected $rules = [
         'supplier_name' => 'required|string|max:255',
@@ -62,6 +98,8 @@ class IncomingGoodsAgendaManagement extends Component
         'contact_person' => 'nullable|string|max:255',
         'phone_number' => 'nullable|string|max:20',
         'capital_tracking_id' => 'required|exists:capital_tracking,id',
+        'warehouse_id' => 'nullable|exists:warehouses,id',
+        'product_id' => 'nullable|exists:products,id',
     ];
 
     protected $messages = [
@@ -121,6 +159,16 @@ class IncomingGoodsAgendaManagement extends Component
     {
         $query = IncomingGoodsAgenda::with('capitalTracking');
 
+        // Apply search filter
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('supplier_name', 'like', '%'.$this->search.'%')
+                    ->orWhere('goods_name', 'like', '%'.$this->search.'%')
+                    ->orWhere('description', 'like', '%'.$this->search.'%')
+                    ->orWhere('contact_person', 'like', '%'.$this->search.'%');
+            });
+        }
+
         // Apply filters
         if ($this->filterStatus) {
             $query->where('status', $this->filterStatus);
@@ -128,7 +176,7 @@ class IncomingGoodsAgendaManagement extends Component
 
         if ($this->filterMonth) {
             $query->whereYear('scheduled_date', substr($this->filterMonth, 0, 4))
-                  ->whereMonth('scheduled_date', substr($this->filterMonth, 5, 2));
+                ->whereMonth('scheduled_date', substr($this->filterMonth, 5, 2));
         }
 
         if ($this->selectedDate && $this->viewMode === 'calendar') {
@@ -136,45 +184,47 @@ class IncomingGoodsAgendaManagement extends Component
         }
 
         $agendas = $query->orderBy('scheduled_date', 'asc')
-                        ->orderBy('created_at', 'desc')
-                        ->paginate(10);
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
 
         $capitalTrackings = CapitalTracking::where('is_active', true)->get();
         $productUnits = ProductUnit::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
+        $warehouses = \App\Warehouse::orderBy('name')->get();
+        $products = \App\Product::where('is_active', true)->orderBy('name')->get();
 
         // Get statistics
         $this->totalAgendas = IncomingGoodsAgenda::count();
-        
+
         $scheduledTodayCount = IncomingGoodsAgenda::whereDate('scheduled_date', today())
-                                                 ->where('status', 'scheduled')
-                                                 ->count();
+            ->where('status', 'scheduled')
+            ->count();
 
         $paymentDueTodayCount = IncomingGoodsAgenda::whereDate('payment_due_date', today())
-                                                   ->whereIn('status', ['scheduled', 'received'])
-                                                   ->count();
+            ->whereIn('status', ['scheduled', 'received'])
+            ->count();
 
         $overduePaymentCount = IncomingGoodsAgenda::where('payment_due_date', '<', today())
-                                                  ->whereIn('status', ['scheduled', 'received'])
-                                                  ->count();
+            ->whereIn('status', ['scheduled', 'received'])
+            ->count();
 
         // Calendar data for current month
         $calendarData = [];
         if ($this->viewMode === 'calendar') {
-            $currentMonth = Carbon::parse($this->filterMonth . '-01');
+            $currentMonth = Carbon::parse($this->filterMonth.'-01');
             $startOfMonth = $currentMonth->copy()->startOfMonth();
             $endOfMonth = $currentMonth->copy()->endOfMonth();
-            
+
             // Get agendas for the month
             $agendas = IncomingGoodsAgenda::whereBetween('scheduled_date', [$startOfMonth, $endOfMonth])
-                                         ->get()
-                                         ->groupBy(function($item) {
-                                             return $item->scheduled_date->format('Y-m-d');
-                                         });
-            
+                ->get()
+                ->groupBy(function ($item) {
+                    return $item->scheduled_date->format('Y-m-d');
+                });
+
             // Generate calendar grid like AgendaCalendar
             $startDate = $startOfMonth->copy()->startOfWeek(Carbon::MONDAY);
             $endDate = $endOfMonth->copy()->endOfWeek(Carbon::SUNDAY);
-            
+
             $current = $startDate->copy();
             while ($current <= $endDate) {
                 $dateStr = $current->format('Y-m-d');
@@ -183,7 +233,7 @@ class IncomingGoodsAgendaManagement extends Component
                     'day' => $current->day,
                     'isCurrentMonth' => $current->month === $currentMonth->month,
                     'isToday' => $current->isToday(),
-                    'agendas' => $agendas->get($dateStr, collect())
+                    'agendas' => $agendas->get($dateStr, collect()),
                 ];
                 $current->addDay();
             }
@@ -193,6 +243,8 @@ class IncomingGoodsAgendaManagement extends Component
             'agendas' => $agendas,
             'capitalTrackings' => $capitalTrackings,
             'productUnits' => $productUnits,
+            'warehouses' => $warehouses,
+            'products' => $products,
             'scheduledTodayCount' => $scheduledTodayCount,
             'paymentDueTodayCount' => $paymentDueTodayCount,
             'overduePaymentCount' => $overduePaymentCount,
@@ -254,6 +306,8 @@ class IncomingGoodsAgendaManagement extends Component
         $this->contact_person = '';
         $this->phone_number = '';
         $this->capital_tracking_id = '';
+        $this->warehouse_id = '';
+        $this->product_id = '';
         $this->editingId = null;
         $this->resetErrorBag();
     }
@@ -262,7 +316,7 @@ class IncomingGoodsAgendaManagement extends Component
     {
         $this->validate();
         $this->calculateTotal();
-        
+
         // Get unit name from selected ProductUnit
         if ($this->unit_id) {
             $productUnit = ProductUnit::find($this->unit_id);
@@ -289,6 +343,8 @@ class IncomingGoodsAgendaManagement extends Component
                     'contact_person' => $this->contact_person,
                     'phone_number' => $this->phone_number,
                     'capital_tracking_id' => $this->capital_tracking_id,
+                    'warehouse_id' => $this->warehouse_id ?: null,
+                    'product_id' => $this->product_id ?: null,
                 ]);
                 session()->flash('message', 'Agenda barang masuk berhasil diperbarui.');
             } else {
@@ -307,13 +363,15 @@ class IncomingGoodsAgendaManagement extends Component
                     'contact_person' => $this->contact_person,
                     'phone_number' => $this->phone_number,
                     'capital_tracking_id' => $this->capital_tracking_id,
+                    'warehouse_id' => $this->warehouse_id ?: null,
+                    'product_id' => $this->product_id ?: null,
                 ]);
                 session()->flash('message', 'Agenda barang masuk berhasil ditambahkan.');
             }
 
             $this->closeModal();
         } catch (\Exception $e) {
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
 
@@ -327,7 +385,7 @@ class IncomingGoodsAgendaManagement extends Component
         $this->quantity = $agenda->quantity;
         $this->unit = $agenda->unit;
         $this->unit_id = $agenda->unit_id;
-        
+
         // If unit_id exists, get unit name from productUnit relation
         if ($agenda->unit_id && $agenda->productUnit) {
             $this->unit = $agenda->productUnit->name;
@@ -340,6 +398,8 @@ class IncomingGoodsAgendaManagement extends Component
         $this->contact_person = $agenda->contact_person;
         $this->phone_number = $agenda->phone_number;
         $this->capital_tracking_id = $agenda->capital_tracking_id;
+        $this->warehouse_id = $agenda->warehouse_id;
+        $this->product_id = $agenda->product_id;
         $this->showModal = true;
     }
 
@@ -350,7 +410,7 @@ class IncomingGoodsAgendaManagement extends Component
             $agenda->markAsReceived();
             session()->flash('message', 'Barang berhasil ditandai sebagai diterima.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
 
@@ -377,6 +437,9 @@ class IncomingGoodsAgendaManagement extends Component
                 return;
             }
 
+            // Use the new makePayment method from the model
+            $this->selectedAgenda->makePayment($this->paymentAmount, $this->paymentNotes);
+
             // Update capital tracking - deduct payment amount
             $capitalTracking->current_amount -= $this->paymentAmount;
             $capitalTracking->save();
@@ -386,31 +449,20 @@ class IncomingGoodsAgendaManagement extends Component
                 'business_modal_id' => $capitalTracking->business_modal_id,
                 'transaction_type' => 'expense',
                 'amount' => $this->paymentAmount,
-                'description' => 'Pembayaran agenda barang masuk: ' . $this->selectedAgenda->supplier_name . ' - ' . $this->selectedAgenda->item_name,
+                'description' => 'Pembayaran agenda barang masuk: '.$this->selectedAgenda->supplier_name.' - '.$this->selectedAgenda->item_name,
                 'transaction_date' => now(),
                 'current_amount' => $capitalTracking->current_amount,
                 'notes' => $this->paymentNotes,
             ]);
 
-            // Update agenda payment status
-            $this->selectedAgenda->paid_amount += $this->paymentAmount;
-            $this->selectedAgenda->remaining_amount = $this->selectedAgenda->total_amount - $this->selectedAgenda->paid_amount;
-            
-            if ($this->selectedAgenda->remaining_amount <= 0) {
-                $this->selectedAgenda->payment_status = 'paid';
-                $this->selectedAgenda->remaining_amount = 0;
-            } else {
-                $this->selectedAgenda->payment_status = 'partial';
-            }
-            
-            $this->selectedAgenda->save();
-
-            session()->flash('message', 'Pembayaran berhasil diproses. Saldo modal berkurang sebesar Rp ' . number_format($this->paymentAmount, 0, ',', '.'));
+            session()->flash('message', 'Pembayaran berhasil diproses. Saldo modal berkurang sebesar Rp '.number_format($this->paymentAmount, 0, ',', '.'));
             $this->closePaymentModal();
         } catch (\Exception $e) {
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
+
+    
 
     public function confirmDelete($id)
     {
@@ -430,7 +482,7 @@ class IncomingGoodsAgendaManagement extends Component
             IncomingGoodsAgenda::findOrFail($this->deleteId)->delete();
             session()->flash('message', 'Agenda berhasil dihapus.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
 
         $this->closeDeleteModal();
@@ -438,14 +490,14 @@ class IncomingGoodsAgendaManagement extends Component
 
     public function previousMonth()
     {
-        $currentMonth = Carbon::parse($this->filterMonth . '-01');
+        $currentMonth = Carbon::parse($this->filterMonth.'-01');
         $this->filterMonth = $currentMonth->subMonth()->format('Y-m');
         $this->resetPage();
     }
 
     public function nextMonth()
     {
-        $currentMonth = Carbon::parse($this->filterMonth . '-01');
+        $currentMonth = Carbon::parse($this->filterMonth.'-01');
         $this->filterMonth = $currentMonth->addMonth()->format('Y-m');
         $this->resetPage();
     }

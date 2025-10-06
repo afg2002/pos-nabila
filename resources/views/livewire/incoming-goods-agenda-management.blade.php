@@ -308,7 +308,11 @@
                                     {{ $agenda->payment_due_date->format('d M Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    Rp {{ number_format($agenda->total_amount ?? $agenda->amount ?? 0, 0, ',', '.') }}
+                                    <div class="font-medium">Rp {{ number_format($agenda->total_amount ?? $agenda->amount ?? 0, 0, ',', '.') }}</div>
+                                    @if($agenda->paid_amount > 0)
+                                        <div class="text-xs text-green-600">Dibayar: Rp {{ number_format($agenda->paid_amount, 0, ',', '.') }}</div>
+                                        <div class="text-xs text-red-600">Sisa: Rp {{ number_format($agenda->remaining_amount, 0, ',', '.') }}</div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $agenda->statusBadgeClass }}">
@@ -471,6 +475,30 @@
                                 </select>
                                 @error('capital_tracking_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Gudang (Opsional)</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        wire:model="warehouse_id">
+                                    <option value="">Pilih Gudang</option>
+                                    @foreach($warehouses as $warehouse)
+                                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }} - {{ $warehouse->location }}</option>
+                                    @endforeach
+                                </select>
+                                @error('warehouse_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Produk (Opsional)</label>
+                                <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        wire:model="product_id">
+                                    <option value="">Pilih Produk</option>
+                                    @foreach($products as $product)
+                                        <option value="{{ $product->id }}">{{ $product->name }} - {{ $product->sku }}</option>
+                                    @endforeach
+                                </select>
+                                @error('product_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
                         </div>
                         
                         <div class="flex justify-end space-x-3 mt-6">
@@ -500,20 +528,36 @@
                     @if($selectedAgenda)
                         <div class="mb-4 p-4 bg-gray-50 rounded-lg">
                             <p class="text-sm text-gray-600">Supplier: <span class="font-medium">{{ $selectedAgenda->supplier_name }}</span></p>
-                            <p class="text-sm text-gray-600">Jumlah: <span class="font-medium">Rp {{ number_format($selectedAgenda->amount, 0, ',', '.') }}</span></p>
+                            <p class="text-sm text-gray-600">Item: <span class="font-medium">{{ $selectedAgenda->goods_name }}</span></p>
+                            <p class="text-sm text-gray-600">Total: <span class="font-medium">Rp {{ number_format($selectedAgenda->total_amount, 0, ',', '.') }}</span></p>
+                            <p class="text-sm text-gray-600">Sudah Dibayar: <span class="font-medium">Rp {{ number_format($selectedAgenda->paid_amount, 0, ',', '.') }}</span></p>
+                            <p class="text-sm text-gray-600">Sisa: <span class="font-medium text-red-600">Rp {{ number_format($selectedAgenda->remaining_amount, 0, ',', '.') }}</span></p>
                         </div>
                     @endif
                     
                     <form wire:submit="processPayment">
                         <div class="space-y-4">
                             <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Pembayaran</label>
+                                <input type="number" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                       wire:model="paymentAmount"
+                                       step="0.01"
+                                       min="0.01"
+                                       max="{{ $selectedAgenda ? $selectedAgenda->remaining_amount : 0 }}"
+                                       placeholder="Masukkan jumlah pembayaran"
+                                       required>
+                                @error('paymentAmount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+                            
+                            <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Modal Usaha</label>
                                 <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                         wire:model="paymentCapitalId"
                                         required>
                                     <option value="">Pilih Modal Usaha</option>
-                                    @foreach($businessModals as $modal)
-                                        <option value="{{ $modal->id }}">{{ $modal->name }} (Saldo: Rp {{ number_format($modal->current_balance, 0, ',', '.') }})</option>
+                                    @foreach($capitalTrackings as $capital)
+                                        <option value="{{ $capital->id }}">{{ $capital->businessModal->name }} (Saldo: Rp {{ number_format($capital->current_amount, 0, ',', '.') }})</option>
                                     @endforeach
                                 </select>
                                 @error('paymentCapitalId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror

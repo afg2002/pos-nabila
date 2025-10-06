@@ -16,6 +16,10 @@
                     class="px-4 py-2 rounded-lg {{ $viewMode === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700' }}">
                 Minggu
             </button>
+            <button wire:click="toggleCashflowTab" 
+                    class="px-4 py-2 rounded-lg {{ $showCashflowTab ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700' }}">
+                💰 Cashflow
+            </button>
         </div>
     </div>
 
@@ -59,7 +63,153 @@
                 </div>
 
                 <!-- Kalender Grid -->
-                @if($viewMode === 'month')
+                @if($showCashflowTab)
+                    <!-- Cashflow Tab Content -->
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <!-- Daily Totals -->
+                            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+                                <h3 class="text-lg font-semibold mb-4">📊 Total Hari Ini</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span>Omset Total:</span>
+                                        <span class="font-bold">Rp {{ number_format($dailyCashflow['total_omset'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Ecer:</span>
+                                        <span class="font-bold">Rp {{ number_format($dailyCashflow['total_ecer'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Grosir:</span>
+                                        <span class="font-bold">Rp {{ number_format($dailyCashflow['total_grosir'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span>Transaksi:</span>
+                                        <span>{{ $dailyCashflow['transaction_count'] ?? 0 }} (E: {{ $dailyCashflow['ecer_count'] ?? 0 }}, G: {{ $dailyCashflow['grosir_count'] ?? 0 }})</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Weekly Totals -->
+                            <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+                                <h3 class="text-lg font-semibold mb-4">📈 Total Minggu Ini</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span>Omset Total:</span>
+                                        <span class="font-bold">Rp {{ number_format($weeklyCashflow['total_omset'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Ecer:</span>
+                                        <span class="font-bold">Rp {{ number_format($weeklyCashflow['total_ecer'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Grosir:</span>
+                                        <span class="font-bold">Rp {{ number_format($weeklyCashflow['total_grosir'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span>Transaksi:</span>
+                                        <span>{{ $weeklyCashflow['transaction_count'] ?? 0 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Monthly Totals -->
+                            <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+                                <h3 class="text-lg font-semibold mb-4">📅 Total Bulan Ini</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between">
+                                        <span>Omset Total:</span>
+                                        <span class="font-bold">Rp {{ number_format($monthlyCashflow['total_omset'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Ecer:</span>
+                                        <span class="font-bold">Rp {{ number_format($monthlyCashflow['total_ecer'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Grosir:</span>
+                                        <span class="font-bold">Rp {{ number_format($monthlyCashflow['total_grosir'] ?? 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span>Transaksi:</span>
+                                        <span>{{ $monthlyCashflow['transaction_count'] ?? 0 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grosir Payment Channels -->
+                        <div class="bg-white rounded-lg border p-6 mb-6">
+                            <h3 class="text-lg font-semibold mb-4">💳 Grosir by Payment Channel</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                @if(isset($dailyCashflow['grosir_channels']))
+                                    @foreach($dailyCashflow['grosir_channels'] as $channel => $amount)
+                                        <div class="bg-gray-50 rounded-lg p-4 text-center">
+                                            <div class="text-sm text-gray-600 mb-1">
+                                                @if($channel === 'cash')
+                                                    💵 Cash
+                                                @elseif($channel === 'qr')
+                                                    📱 QR Code
+                                                @elseif($channel === 'edc')
+                                                    💳 EDC
+                                                @else
+                                                    {{ ucfirst($channel) }}
+                                                @endif
+                                            </div>
+                                            <div class="text-lg font-bold text-gray-900">
+                                                Rp {{ number_format($amount, 0, ',', '.') }}
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="col-span-3 text-center text-gray-500 py-4">
+                                        Belum ada data grosir hari ini
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Cash Ledger Summary -->
+                        <div class="bg-white rounded-lg border p-6">
+                            <h3 class="text-lg font-semibold mb-4">💰 Ringkasan Kas</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 class="font-medium text-gray-700 mb-3">Kas Masuk Hari Ini</h4>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-gray-600">Total Masuk:</span>
+                                            <span class="font-semibold text-green-600">
+                                                Rp {{ number_format($dailyCashflow['cash_ledger']['total_income'] ?? 0, 0, ',', '.') }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="font-medium text-gray-700 mb-3">Kas Keluar Hari Ini</h4>
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-gray-600">Total Keluar:</span>
+                                            <span class="font-semibold text-red-600">
+                                                Rp {{ number_format($dailyCashflow['cash_ledger']['total_expense'] ?? 0, 0, ',', '.') }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border-t pt-4 mt-4">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium text-gray-700">Saldo Hari Ini:</span>
+                                    <span class="text-lg font-bold {{ ($dailyCashflow['cash_ledger']['net_amount'] ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        Rp {{ number_format($dailyCashflow['cash_ledger']['net_amount'] ?? 0, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center mt-2 text-sm text-gray-600">
+                                    <span>Total Transaksi:</span>
+                                    <span>{{ $dailyCashflow['cash_ledger']['transaction_count'] ?? 0 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @elseif($viewMode === 'month')
                     <!-- Month View -->
                     <div class="p-4">
                         <!-- Header Hari -->

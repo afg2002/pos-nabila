@@ -155,9 +155,13 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                    Rp {{ number_format($po->total_amount, 0, ',', '.') }}
-                                </span>
+                                <div class="text-sm text-gray-900 dark:text-white">
+                                    <div class="font-medium">Rp {{ number_format($po->total_amount, 0, ',', '.') }}</div>
+                                    @if($po->paid_amount > 0)
+                                        <div class="text-xs text-green-600">Dibayar: Rp {{ number_format($po->paid_amount, 0, ',', '.') }}</div>
+                                        <div class="text-xs text-red-600">Sisa: Rp {{ number_format($po->remaining_amount, 0, ',', '.') }}</div>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900 dark:text-white">
@@ -214,6 +218,10 @@
                                             <a href="#" wire:click="updatePaymentStatus({{ $po->id }}, 'unpaid')" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">Unpaid</a>
                                             <a href="#" wire:click="updatePaymentStatus({{ $po->id }}, 'partial')" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">Partial</a>
                                             <a href="#" wire:click="updatePaymentStatus({{ $po->id }}, 'paid')" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600">Paid</a>
+                                            <hr class="my-1">
+                                            <a href="#" wire:click="openPaymentModal({{ $po->id }})" class="block px-4 py-2 text-sm text-blue-700 dark:text-blue-300 hover:bg-gray-100 dark:hover:bg-gray-600">
+                                                <i class="fas fa-money-bill-wave mr-2"></i>Bayar
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
@@ -439,6 +447,65 @@
                         <button type="button" wire:click="closeModal" 
                                 class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm dark:bg-gray-600 dark:text-white dark:border-gray-500 dark:hover:bg-gray-500">
                             Batal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+@endif
+
+<!-- Modal Pembayaran Purchase Order -->
+@if($showPaymentModal ?? false)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closePaymentModal">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Proses Pembayaran Purchase Order</h3>
+                
+                @if($selectedPO ?? false)
+                    <div class="mb-4 p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600">PO Number: <span class="font-medium">{{ $selectedPO->po_number }}</span></p>
+                        <p class="text-sm text-gray-600">Supplier: <span class="font-medium">{{ $selectedPO->supplier_name }}</span></p>
+                        <p class="text-sm text-gray-600">Total: <span class="font-medium">Rp {{ number_format($selectedPO->total_amount, 0, ',', '.') }}</span></p>
+                        <p class="text-sm text-gray-600">Sudah Dibayar: <span class="font-medium">Rp {{ number_format($selectedPO->paid_amount, 0, ',', '.') }}</span></p>
+                        <p class="text-sm text-gray-600">Sisa: <span class="font-medium text-red-600">Rp {{ number_format($selectedPO->remaining_amount, 0, ',', '.') }}</span></p>
+                    </div>
+                @endif
+                
+                <form wire:submit="processPayment">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Pembayaran</label>
+                            <input type="number" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                   wire:model="paymentAmount"
+                                   step="0.01"
+                                   min="0.01"
+                                   max="{{ ($selectedPO ?? false) ? $selectedPO->remaining_amount : 0 }}"
+                                   placeholder="Masukkan jumlah pembayaran"
+                                   required>
+                            @error('paymentAmount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
+                            <textarea class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      wire:model="paymentNotes"
+                                      rows="3"
+                                      placeholder="Catatan pembayaran (opsional)"></textarea>
+                            @error('paymentNotes') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3 mt-6">
+                        <button type="button" 
+                                class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors duration-200" 
+                                wire:click="closePaymentModal">
+                            Batal
+                        </button>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200">
+                            Proses Pembayaran
                         </button>
                     </div>
                 </form>

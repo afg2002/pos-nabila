@@ -255,10 +255,25 @@
                                 @php
                                     $currentStock = $product->current_stock;
                                     $isLowStock = $product->isLowStock();
+                                    $warehouseStocks = \App\ProductWarehouseStock::where('product_id', $product->id)
+                                        ->with('warehouse')
+                                        ->get();
                                 @endphp
-                                <span class="px-2 py-1 rounded-full text-xs {{ $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                    {{ number_format($currentStock) }}
-                </span>
+                                <div class="space-y-1">
+                                    <span class="px-2 py-1 rounded-full text-xs {{ $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                        Total: {{ number_format($currentStock) }}
+                                    </span>
+                                    @if($warehouseStocks->count() > 0)
+                                        <div class="text-xs text-gray-500 space-y-0.5">
+                                            @foreach($warehouseStocks as $warehouseStock)
+                                                <div class="flex justify-between">
+                                                    <span>{{ $warehouseStock->warehouse->code }}:</span>
+                                                    <span class="font-medium">{{ number_format($warehouseStock->stock_on_hand) }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                 Rp {{ number_format($product->price_retail, 0, ',', '.') }}

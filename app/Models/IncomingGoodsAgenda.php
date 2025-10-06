@@ -28,6 +28,10 @@ class IncomingGoodsAgenda extends Model
         'notes',
         'received_date',
         'business_modal_id',
+        'purchase_order_id',
+        'source',
+        'warehouse_id',
+        'product_id',
     ];
 
     protected $casts = [
@@ -50,6 +54,21 @@ class IncomingGoodsAgenda extends Model
     {
         return $this->hasMany(CapitalTracking::class, 'reference_id')
                     ->where('reference_type', 'incoming_goods_agenda');
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 
     // Scopes
@@ -119,6 +138,40 @@ class IncomingGoodsAgenda extends Model
             'status' => 'received',
             'received_date' => now(),
         ]);
+
+        // Increase stock in the selected warehouse if product and warehouse are specified
+        if ($this->product_id && $this->warehouse_id) {
+            $this->increaseWarehouseStock();
+        }
+    }
+
+    /**
+     * Increase stock in the specified warehouse
+     */
+    private function increaseWarehouseStock()
+    {
+        $product = $this->product;
+        $warehouse = $this->warehouse;
+
+        if ($product && $warehouse) {
+            // Get or create warehouse stock record
+            $warehouseStock = $product->stockForWarehouse($warehouse);
+            
+            // Increase stock
+            $warehouseStock->adjust($this->quantity);
+
+            // Create stock movement record
+            $product->stockMovements()->create([
+                'type' => 'in',
+                'qty' => $this->quantity,
+                'note' => "Penerimaan barang dari agenda: {$this->supplier_name}",
+                'warehouse_id' => $this->warehouse_id,
+                'supplier_name' => $this->supplier_name,
+                'unit_cost' => $this->unit_price,
+                'total_cost' => $this->total_amount,
+                'created_by' => auth()->id(),
+            ]);
+        }
     }
 
     public function calculateRemainingAmount()
@@ -142,6 +195,52 @@ class IncomingGoodsAgenda extends Model
         }
         
         $this->save();
+        
+        // Sync with Purchase Order payment status if linked
+        $this->syncWithPurchaseOrderPayment();
+    }
+
+    /**
+     * Sync agenda payment status with linked Purchase Order
+     */
+    public function syncWithPurchaseOrderPayment()
+    {
+        if ($this->purchase_order_id && $this->purchaseOrder) {
+            // Update PO paid amount based on agenda payment
+            $this->purchaseOrder->paid_amount = $this->paid_amount;
+            $this->purchaseOrder->updatePaymentStatus();
+        }
+    }
+
+    /**
+     * Make payment for this agenda
+     */
+    public function makePayment($amount, $notes = null)
+    {
+        $amount = (float) $amount;
+        
+        // Validate payment amount
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('Payment amount must be greater than 0');
+        }
+        
+        if ($amount > $this->remaining_amount) {
+            throw new \InvalidArgumentException('Payment amount cannot exceed remaining amount');
+        }
+        
+        // Update paid amount
+        $this->paid_amount += $amount;
+        $this->calculateRemainingAmount();
+        $this->updatePaymentStatus();
+        
+        // Add payment notes if provided
+        if ($notes) {
+            $currentNotes = $this->notes ? $this->notes . "\n" : '';
+            $this->notes = $currentNotes . "Payment: Rp " . number_format($amount, 0, ',', '.') . " - " . $notes;
+            $this->save();
+        }
+        
+        return $this;
     }
 
     protected static function boot()

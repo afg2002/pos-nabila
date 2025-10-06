@@ -83,6 +83,18 @@
                 </select>
             </div>
             
+            <!-- Warehouse Filter -->
+            <div>
+                <label for="warehouseFilter" class="block text-sm font-medium text-gray-700 mb-1">Gudang</label>
+                <select wire:model.live="warehouseFilter" id="warehouseFilter"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    <option value="">Semua Gudang</option>
+                    @foreach($warehouses as $warehouse)
+                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }} ({{ $warehouse->code }})</option>
+                    @endforeach
+                </select>
+            </div>
+
             <!-- Movement Type Filter -->
             <div>
                 <label for="movementTypeFilter" class="block text-sm font-medium text-gray-700 mb-1">Jenis</label>
@@ -143,6 +155,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gudang</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jumlah</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
@@ -170,6 +183,12 @@
                                         <div class="text-sm font-medium text-gray-900">{{ $movement->product ? $movement->product->name : 'No Product' }}</div>
                                         <div class="text-sm text-gray-500">{{ $movement->product ? $movement->product->sku : '-' }}</div>
                                     </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ $movement->warehouse->name ?? 'Tanpa Gudang' }}
+                                <div class="text-xs text-gray-500">
+                                    {{ $movement->warehouse->code ?? '-' }}
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -330,6 +349,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Produk</label>
                                 <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold">{{ $selectedMovement->product->name }}</p>
                                 <p class="text-xs text-gray-500">SKU: {{ $selectedMovement->product->sku }}</p>
+                                <p class="text-xs text-gray-500">Gudang: {{ $selectedMovement->warehouse->name ?? '-' }}</p>
                             </div>
                         </div>
 
@@ -436,6 +456,7 @@
                             <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $selectedMovement->product->name }}</p>
                                 <p class="text-xs text-gray-500">SKU: {{ $selectedMovement->product->sku }}</p>
+                                <p class="text-xs text-gray-500">Gudang: {{ $selectedMovement->warehouse->name ?? '-' }}</p>
                             </div>
                         </div>
 
