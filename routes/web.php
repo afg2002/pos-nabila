@@ -113,13 +113,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cash-ledger/print', [\App\Livewire\CashLedgerManagement::class, 'printReport'])->name('cash-ledger.print');
 });
 
-// Debt Reminder Management
-Route::middleware(['auth'])->group(function () {
-    Route::get('/debt-reminders', function () {
-        return view('debt-reminders.index');
-    })->name('debt-reminders.index');
-});
-
 // Incoming Goods Agenda Management
 Route::middleware(['auth'])->group(function () {
     Route::get('/incoming-goods-agenda', function () {

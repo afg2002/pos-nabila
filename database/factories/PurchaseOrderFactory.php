@@ -34,7 +34,6 @@ class PurchaseOrderFactory extends Factory
             'expected_delivery_date' => $expectedCarbon,
             'payment_due_date' => $this->faker->optional()->dateTimeBetween($expectedCarbon, '+30 days'),
             'payment_schedule_date' => $this->faker->optional()->dateTimeBetween($orderDate, '+20 days'),
-            'reminder_enabled' => $this->faker->boolean(50),
             'total_amount' => $this->faker->randomFloat(2, 100000, 5000000),
             'paid_amount' => 0,
             'status' => 'pending',

@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\DebtReminder;
-
 class PurchaseOrder extends Model
 {
     use HasFactory;
@@ -69,14 +67,6 @@ class PurchaseOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
-    }
-
-    /**
-     * Get debt reminders for this PO
-     */
-    public function debtReminders(): HasMany
-    {
-        return $this->hasMany(DebtReminder::class);
     }
 
     /**
@@ -207,51 +197,6 @@ class PurchaseOrder extends Model
         return $this;
     }
 
-    /**
-     * Create automatic reminders based on payment schedule date
-     */
-    public function createScheduledReminders(): void
-    {
-        if (!$this->payment_schedule_date || !$this->reminder_enabled) {
-            return;
-        }
-
-        // Clear existing scheduled reminders for this PO
-        $this->debtReminders()->where('type', 'scheduled_reminder')->delete();
-
-        $scheduleDate = $this->payment_schedule_date->copy();
-        $threeDaysBefore = $scheduleDate->copy()->subDays(3);
-        $oneDayAfter = $scheduleDate->copy()->addDay();
-
-        // Create reminder 3 days before scheduled date
-        if ($threeDaysBefore->isFuture()) {
-            DebtReminder::create([
-                'purchase_order_id' => $this->id,
-                'reminder_date' => $threeDaysBefore,
-                'type' => 'scheduled_reminder',
-                'status' => 'pending',
-                'message' => "Agenda pembayaran PO #{$this->po_number} untuk supplier {$this->supplier_name} dalam 3 hari. Jumlah: Rp " . number_format($this->remaining_amount, 0, ',', '.'),
-            ]);
-        }
-
-        // Create reminder on scheduled date
-        DebtReminder::create([
-            'purchase_order_id' => $this->id,
-            'reminder_date' => $scheduleDate,
-            'type' => 'scheduled_reminder',
-            'status' => 'pending',
-            'message' => "Hari ini adalah jadwal pembayaran PO #{$this->po_number} untuk supplier {$this->supplier_name}. Jumlah: Rp " . number_format($this->remaining_amount, 0, ',', '.'),
-        ]);
-
-        // Create reminder 1 day after if not paid
-        DebtReminder::create([
-            'purchase_order_id' => $this->id,
-            'reminder_date' => $oneDayAfter,
-            'type' => 'scheduled_reminder',
-            'status' => 'pending',
-            'message' => "Agenda pembayaran PO #{$this->po_number} untuk supplier {$this->supplier_name} sudah terlewat 1 hari. Segera lakukan pembayaran. Jumlah: Rp " . number_format($this->remaining_amount, 0, ',', '.'),
-        ]);
-    }
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(\App\Models\Supplier::class);

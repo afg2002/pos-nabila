@@ -77,13 +77,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'dashboard.view', 'display_name' => 'View Dashboard', 'description' => 'Can view dashboard and analytics', 'group' => 'dashboard'],
             ['name' => 'dashboard.export', 'display_name' => 'Export Reports', 'description' => 'Can export dashboard reports', 'group' => 'dashboard'],
             
-            // Debt Reminder permissions
-            ['name' => 'debt_reminders.view', 'display_name' => 'View Debt Reminders', 'description' => 'Can view debt reminder list and details', 'group' => 'debt_reminders'],
-            ['name' => 'debt_reminders.create', 'display_name' => 'Create Debt Reminders', 'description' => 'Can create new debt reminders', 'group' => 'debt_reminders'],
-            ['name' => 'debt_reminders.edit', 'display_name' => 'Edit Debt Reminders', 'description' => 'Can edit existing debt reminders', 'group' => 'debt_reminders'],
-            ['name' => 'debt_reminders.delete', 'display_name' => 'Delete Debt Reminders', 'description' => 'Can delete debt reminders', 'group' => 'debt_reminders'],
-            ['name' => 'debt_reminders.send', 'display_name' => 'Send Debt Reminders', 'description' => 'Can send debt reminder notifications', 'group' => 'debt_reminders'],
-            
             // Purchase Order permissions
             ['name' => 'purchase_orders.view', 'display_name' => 'View Purchase Orders', 'description' => 'Can view purchase order list and details', 'group' => 'purchase_orders'],
             ['name' => 'purchase_orders.create', 'display_name' => 'Create Purchase Orders', 'description' => 'Can create new purchase orders', 'group' => 'purchase_orders'],

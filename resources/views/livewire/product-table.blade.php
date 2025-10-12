@@ -80,6 +80,12 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap gap-2">
+            <!-- Warehouse Columns Toggle -->
+            <button wire:click="toggleWarehouseColumns"
+                    class="px-4 py-2 {{ $showWarehouseColumns ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-600 hover:bg-gray-700' }} text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors">
+                <i class="fas fa-warehouse mr-2"></i>
+                {{ $showWarehouseColumns ? 'Sembunyikan Stok Gudang' : 'Tampilkan Stok Gudang' }}
+            </button>
             @can('create', App\Product::class)
                 <button wire:click="openCreateModal" 
                         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -172,13 +178,31 @@
                                 <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} ml-1"></i>
                             @endif
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer" 
-                            wire:click="sortBy('current_stock')">
-                            Stok
-                            @if($sortField === 'current_stock')
-                                <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} ml-1"></i>
-                            @endif
-                        </th>
+                        @if($showWarehouseColumns)
+                            <!-- Warehouse Stock Columns -->
+                            @foreach($warehouses as $warehouse)
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    {{ $warehouse->code }}
+                                    <span class="block text-xs text-gray-400">{{ Str::limit($warehouse->name, 15) }}</span>
+                                </th>
+                            @endforeach
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                                wire:click="sortBy('current_stock')">
+                                Total Stok
+                                @if($sortField === 'current_stock')
+                                    <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} ml-1"></i>
+                                @endif
+                            </th>
+                        @else
+                            <!-- Single Stock Column -->
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                                wire:click="sortBy('current_stock')">
+                                Stok
+                                @if($sortField === 'current_stock')
+                                    <i class="fas fa-sort-{{ $sortDirection === 'asc' ? 'up' : 'down' }} ml-1"></i>
+                                @endif
+                            </th>
+                        @endif
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer" 
                             wire:click="sortBy('price_retail')">
                             Harga Retail
@@ -251,30 +275,46 @@
                                     {{ $product->category }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                @php
-                                    $currentStock = $product->current_stock;
-                                    $isLowStock = $product->isLowStock();
-                                    $warehouseStocks = \App\ProductWarehouseStock::where('product_id', $product->id)
-                                        ->with('warehouse')
-                                        ->get();
-                                @endphp
-                                <div class="space-y-1">
-                                    <span class="px-2 py-1 rounded-full text-xs {{ $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
-                                        Total: {{ number_format($currentStock) }}
+                            @if($showWarehouseColumns)
+                                <!-- Warehouse Stock Columns -->
+                                @foreach($warehouses as $warehouse)
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                        @php
+                                            $stock = 0;
+                                            if (isset($product->warehouseStocks)) {
+                                                $warehouseStock = $product->warehouseStocks->firstWhere('warehouse_id', $warehouse->id);
+                                                $stock = $warehouseStock ? $warehouseStock->stock_on_hand : 0;
+                                            } else {
+                                                $stock = $this->getWarehouseStock($product->id, $warehouse->id);
+                                            }
+                                            $isLowStock = $stock < 5;
+                                        @endphp
+                                        <span class="px-2 py-1 rounded-full text-xs {{ $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                            {{ number_format($stock) }}
+                                        </span>
+                                    </td>
+                                @endforeach
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    @php
+                                        $currentStock = $product->current_stock;
+                                        $isLowStock = $product->isLowStock();
+                                    @endphp
+                                    <span class="px-2 py-1 rounded-full text-xs font-semibold {{ $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                        {{ number_format($currentStock) }}
                                     </span>
-                                    @if($warehouseStocks->count() > 0)
-                                        <div class="text-xs text-gray-500 space-y-0.5">
-                                            @foreach($warehouseStocks as $warehouseStock)
-                                                <div class="flex justify-between">
-                                                    <span>{{ $warehouseStock->warehouse->code }}:</span>
-                                                    <span class="font-medium">{{ number_format($warehouseStock->stock_on_hand) }}</span>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
-                            </td>
+                                </td>
+                            @else
+                                <!-- Single Stock Column -->
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    @php
+                                        $currentStock = $product->current_stock;
+                                        $isLowStock = $product->isLowStock();
+                                    @endphp
+                                    <span class="px-2 py-1 rounded-full text-xs {{ $isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
+                                        {{ number_format($currentStock) }}
+                                    </span>
+                                </td>
+                            @endif
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                 Rp {{ number_format($product->price_retail, 0, ',', '.') }}
                             </td>
@@ -398,7 +438,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                            <td colspan="{{ $showWarehouseColumns ? 10 + $warehouses->count() : 10 }}" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-box-open text-4xl mb-4"></i>
                                 <p class="text-lg">Tidak ada produk ditemukan</p>
                                 <p class="text-sm">Tambahkan produk baru atau ubah filter pencarian</p>

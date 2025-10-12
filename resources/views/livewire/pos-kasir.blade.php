@@ -49,18 +49,18 @@
                     </div>
                 </div>
                 
-                <!-- Warehouse Selector -->
+                <!-- Warehouse Info (Read-only) -->
                 <div class="mt-4">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        <i class="fas fa-warehouse mr-2"></i>Pilih Gudang
+                        <i class="fas fa-warehouse mr-2"></i>Gudang Toko
                     </label>
-                    <select wire:model.live="warehouseId"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <option value="">Pilih Gudang</option>
-                        @foreach($warehouses as $warehouse)
-                            <option value="{{ $warehouse->id }}">{{ $warehouse->name }} ({{ $warehouse->code }})</option>
-                        @endforeach
-                    </select>
+                    <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
+                        @if($warehouses->isNotEmpty())
+                            {{ $warehouses->first()->name }} ({{ $warehouses->first()->code }})
+                        @else
+                            Tidak ada gudang toko tersedia
+                        @endif
+                    </div>
                 </div>
 
                 <!-- Product Search -->
@@ -72,21 +72,15 @@
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                 </div>
                 
-                <!-- Custom Item Button -->
+                <!-- Custom Item Button - DISABLED -->
                 <div class="mt-4">
-                    <button type="button" 
-                            wire:click="showCustomItemModal"
-                            wire:loading.attr="disabled"
-                            class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center disabled:opacity-50">
-                        <span wire:loading.remove wire:target="showCustomItemModal">
-                            <i class="fas fa-plus mr-2"></i>
-                            Tambah Item Custom
-                        </span>
-                        <span wire:loading wire:target="showCustomItemModal">
-                            <i class="fas fa-spinner fa-spin mr-2"></i>
-                            Loading...
-                        </span>
+                    <button type="button"
+                            disabled
+                            class="w-full bg-gray-400 text-white font-medium py-2 px-4 rounded-md cursor-not-allowed opacity-60 flex items-center justify-center">
+                        <i class="fas fa-ban mr-2"></i>
+                        Item Custom Dinonaktifkan
                     </button>
+                    <p class="text-xs text-gray-500 mt-1">Hanya produk dari gudang toko yang tersedia</p>
                 </div>
             </div>
 
@@ -169,21 +163,81 @@
 
         <!-- Right Panel - Cart & Checkout -->
         <div class="w-1/2 bg-white flex flex-col">
-            <!-- Header -->
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-semibold text-gray-900">Keranjang Belanja</h2>
-                    @if(!empty($cart))
-                        <button wire:click="clearCart" 
-                                class="text-red-600 hover:text-red-800 text-sm font-medium"
-                                title="Shortcut: F2">
-                            Kosongkan
+            <!-- Tab Navigation -->
+            <div class="bg-gray-50 border-b border-gray-200">
+                <div class="flex items-center justify-between p-4">
+                    <div class="flex items-center space-x-2">
+                        <!-- Tab Buttons -->
+                        <div class="flex space-x-1" id="tab-navigation">
+                            @foreach($carts as $tabId => $tabData)
+                                <button wire:click="switchToTab({{ $tabId }})"
+                                        class="relative px-4 py-2 text-sm font-medium rounded-t-lg transition-colors
+                                            {{ $activeTabId == $tabId
+                                                ? 'bg-white text-blue-600 border-t-2 border-x border-blue-500 border-b-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                                    <span class="flex items-center space-x-2">
+                                        <span>{{ $tabData['name'] }}</span>
+                                        @php
+                                            $itemCount = count($tabData['cart']);
+                                        @endphp
+                                        @if($itemCount > 0)
+                                            <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-blue-600 rounded-full">
+                                                {{ $itemCount }}
+                                            </span>
+                                        @endif
+                                    </span>
+                                    <!-- Close button for non-active tabs -->
+                                    @if(count($carts) > 1 && $activeTabId != $tabId)
+                                        <button wire:click.stop="closeTab({{ $tabId }})"
+                                                class="ml-2 text-gray-400 hover:text-red-600 transition-colors">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                        
+                        <!-- Add New Tab Button -->
+                        <button wire:click="createNewTab"
+                                class="px-3 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                                title="Tambah Tab Baru (Ctrl+T)">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
                         </button>
-                    @endif
+                    </div>
                 </div>
                 
+                <!-- Tab Actions Bar -->
+                <div class="px-4 pb-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <h2 class="text-lg font-semibold text-gray-900">Keranjang - {{ $carts[$activeTabId]['name'] }}</h2>
+                            @if(!empty($carts[$activeTabId]['cart']))
+                                <button wire:click="clearCart"
+                                        class="text-red-600 hover:text-red-800 text-sm font-medium"
+                                        title="Shortcut: F2">
+                                    Kosongkan
+                                </button>
+                            @endif
+                        </div>
+                        
+                        <!-- Tab Edit Name -->
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs text-gray-500">Nama Tab:</label>
+                            <input type="text"
+                                   wire:model.live="carts.{{ $activeTabId }}.name"
+                                   class="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                   placeholder="Nama tab...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
                 <!-- Bulk Price Type Control -->
-                @if(!empty($cart))
+                @if(!empty($carts[$activeTabId]['cart']))
                     <div class="mt-3 p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center justify-between">
                             <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
@@ -204,7 +258,7 @@
                 @endif
                 
                 <!-- Bulk Price Type Control -->
-                @if(!empty($cart))
+                @if(!empty($carts[$activeTabId]['cart']))
                     <div class="mt-3 p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center justify-between">
                             <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
@@ -246,13 +300,16 @@
                     <span class="mr-3">F2: Kosongkan</span>
                     <span class="mr-3">F3: Focus Barcode</span>
                     <span class="mr-3">F4: Cari Produk</span>
+                    <span class="mr-3">Ctrl+T: Tab Baru</span>
+                    <span class="mr-3">Ctrl+W: Tutup Tab</span>
+                    <span class="mr-3">Ctrl+Tab: Ganti Tab</span>
                     <span>ESC: Batal/Tutup</span>
                 </div>
             </div>
 
             <!-- Cart Items -->
             <div class="flex-1 overflow-y-auto">
-                @if(empty($cart))
+                @if(empty($carts[$activeTabId]['cart']))
                     <div class="flex items-center justify-center h-full text-gray-500">
                         <div class="text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -264,7 +321,7 @@
                     </div>
                 @else
                     <div class="p-6 space-y-4">
-                        @foreach($cart as $key => $item)
+                        @foreach($carts[$activeTabId]['cart'] as $key => $item)
                             <div class="bg-gray-50 rounded-lg p-4">
                                 <div class="flex items-start justify-between">
                                     <div class="flex items-start space-x-3 flex-1">
@@ -415,7 +472,7 @@
             </div>
 
             <!-- Cart Summary & Checkout -->
-            @if(!empty($cart))
+            @if(!empty($carts[$activeTabId]['cart']))
                 <div class="border-t border-gray-200 p-6">
                     <!-- Discount -->
                     <div class="mb-4">
@@ -448,7 +505,7 @@
                         @php
                             $totalCost = 0;
                             $totalProfit = 0;
-                            foreach($cart as $item) {
+                            foreach($carts[$activeTabId]['cart'] as $item) {
                                 if (!isset($item['is_custom']) || !$item['is_custom']) {
                                     $product = \App\Product::find($item['product_id']);
                                     $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
@@ -706,15 +763,36 @@
         document.addEventListener('keydown', function(e) {
             // Don't trigger shortcuts if user is typing in input fields, select, or textarea
             // Exception: Allow shortcuts when barcode input is focused
-            if ((e.target.tagName === 'INPUT' && e.target.id !== 'barcode-input') ||
-                e.target.tagName === 'SELECT' ||
-                e.target.tagName === 'TEXTAREA') {
+            if ((e.target.tagName === 'INPUT' && e.target.id !== 'barcode-input' && !e.ctrlKey && !e.altKey) ||
+                (e.target.tagName === 'SELECT' && !e.ctrlKey && !e.altKey) ||
+                (e.target.tagName === 'TEXTAREA' && !e.ctrlKey && !e.altKey)) {
                 return;
             }
             
             // Don't trigger shortcuts if modal is open (except ESC)
             if (document.querySelector('.modal') && e.key !== 'Escape') {
                 return;
+            }
+            
+            // Ctrl+T - Create new tab
+            if (e.ctrlKey && e.key === 't') {
+                e.preventDefault();
+                @this.call('createNewTab');
+            }
+            
+            // Ctrl+W - Close current tab
+            if (e.ctrlKey && e.key === 'w') {
+                e.preventDefault();
+                @this.call('closeTab', {{ $activeTabId }});
+            }
+            
+            // Ctrl+Tab - Switch to next tab
+            if (e.ctrlKey && e.key === 'Tab') {
+                e.preventDefault();
+                const tabIds = [{{ implode(',', array_keys($carts)) }}];
+                const currentIndex = tabIds.indexOf({{ $activeTabId }});
+                const nextIndex = (currentIndex + 1) % tabIds.length;
+                @this.call('switchToTab', tabIds[nextIndex]);
             }
             
             // F1 - Open Checkout (if cart not empty)
@@ -861,73 +939,8 @@
         }
 </script>
 
-<!-- Custom Item Modal -->
-@if($showCustomItemModal)
-<div class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Tambah Item Custom</h3>
-            <button wire:click="hideCustomItemModal" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <form wire:submit.prevent="addCustomItem">
-            <!-- Item Name -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Nama Item</label>
-                <input type="text" 
-                       wire:model="customItemName" 
-                       placeholder="Masukkan nama item..."
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('customItemName') border-red-500 @enderror">
-                @error('customItemName')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-            
-            <!-- Item Price -->
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Harga</label>
-                <input type="number" 
-                       wire:model="customItemPrice" 
-                       placeholder="0"
-                       min="0.01"
-                       step="0.01"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('customItemPrice') border-red-500 @enderror">
-                @error('customItemPrice')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-            
-            <!-- Item Quantity -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Jumlah</label>
-                <input type="number" 
-                       wire:model="customItemQuantity" 
-                       placeholder="1"
-                       min="1"
-                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent @error('customItemQuantity') border-red-500 @enderror">
-                @error('customItemQuantity')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
-            
-            <!-- Buttons -->
-            <div class="flex justify-end space-x-3">
-                <button type="button" 
-                        wire:click="hideCustomItemModal"
-                        class="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
-                    Batal
-                </button>
-                <button type="submit" 
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors">
-                    Tambah ke Keranjang
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-@endif
+<!-- Custom Item Modal - REMOVED -->
+<!-- Custom item functionality has been disabled -->
 
 <!-- Image Preview Modal -->
 <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">

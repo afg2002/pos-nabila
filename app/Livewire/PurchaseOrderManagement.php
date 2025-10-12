@@ -30,7 +30,6 @@ class PurchaseOrderManagement extends Component
     public $expected_date;
     public $payment_due_date;
     public $payment_schedule_date;
-    public $reminder_enabled = true;
     public $notes;
     public $status = 'pending';
     public $payment_status = 'unpaid';
@@ -64,7 +63,6 @@ class PurchaseOrderManagement extends Component
         'expected_date' => 'required|date|after_or_equal:today',
         'payment_due_date' => 'required|date|after_or_equal:expected_date',
         'payment_schedule_date' => 'nullable|date|after_or_equal:today',
-        'reminder_enabled' => 'boolean',
         'notes' => 'nullable|string',
         'status' => 'required|in:pending,ordered,received,cancelled',
         'payment_status' => 'required|in:unpaid,partial,paid',
@@ -173,7 +171,6 @@ class PurchaseOrderManagement extends Component
         $this->expected_date = '';
         $this->payment_due_date = '';
         $this->payment_schedule_date = '';
-        $this->reminder_enabled = true;
         $this->notes = '';
         $this->status = 'pending';
         $this->payment_status = 'unpaid';
@@ -197,7 +194,6 @@ class PurchaseOrderManagement extends Component
             'expected_date' => 'required|date',
             'payment_due_date' => 'required|date|after_or_equal:expected_date',
             'payment_schedule_date' => 'nullable|date',
-            'reminder_enabled' => 'boolean',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',
@@ -243,7 +239,6 @@ class PurchaseOrderManagement extends Component
                     'expected_date' => $this->expected_date,
                     'payment_due_date' => $this->payment_due_date,
                     'payment_schedule_date' => $this->payment_schedule_date,
-                    'reminder_enabled' => $this->reminder_enabled,
                     'notes' => $this->notes,
                     'status' => $this->status,
                     'payment_status' => $this->payment_status,
@@ -255,10 +250,6 @@ class PurchaseOrderManagement extends Component
                     $purchaseOrder->items()->create($item);
                 }
 
-                // Create scheduled reminders if payment schedule is set
-                if ($this->payment_schedule_date && $this->reminder_enabled) {
-                    $purchaseOrder->createScheduledReminders();
-                }
 
                 session()->flash('message', 'Purchase Order berhasil diperbarui!');
             } else {
@@ -274,7 +265,6 @@ class PurchaseOrderManagement extends Component
                     'expected_date' => $this->expected_date,
                     'payment_due_date' => $this->payment_due_date,
                     'payment_schedule_date' => $this->payment_schedule_date,
-                    'reminder_enabled' => $this->reminder_enabled,
                     'total_amount' => $totalAmount,
                     'notes' => $this->notes,
                     'status' => $this->status,
@@ -287,10 +277,6 @@ class PurchaseOrderManagement extends Component
                     $purchaseOrder->items()->create($item);
                 }
 
-                // Create scheduled reminders if payment schedule is set
-                if ($this->payment_schedule_date && $this->reminder_enabled) {
-                    $purchaseOrder->createScheduledReminders();
-                }
 
                 // Create consolidated agenda record from PO
                 $this->createAgendaFromPO($purchaseOrder);
@@ -350,7 +336,6 @@ class PurchaseOrderManagement extends Component
         $this->expected_date = $purchaseOrder->expected_date->format('Y-m-d');
         $this->payment_due_date = $purchaseOrder->payment_due_date->format('Y-m-d');
         $this->payment_schedule_date = $purchaseOrder->payment_schedule_date ? $purchaseOrder->payment_schedule_date->format('Y-m-d') : null;
-        $this->reminder_enabled = $purchaseOrder->reminder_enabled;
         $this->notes = $purchaseOrder->notes;
         $this->status = $purchaseOrder->status;
         $this->payment_status = $purchaseOrder->payment_status;

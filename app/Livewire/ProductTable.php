@@ -32,6 +32,13 @@ class ProductTable extends Component
 
     public $perPage = 10;
 
+    // Properties for warehouse columns toggle
+    public $showWarehouseColumns = false;
+
+    // Cache warehouse data for performance
+    protected $warehouses = [];
+    protected $warehouseStocksCache = [];
+
     // Properties untuk modal
     public $showModal = false;
 
@@ -185,6 +192,45 @@ class ProductTable extends Component
     public function updatingPerPage()
     {
         $this->resetPage();
+    }
+
+    /**
+     * Toggle warehouse columns view
+     */
+    public function toggleWarehouseColumns()
+    {
+        $this->showWarehouseColumns = !$this->showWarehouseColumns;
+        $this->resetPage(); // Reset pagination when changing view
+        $this->warehouseStocksCache = []; // Clear cache when toggling
+    }
+
+    /**
+     * Get warehouses for column headers
+     */
+    public function getWarehouses()
+    {
+        if (empty($this->warehouses)) {
+            $this->warehouses = \App\Warehouse::ordered()->get();
+        }
+        return $this->warehouses;
+    }
+
+    /**
+     * Get warehouse stock for a product with caching
+     */
+    public function getWarehouseStock($productId, $warehouseId)
+    {
+        $key = "{$productId}-{$warehouseId}";
+        
+        if (!isset($this->warehouseStocksCache[$key])) {
+            $stock = \App\ProductWarehouseStock::where('product_id', $productId)
+                ->where('warehouse_id', $warehouseId)
+                ->value('stock_on_hand') ?? 0;
+            
+            $this->warehouseStocksCache[$key] = $stock;
+        }
+        
+        return $this->warehouseStocksCache[$key];
     }
 
     public function sortBy($field)
@@ -835,7 +881,8 @@ class ProductTable extends Component
     public function updatedSelectAll($value)
     {
         if ($value) {
-            $this->selectedProducts = $this->getProducts()->get()->pluck('id')->toArray();
+            $products = $this->getProducts();
+            $this->selectedProducts = $products->pluck('id')->toArray();
         } else {
             $this->selectedProducts = [];
         }
@@ -911,11 +958,13 @@ class ProductTable extends Component
      */
     private function clearProductCache()
     {
-        // Clear all product cache keys
-        $cacheKeys = cache()->getRedis()->keys('*products_*');
-        if ($cacheKeys) {
-            cache()->getRedis()->del($cacheKeys);
-        }
+        // Clear specific cache keys that we know exist
+        cache()->forget('product_categories');
+        cache()->forget('product_units');
+        
+        // Clear any product listing cache by using a version key
+        $versionKey = 'products_cache_version';
+        cache()->increment($versionKey);
     }
 
     // Unit Management Methods
@@ -1077,6 +1126,14 @@ class ProductTable extends Component
             ])
             ->with(['unit:id,name,abbreviation']);
 
+        // Eager load warehouse stocks when columns are shown
+        if ($this->showWarehouseColumns) {
+            $query->with(['warehouseStocks' => function ($q) {
+                $q->select('product_id', 'warehouse_id', 'stock_on_hand')
+                  ->with('warehouse:id,code,name');
+            }]);
+        }
+
         // Include soft deleted if requested
         if ($this->showDeleted) {
             $query->withTrashed();
@@ -1155,11 +1212,13 @@ class ProductTable extends Component
         $products = $this->getProducts();
         $categories = $this->getCategories();
         $units = $this->getUnits();
+        $warehouses = $this->getWarehouses();
 
         return view('livewire.product-table', [
             'products' => $products,
             'categories' => $categories,
             'units' => $units,
+            'warehouses' => $warehouses,
         ]);
     }
 
