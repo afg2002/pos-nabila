@@ -53,8 +53,13 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CapitalTrackingSeeder::class,
             CashLedgerSeeder::class,
-            PurchaseOrderSeeder::class,
-            DebtReminderSeeder::class,
+        ]);
+        
+        // Run product and warehouse seeders
+        $this->call([
+            ProductUnitSeeder::class,
+            WarehouseSeeder::class,
+            PharmacyProductSeeder::class,
         ]);
     }
 }

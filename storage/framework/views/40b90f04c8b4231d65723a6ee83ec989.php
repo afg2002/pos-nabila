@@ -1,19 +1,20 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="<?php echo e(str_replace('_', '-', app()->getLocale())); ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
-    <title>{{ config('app.name', 'Laravel Boilerplate') }}</title>
+    <title><?php echo e(config('app.name', 'Laravel Boilerplate')); ?></title>
 
-    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <link href="<?php echo e(asset('css/app.css')); ?>" rel="stylesheet">
     <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="{{ asset('css/font-awesome.css') }}">
+    <link rel="stylesheet" href="<?php echo e(asset('css/font-awesome.css')); ?>">
     <!-- Custom Calendar Styles -->
-    <link rel="stylesheet" href="{{ asset('css/custom-calendar.css') }}">
+    <link rel="stylesheet" href="<?php echo e(asset('css/custom-calendar.css')); ?>">
     <!-- Larapex Charts will handle ApexCharts automatically -->
-    @livewireStyles
+    <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::styles(); ?>
+
     <style>
         .sidebar-gradient {
             background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
@@ -131,7 +132,7 @@
     </style>
 </head>
 <body class="font-sans antialiased bg-gray-50">
-    @auth
+    <?php if(auth()->guard()->check()): ?>
         <div class="min-h-screen">
             <!-- Sidebar -->
             <div id="sidebar" class="sidebar-toggle fixed inset-y-0 left-0 z-50 w-64 sidebar-gradient shadow-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col">
@@ -143,7 +144,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                             </svg>
                         </div>
-                        <span class="ml-3 text-white font-bold text-lg">{{ config('app.name', 'Laravel') }}</span>
+                        <span class="ml-3 text-white font-bold text-lg"><?php echo e(config('app.name', 'Laravel')); ?></span>
                     </div>
                 </div>
 
@@ -151,7 +152,7 @@
                 <nav class="flex-1 overflow-y-auto px-4 py-4">
                     <div class="space-y-2">
                         <!-- Dashboard -->
-                        <a href="{{ route('dashboard') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('dashboard') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <a href="<?php echo e(route('dashboard')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('dashboard') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                             <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z"></path>
                             </svg>
@@ -159,27 +160,27 @@
                         </a>
 
                         <!-- User Management -->
-                        @permission('users.view')
-                            <a href="{{ route('users.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('users.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'users.view')): ?>
+                            <a href="<?php echo e(route('users.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('users.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
                                 </svg>
                                 Users
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- Role Management -->
-                        @permission('roles.view')
-                            <a href="{{ route('roles.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('roles.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'roles.view')): ?>
+                            <a href="<?php echo e(route('roles.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('roles.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                                 </svg>
                                 Roles & Permissions
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- Product Management -->
-                        <a href="{{ route('products.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('products.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <a href="<?php echo e(route('products.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('products.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                             <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 21V9l-6-3"></path>
                             </svg>
@@ -187,47 +188,47 @@
                         </a>
 
                          <!-- Warehouse Management -->
-                        @permission('warehouses.view')
-                            <a href="{{ route('warehouses.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('warehouses.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'warehouses.view')): ?>
+                            <a href="<?php echo e(route('warehouses.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('warehouses.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                                 </svg>
                                 Warehouses
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- Inventory Management -->
-                        @permission('inventory.view')
-                            <a href="{{ route('inventory.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('inventory.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'inventory.view')): ?>
+                            <a href="<?php echo e(route('inventory.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('inventory.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                                 </svg>
                                 Inventory
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- Incoming Goods Agenda -->
-                        @permission('incoming_goods_agenda.view')
-                            <a href="{{ route('incoming-goods-agenda.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('incoming-goods-agenda.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'incoming_goods_agenda.view')): ?>
+                            <a href="<?php echo e(route('incoming-goods-agenda.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('incoming-goods-agenda.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-1.5 1.5M14 7l1.5 1.5M3 13.5L9 19l11-11"></path>
                                 </svg>
                                 Incoming Goods Agenda
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- Customer Management -->
-                        @permission('customers.view')
-                            <a href="{{ route('customers.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('customers.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'customers.view')): ?>
+                            <a href="<?php echo e(route('customers.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('customers.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                 </svg>
                                 Customers
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- POS (Point of Sale) -->
-                        <a href="{{ route('pos.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('pos.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <a href="<?php echo e(route('pos.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('pos.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                             <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
@@ -236,31 +237,31 @@
 
 
                         <!-- Capital Tracking -->
-                        @permission('capital_tracking.view')
-                            <a href="{{ route('capital-tracking.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('capital-tracking.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'capital_tracking.view')): ?>
+                            <a href="<?php echo e(route('capital-tracking.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('capital-tracking.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 Capital Tracking
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
                         <!-- Cash Ledger -->
-                        @permission('cash_ledger.view')
-                            <a href="{{ route('cash-ledger.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('cash-ledger.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'cash_ledger.view')): ?>
+                            <a href="<?php echo e(route('cash-ledger.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('cash-ledger.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                 <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                                 </svg>
                                 Cash Ledger
                             </a>
-                        @endpermission
+                        <?php endif; ?>
 
 
                         <!-- Account Settings -->
                         <div class="pt-4 mt-4 border-t border-blue-400 border-opacity-30">
                             <p class="px-4 text-xs font-semibold text-blue-200 uppercase tracking-wider">Account</p>
                             <div class="mt-2 space-y-2">
-                                <a href="{{ route('profile.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('profile.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                                <a href="<?php echo e(route('profile.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('profile.*') ? 'bg-white bg-opacity-20 text-white' : 'text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
                                     <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                                     </svg>
@@ -277,15 +278,15 @@
                     <div class="bg-white bg-opacity-10 rounded-lg p-3">
                         <div class="flex items-center">
                             <div class="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                                <span class="text-xs font-bold text-blue-600">{{ substr(auth()->user()->name, 0, 2) }}</span>
+                                <span class="text-xs font-bold text-blue-600"><?php echo e(substr(auth()->user()->name, 0, 2)); ?></span>
                             </div>
                             <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-white truncate">{{ auth()->user()->name }}</p>
-                                <p class="text-xs text-blue-200 truncate">{{ auth()->user()->email }}</p>
+                                <p class="text-sm font-medium text-white truncate"><?php echo e(auth()->user()->name); ?></p>
+                                <p class="text-xs text-blue-200 truncate"><?php echo e(auth()->user()->email); ?></p>
                             </div>
                         </div>
-                        <form method="POST" action="{{ route('logout') }}" class="mt-3" id="logout-form">
-                            @csrf
+                        <form method="POST" action="<?php echo e(route('logout')); ?>" class="mt-3" id="logout-form">
+                            <?php echo csrf_field(); ?>
                             <button type="button" onclick="confirmLogout()" class="w-full flex items-center justify-center px-3 py-2 text-sm font-medium text-blue-100 bg-white bg-opacity-10 rounded-md hover:bg-opacity-20 transition-colors duration-200">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -319,31 +320,32 @@
                                                 <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z"></path>
                                                 </svg>
-                                                <a href="{{ route('dashboard') }}" class="ml-2 text-gray-500 hover:text-gray-700">Dashboard</a>
+                                                <a href="<?php echo e(route('dashboard')); ?>" class="ml-2 text-gray-500 hover:text-gray-700">Dashboard</a>
                                             </div>
                                         </li>
-                                        @if(!request()->routeIs('dashboard'))
+                                        <?php if(!request()->routeIs('dashboard')): ?>
                                             <li>
                                                 <div class="flex items-center">
                                                     <svg class="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
                                                         <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                                                     </svg>
                                                     <span class="ml-2 text-gray-700 font-medium">
-                                                        @if(request()->routeIs('users.*'))
+                                                        <?php if(request()->routeIs('users.*')): ?>
                                                             Users Management
-                                                        @elseif(request()->routeIs('roles.*'))
+                                                        <?php elseif(request()->routeIs('roles.*')): ?>
                                                             Roles & Permissions
-                                                        @elseif(request()->routeIs('profile.*'))
+                                                        <?php elseif(request()->routeIs('profile.*')): ?>
                                                             Profile Settings
-                                                        @elseif(request()->routeIs('warehouses.*'))
+                                                        <?php elseif(request()->routeIs('warehouses.*')): ?>
                                                             Warehouse Management
-                                                        @else
-                                                            {{ ucwords(str_replace(['-', '_'], ' ', request()->route()->getName())) }}
-                                                        @endif
+                                                        <?php else: ?>
+                                                            <?php echo e(ucwords(str_replace(['-', '_'], ' ', request()->route()->getName()))); ?>
+
+                                                        <?php endif; ?>
                                                     </span>
                                                 </div>
                                             </li>
-                                        @endif
+                                        <?php endif; ?>
                                     </ol>
                                 </nav>
                             </div>
@@ -400,7 +402,7 @@
                 <!-- Page Content -->
                 <main class="p-6 min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
                     <!-- Modern Flash Messages -->
-                    @if (session('message'))
+                    <?php if(session('message')): ?>
                         <div class="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm" role="alert">
                             <div class="flex items-center">
                                 <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
@@ -408,12 +410,12 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </div>
-                                <span class="font-medium">{{ session('message') }}</span>
+                                <span class="font-medium"><?php echo e(session('message')); ?></span>
                             </div>
                         </div>
-                    @endif
+                    <?php endif; ?>
 
-                    @if (session('error'))
+                    <?php if(session('error')): ?>
                         <div class="mb-6 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-700 px-6 py-4 rounded-2xl shadow-lg backdrop-blur-sm" role="alert">
                             <div class="flex items-center">
                                 <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
@@ -421,12 +423,12 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </div>
-                                <span class="font-medium">{{ session('error') }}</span>
+                                <span class="font-medium"><?php echo e(session('error')); ?></span>
                             </div>
                         </div>
-                    @endif
+                    <?php endif; ?>
 
-                    @yield('content')
+                    <?php echo $__env->yieldContent('content'); ?>
                 </main>
 
                 <!-- Modern Footer -->
@@ -440,8 +442,8 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <div class="font-semibold text-gray-900">{{ config('app.name', 'Laravel Boilerplate') }}</div>
-                                    <div class="text-xs text-gray-500">© {{ date('Y') }} All rights reserved.</div>
+                                    <div class="font-semibold text-gray-900"><?php echo e(config('app.name', 'Laravel Boilerplate')); ?></div>
+                                    <div class="text-xs text-gray-500">© <?php echo e(date('Y')); ?> All rights reserved.</div>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-6 text-gray-500">
@@ -496,20 +498,21 @@
                 }
             });
         </script>
-    @else
+    <?php else: ?>
         <!-- Not authenticated content -->
         <div class="min-h-screen flex items-center justify-center">
             <div class="text-center">
                 <p class="text-gray-500">Please log in to access the application.</p>
-                <a href="{{ route('login') }}" class="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Login</a>
+                <a href="<?php echo e(route('login')); ?>" class="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Login</a>
             </div>
         </div>
-    @endauth
+    <?php endif; ?>
 
-    @livewireScripts
+    <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts(); ?>
+
     
     <!-- SweetAlert2 for modern alerts -->
-    <script src="{{ asset('js/sweetalert2.js') }}"></script>
+    <script src="<?php echo e(asset('js/sweetalert2.js')); ?>"></script>
     
     <script>
         // Modern Alert System
@@ -578,23 +581,23 @@
         };
 
         // Handle Laravel flash messages with modern alerts
-        @if (session('message'))
-            showToast('success', '{{ session('message') }}');
-        @endif
+        <?php if(session('message')): ?>
+            showToast('success', '<?php echo e(session('message')); ?>');
+        <?php endif; ?>
 
         
 
-        @if (session('error'))
-            showToast('error', '{{ session('error') }}');
-        @endif
+        <?php if(session('error')): ?>
+            showToast('error', '<?php echo e(session('error')); ?>');
+        <?php endif; ?>
 
-        @if (session('warning'))
-            showToast('warning', '{{ session('warning') }}');
-        @endif
+        <?php if(session('warning')): ?>
+            showToast('warning', '<?php echo e(session('warning')); ?>');
+        <?php endif; ?>
 
-        @if (session('info'))
-            showToast('info', '{{ session('info') }}');
-        @endif
+        <?php if(session('info')): ?>
+            showToast('info', '<?php echo e(session('info')); ?>');
+        <?php endif; ?>
 
         // Livewire integration
         document.addEventListener('livewire:init', () => {
@@ -750,6 +753,6 @@
     
     <!-- Larapex Charts Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    @stack('scripts')
+    <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
-</html>
+</html><?php /**PATH C:\laragon\www\pos-nabila\resources\views/layouts/app.blade.php ENDPATH**/ ?>

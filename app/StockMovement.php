@@ -5,9 +5,12 @@ namespace App;
 use App\Domains\User\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockMovement extends Model
 {
+    use SoftDeletes;
+    
     protected $fillable = [
         'product_id',
         'qty',
@@ -37,6 +40,7 @@ class StockMovement extends Model
         'expiry_date' => 'date',
         'metadata' => 'array',
         'approved_at' => 'datetime',
+        'deleted_at' => 'datetime',
     ];
 
     public function product(): BelongsTo
@@ -61,7 +65,21 @@ class StockMovement extends Model
 
     public function warehouse(): BelongsTo
     {
-        return $this->belongsTo(Warehouse::class);
+        return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+    
+    public function getWarehouseNameAttribute()
+    {
+        // Get the warehouse relationship directly to avoid the string issue
+        $warehouse = $this->warehouse()->getResults();
+        return $warehouse ? $warehouse->name : 'Tanpa Gudang';
+    }
+    
+    // Override the attribute accessor to prevent the string issue
+    public function getWarehouseAttribute()
+    {
+        // Return the warehouse relationship, not the string
+        return $this->warehouse()->getResults();
     }
 
     public function scopeByType($query, $type)
@@ -195,6 +213,14 @@ class StockMovement extends Model
     public function setReferenceIdAttribute($value)
     {
         $this->attributes['ref_id'] = (int) $value;
+    }
+
+    /**
+     * Check if this is a manual stock movement
+     */
+    public function getIsManualAttribute()
+    {
+        return $this->ref_type === 'manual';
     }
 
     public static function booted()

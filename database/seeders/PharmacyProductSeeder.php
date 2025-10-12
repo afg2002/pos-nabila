@@ -6,6 +6,8 @@ use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Product;
 use App\ProductUnit;
+use App\ProductWarehouseStock;
+use App\Warehouse;
 use Illuminate\Support\Str;
 
 class PharmacyProductSeeder extends Seeder
@@ -18,6 +20,13 @@ class PharmacyProductSeeder extends Seeder
         // Get unit ID for Pieces
         $piecesUnit = ProductUnit::where('name', 'Pieces')->first();
         $unitId = $piecesUnit ? $piecesUnit->id : 1;
+        
+        // Get the main store warehouse
+        $storeWarehouse = Warehouse::where('type', 'store')->first();
+        if (!$storeWarehouse) {
+            $this->command->error('Tidak ada gudang dengan tipe "store". Jalankan WarehouseSeeder terlebih dahulu.');
+            return;
+        }
 
         $products = [
             // Acyclovir Products
@@ -233,7 +242,10 @@ class PharmacyProductSeeder extends Seeder
             $semiGrosirPrice = $retailPrice * 0.9; // 10% discount from retail
             $grosirPrice = $retailPrice * 0.8; // 20% discount from retail
             
-            Product::create([
+            // Random stock between 10-100
+            $stockQuantity = rand(10, 100);
+            
+            $product = Product::create([
                 'sku' => $sku,
                 'barcode' => $barcode,
                 'name' => $productData['name'],
@@ -245,9 +257,22 @@ class PharmacyProductSeeder extends Seeder
                 'price_grosir' => $grosirPrice,
                 'min_margin_pct' => 30.00,
                 'default_price_type' => 'retail',
-                'current_stock' => rand(10, 100), // Random stock between 10-100
+                'current_stock' => $stockQuantity,
                 'status' => 'active'
             ]);
+            
+            // Create warehouse stock record for the main store
+            ProductWarehouseStock::create([
+                'product_id' => $product->id,
+                'warehouse_id' => $storeWarehouse->id,
+                'stock_on_hand' => $stockQuantity,
+                'reserved_stock' => 0,
+                'safety_stock' => 5,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
         }
+        
+        $this->command->info('Created ' . count($products) . ' pharmacy products with stock in ' . $storeWarehouse->name);
     }
 }

@@ -163,17 +163,12 @@ class CapitalTrackingManagement extends Component
         if ($this->deleteId) {
             $capitalTracking = CapitalTracking::findOrFail($this->deleteId);
             
-            // Check if there are related purchase orders
-            if ($capitalTracking->purchaseOrders()->count() > 0) {
-                session()->flash('error', 'Tidak dapat menghapus modal yang sudah memiliki purchase order!');
-            } else {
-                $capitalTracking->delete();
-                session()->flash('message', 'Modal berhasil dihapus!');
-            }
+            $capitalTracking->delete();
+            session()->flash('message', 'Modal berhasil dihapus!');
         }
         
-        $this->confirmingDelete = false;
         $this->deleteId = null;
+        $this->confirmingDelete = false;
     }
 
     public function toggleStatus($id)

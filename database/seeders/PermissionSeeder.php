@@ -77,12 +77,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'dashboard.view', 'display_name' => 'View Dashboard', 'description' => 'Can view dashboard and analytics', 'group' => 'dashboard'],
             ['name' => 'dashboard.export', 'display_name' => 'Export Reports', 'description' => 'Can export dashboard reports', 'group' => 'dashboard'],
             
-            // Purchase Order permissions
-            ['name' => 'purchase_orders.view', 'display_name' => 'View Purchase Orders', 'description' => 'Can view purchase order list and details', 'group' => 'purchase_orders'],
-            ['name' => 'purchase_orders.create', 'display_name' => 'Create Purchase Orders', 'description' => 'Can create new purchase orders', 'group' => 'purchase_orders'],
-            ['name' => 'purchase_orders.edit', 'display_name' => 'Edit Purchase Orders', 'description' => 'Can edit existing purchase orders', 'group' => 'purchase_orders'],
-            ['name' => 'purchase_orders.delete', 'display_name' => 'Delete Purchase Orders', 'description' => 'Can delete purchase orders', 'group' => 'purchase_orders'],
-            ['name' => 'purchase_orders.approve', 'display_name' => 'Approve Purchase Orders', 'description' => 'Can approve purchase orders', 'group' => 'purchase_orders'],
             
             // Capital Tracking permissions
             ['name' => 'capital_tracking.view', 'display_name' => 'View Capital Tracking', 'description' => 'Can view capital tracking records', 'group' => 'capital_tracking'],
@@ -96,9 +90,6 @@ class PermissionSeeder extends Seeder
             ['name' => 'cash_ledger.edit', 'display_name' => 'Edit Cash Ledger', 'description' => 'Can edit existing cash ledger records', 'group' => 'cash_ledger'],
             ['name' => 'cash_ledger.delete', 'display_name' => 'Delete Cash Ledger', 'description' => 'Can delete cash ledger records', 'group' => 'cash_ledger'],
             
-            // Reports permissions
-            ['name' => 'reports.view', 'display_name' => 'View Reports', 'description' => 'Can view all reports', 'group' => 'reports'],
-            ['name' => 'reports.export', 'display_name' => 'Export Reports', 'description' => 'Can export reports to Excel/PDF', 'group' => 'reports'],
             
             // Warehouse permissions
             ['name' => 'warehouses.view', 'display_name' => 'View Warehouses', 'description' => 'Can view warehouse list and details', 'group' => 'warehouses'],

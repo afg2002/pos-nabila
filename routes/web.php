@@ -73,12 +73,6 @@ Route::middleware(['auth', 'permission:inventory.view'])->group(function () {
     })->name('inventory.index');
 });
 
-// Report Management System
-Route::middleware(['auth', 'permission:reports.view'])->group(function () {
-    Route::get('/reports', function () {
-        return view('reports.index');
-    })->name('reports.index');
-});
 
 // POS (Point of Sale) Management
 Route::middleware(['auth', 'permission:pos.access'])->group(function () {
@@ -94,12 +88,6 @@ Route::middleware(['auth'])->group(function () {
     })->name('capital-tracking.index');
 });
 
-// Purchase Order Management
-Route::middleware(['auth'])->group(function () {
-    Route::get('/purchase-orders', function () {
-        return view('purchase-orders.index');
-    })->name('purchase-orders.index');
-});
 
 // Cash Ledger Management
 Route::middleware(['auth'])->group(function () {
@@ -159,9 +147,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cash-ledger', function () {
         return view('cash-ledger.index');
     })->name('cash-ledger.index');
-    Route::get('/purchase-orders', function () {
-        return view('purchase-orders.index');
-    })->name('purchase-orders.index');
     Route::get('/incoming-goods', function () {
         return view('incoming-goods-agenda.index');
     })->name('incoming-goods.index');
@@ -172,9 +157,7 @@ Route::middleware(['auth'])->group(function () {
     // Warehouse management routes
     Route::resource('warehouses', 'App\\Http\\Controllers\\WarehouseController')->middleware('auth');
     
-    Route::get('/reports', function () {
-        return view('reports.index');
-    })->name('reports.index');
+
 });
 
 Auth::routes();

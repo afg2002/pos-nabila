@@ -1,16 +1,18 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
     <!-- Flash Messages -->
-    @if (session()->has('success'))
+    <!--[if BLOCK]><![endif]--><?php if(session()->has('success')): ?>
         <div class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
-            {{ session('success') }}
-        </div>
-    @endif
+            <?php echo e(session('success')); ?>
 
-    @if (session()->has('error'))
-        <div class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg">
-            {{ session('error') }}
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+    <?php if(session()->has('error')): ?>
+        <div class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg">
+            <?php echo e(session('error')); ?>
+
+        </div>
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <div class="p-6">
         <!-- Header -->
@@ -50,7 +52,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Produk</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ number_format($totalProducts) }}</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white"><?php echo e(number_format($totalProducts)); ?></p>
                     </div>
                 </div>
             </div>
@@ -67,7 +69,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Penjualan</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($totalSales, 0, ',', '.') }}</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp <?php echo e(number_format($totalSales, 0, ',', '.')); ?></p>
                     </div>
                 </div>
             </div>
@@ -84,7 +86,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Stok Menipis</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $lowStockProducts }}</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white"><?php echo e($lowStockProducts); ?></p>
                     </div>
                 </div>
             </div>
@@ -101,7 +103,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Transaksi Hari Ini</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $todayStats['transactions'] }}</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white"><?php echo e($todayStats['transactions']); ?></p>
                     </div>
                 </div>
             </div>
@@ -121,8 +123,8 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Penjualan Ecer</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($totalEcer, 0, ',', '.') }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ number_format($ecerCount) }} transaksi</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp <?php echo e(number_format($totalEcer, 0, ',', '.')); ?></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400"><?php echo e(number_format($ecerCount)); ?> transaksi</p>
                     </div>
                 </div>
             </div>
@@ -139,8 +141,8 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Penjualan Grosir</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($totalGrosir, 0, ',', '.') }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ number_format($grosirCount) }} transaksi</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp <?php echo e(number_format($totalGrosir, 0, ',', '.')); ?></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400"><?php echo e(number_format($grosirCount)); ?> transaksi</p>
                     </div>
                 </div>
             </div>
@@ -158,8 +160,8 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Gross Profit</p>
-                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp {{ number_format($grossProfit, 0, ',', '.') }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ number_format($grossProfitMargin, 2) }}% margin</p>
+                        <p class="text-2xl font-bold text-gray-900 dark:text-white">Rp <?php echo e(number_format($grossProfit, 0, ',', '.')); ?></p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400"><?php echo e(number_format($grossProfitMargin, 2)); ?>% margin</p>
                     </div>
                 </div>
             </div>
@@ -176,8 +178,8 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Pertumbuhan Pendapatan</p>
-                        <p class="text-2xl font-bold {{ $revenueGrowth >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                            {{ $revenueGrowth >= 0 ? '+' : '' }}{{ number_format($revenueGrowth, 1) }}%
+                        <p class="text-2xl font-bold <?php echo e($revenueGrowth >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'); ?>">
+                            <?php echo e($revenueGrowth >= 0 ? '+' : ''); ?><?php echo e(number_format($revenueGrowth, 1)); ?>%
                         </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">vs periode sebelumnya</p>
                     </div>
@@ -198,14 +200,15 @@
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    @if(isset($dailySalesChart))
-                        {!! $dailySalesChart->container() !!}
-                    @else
+                    <!--[if BLOCK]><![endif]--><?php if(isset($dailySalesChart)): ?>
+                        <?php echo $dailySalesChart->container(); ?>
+
+                    <?php else: ?>
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <i class="fas fa-chart-line text-4xl mb-2"></i>
                             <p>Belum ada data untuk ditampilkan</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
 
@@ -222,9 +225,10 @@
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    @if(isset($stockMovementChart))
-                        {!! $stockMovementChart->container() !!}
-                    @else
+                    <!--[if BLOCK]><![endif]--><?php if(isset($stockMovementChart)): ?>
+                        <?php echo $stockMovementChart->container(); ?>
+
+                    <?php else: ?>
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <svg class="w-16 h-16 mb-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"></path>
@@ -232,7 +236,7 @@
                             </svg>
                             <p>Belum ada data untuk ditampilkan</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
         </div>
@@ -253,15 +257,16 @@
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    @if(isset($topProductsChart))
-                        {!! $topProductsChart->container() !!}
-                    @else
+                    <!--[if BLOCK]><![endif]--><?php if(isset($topProductsChart)): ?>
+                        <?php echo $topProductsChart->container(); ?>
+
+                    <?php else: ?>
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <i class="fas fa-chart-bar text-4xl mb-2"></i>
                             <p>Belum ada data penjualan</p>
                             <p class="text-xs mt-1">Data akan muncul setelah ada transaksi</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
 
@@ -279,15 +284,16 @@
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    @if(isset($incomingGoodsChart))
-                        {!! $incomingGoodsChart->container() !!}
-                    @else
+                    <!--[if BLOCK]><![endif]--><?php if(isset($incomingGoodsChart)): ?>
+                        <?php echo $incomingGoodsChart->container(); ?>
+
+                    <?php else: ?>
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <i class="fas fa-truck text-4xl mb-2"></i>
                             <p>Belum ada agenda barang masuk</p>
                             <p class="text-xs mt-1">Data akan muncul setelah ada jadwal barang masuk</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
 
@@ -305,15 +311,16 @@
                     </div>
                 </div>
                 <div class="h-64 sm:h-80">
-                    @if(isset($purchaseOrderChart))
-                        {!! $purchaseOrderChart->container() !!}
-                    @else
+                    <!--[if BLOCK]><![endif]--><?php if(isset($purchaseOrderChart)): ?>
+                        <?php echo $purchaseOrderChart->container(); ?>
+
+                    <?php else: ?>
                         <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                             <i class="fas fa-file-invoice text-4xl mb-2"></i>
                             <p>Belum ada purchase order</p>
                             <p class="text-xs mt-1">Data akan muncul setelah ada PO yang dibuat</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
         </div>
@@ -332,15 +339,16 @@
                 </div>
             </div>
             <div class="h-96">
-                @if(isset($monthlyTrendChart))
-                    {!! $monthlyTrendChart->container() !!}
-                @else
+                <!--[if BLOCK]><![endif]--><?php if(isset($monthlyTrendChart)): ?>
+                    <?php echo $monthlyTrendChart->container(); ?>
+
+                <?php else: ?>
                     <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                         <i class="fas fa-chart-line text-4xl mb-2"></i>
                         <p>Belum ada data trend bulanan</p>
                         <p class="text-xs mt-1">Data akan muncul setelah ada transaksi penjualan</p>
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
             </div>
         </div>
 
@@ -358,15 +366,16 @@
                 </div>
             </div>
             <div class="h-64 sm:h-80">
-                @if(isset($hourlySalesChart))
-                    {!! $hourlySalesChart->container() !!}
-                @else
+                <!--[if BLOCK]><![endif]--><?php if(isset($hourlySalesChart)): ?>
+                    <?php echo $hourlySalesChart->container(); ?>
+
+                <?php else: ?>
                     <div class="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
                         <i class="fas fa-clock text-4xl mb-2"></i>
                         <p>Belum ada data penjualan per jam</p>
                         <p class="text-xs mt-1">Data akan muncul setelah ada transaksi</p>
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
             </div>
         </div>
 
@@ -382,52 +391,56 @@
                 </button>
             </div>
             <div class="space-y-3">
-                @if($recentSales && $recentSales->count() > 0)
-                    @foreach($recentSales as $sale)
-                        <div wire:key="recent-sale-{{ $sale->id }}" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-green-500">
+                <!--[if BLOCK]><![endif]--><?php if($recentSales && $recentSales->count() > 0): ?>
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $recentSales; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sale): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div wire:key="recent-sale-<?php echo e($sale->id); ?>" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border-l-4 border-green-500">
                             <div class="flex items-center">
                                 <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-4">
                                     <i class="fas fa-shopping-cart text-green-600 dark:text-green-400"></i>
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-gray-900 dark:text-white">#{{ $sale->sale_number }}</p>
+                                    <p class="font-semibold text-gray-900 dark:text-white">#<?php echo e($sale->sale_number); ?></p>
                                     <p class="text-sm text-gray-600 dark:text-gray-400">
-                                        {{ $sale->saleItems->count() }} item{{ $sale->saleItems->count() > 1 ? 's' : '' }} • 
-                                        {{ $sale->cashier->name ?? 'Unknown' }}
+                                        <?php echo e($sale->saleItems->count()); ?> item<?php echo e($sale->saleItems->count() > 1 ? 's' : ''); ?> • 
+                                        <?php echo e($sale->cashier->name ?? 'Unknown'); ?>
+
                                     </p>
                                     <p class="text-xs text-gray-500 dark:text-gray-500">
-                                        {{ $sale->created_at->format('d/m/Y H:i') }}
+                                        <?php echo e($sale->created_at->format('d/m/Y H:i')); ?>
+
                                     </p>
                                 </div>
                             </div>
                             <div class="text-right">
                                 <p class="font-bold text-lg text-gray-900 dark:text-white">
-                                    Rp {{ number_format($sale->final_total, 0, ',', '.') }}
+                                    Rp <?php echo e(number_format($sale->final_total, 0, ',', '.')); ?>
+
                                 </p>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                                    @if($sale->discount > 0)
-                                        <span class="text-red-500">-Rp {{ number_format($sale->discount, 0, ',', '.') }}</span>
-                                    @else
+                                    <!--[if BLOCK]><![endif]--><?php if($sale->discount > 0): ?>
+                                        <span class="text-red-500">-Rp <?php echo e(number_format($sale->discount, 0, ',', '.')); ?></span>
+                                    <?php else: ?>
                                         <span class="text-green-600">Tanpa diskon</span>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </p>
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                                    @if($sale->status === 'completed') bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                    @elseif($sale->status === 'pending') bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
-                                    @else bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
-                                    @endif">
-                                    {{ ucfirst($sale->status) }}
+                                    <?php if($sale->status === 'completed'): ?> bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
+                                    <?php elseif($sale->status === 'pending'): ?> bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
+                                    <?php else: ?> bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200
+                                    <?php endif; ?>">
+                                    <?php echo e(ucfirst($sale->status)); ?>
+
                                 </span>
                             </div>
                         </div>
-                    @endforeach
-                @else
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                <?php else: ?>
                     <div class="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
                         <i class="fas fa-receipt text-4xl mb-3"></i>
                         <p class="text-lg font-medium">Belum ada penjualan</p>
                         <p class="text-sm">Penjualan akan muncul setelah ada transaksi dalam periode yang dipilih</p>
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
             </div>
         </div>
 
@@ -444,32 +457,32 @@
                     </button>
                 </div>
                 <div class="space-y-4">
-                    @if($topProductsData->count() > 0)
-                        @foreach($topProductsData as $product)
-                            <div wire:key="top-product-{{ $product->id ?? $loop->index }}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <!--[if BLOCK]><![endif]--><?php if($topProductsData->count() > 0): ?>
+                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $topProductsData; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div wire:key="top-product-<?php echo e($product->id ?? $loop->index); ?>" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
                                         <i class="fas fa-box text-blue-600 dark:text-blue-400"></i>
                                     </div>
                                     <div>
-                                        <p class="font-medium text-gray-900 dark:text-white">{{ $product->name }}</p>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">SKU: {{ $product->sku ?? 'N/A' }}</p>
+                                        <p class="font-medium text-gray-900 dark:text-white"><?php echo e($product->name); ?></p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">SKU: <?php echo e($product->sku ?? 'N/A'); ?></p>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-semibold text-gray-900 dark:text-white">{{ $product->total_qty ?? 0 }} terjual</p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">Rp {{ number_format($product->total_revenue ?? 0, 0, ',', '.') }}</p>
+                                    <p class="font-semibold text-gray-900 dark:text-white"><?php echo e($product->total_qty ?? 0); ?> terjual</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">Rp <?php echo e(number_format($product->total_revenue ?? 0, 0, ',', '.')); ?></p>
                                 </div>
                             </div>
-                        @endforeach
-                    @else
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                    <?php else: ?>
                         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                             <svg class="w-16 h-16 mb-2 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M10 2L3 7v11a1 1 0 001 1h12a1 1 0 001-1V7l-7-5zM9 9a1 1 0 012 0v6a1 1 0 11-2 0V9z" clip-rule="evenodd"></path>
                             </svg>
                             <p>Belum ada data penjualan</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
 
@@ -484,9 +497,9 @@
                     </button>
                 </div>
                 <div class="space-y-4">
-                    @if($recentSales->count() > 0)
-                        @foreach($recentSales as $sale)
-                            <div wire:key="recent-sale-{{ $sale->id }}" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <!--[if BLOCK]><![endif]--><?php if($recentSales->count() > 0): ?>
+                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $recentSales; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sale): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div wire:key="recent-sale-<?php echo e($sale->id); ?>" class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mr-3">
                                         <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
@@ -494,24 +507,24 @@
                                         </svg>
                                     </div>
                                     <div>
-                                        <p class="font-medium text-gray-900 dark:text-white">#{{ $sale->id }}</p>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ $sale->created_at->format('d/m/Y H:i') }}</p>
+                                        <p class="font-medium text-gray-900 dark:text-white">#<?php echo e($sale->id); ?></p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400"><?php echo e($sale->created_at->format('d/m/Y H:i')); ?></p>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <p class="font-semibold text-gray-900 dark:text-white">Rp {{ number_format($sale->final_total, 0, ',', '.') }}</p>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ $sale->saleItems->count() }} item</p>
+                                    <p class="font-semibold text-gray-900 dark:text-white">Rp <?php echo e(number_format($sale->final_total, 0, ',', '.')); ?></p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400"><?php echo e($sale->saleItems->count()); ?> item</p>
                                 </div>
                             </div>
-                        @endforeach
-                    @else
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                    <?php else: ?>
                         <div class="text-center py-8 text-gray-500 dark:text-gray-400">
                             <svg class="w-16 h-16 mb-2 mx-auto" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"></path>
                             </svg>
                             <p>Belum ada transaksi</p>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
         </div>
@@ -546,34 +559,39 @@
 </div>
 </div>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <!-- Chart Scripts -->
-@isset($dailySalesChart)
-    {!! $dailySalesChart->script() !!}
-@endisset
+<!--[if BLOCK]><![endif]--><?php if(isset($dailySalesChart)): ?>
+    <?php echo $dailySalesChart->script(); ?>
 
-@isset($stockMovementChart)
-    {!! $stockMovementChart->script() !!}
-@endisset
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
-@isset($topProductsChart)
-    {!! $topProductsChart->script() !!}
-@endisset
+<!--[if BLOCK]><![endif]--><?php if(isset($stockMovementChart)): ?>
+    <?php echo $stockMovementChart->script(); ?>
 
-@isset($incomingGoodsChart)
-    {!! $incomingGoodsChart->script() !!}
-@endisset
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+<!--[if BLOCK]><![endif]--><?php if(isset($topProductsChart)): ?>
+    <?php echo $topProductsChart->script(); ?>
+
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+<!--[if BLOCK]><![endif]--><?php if(isset($incomingGoodsChart)): ?>
+    <?php echo $incomingGoodsChart->script(); ?>
+
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
 
-@isset($hourlySalesChart)
-    {!! $hourlySalesChart->script() !!}
-@endisset
+<!--[if BLOCK]><![endif]--><?php if(isset($hourlySalesChart)): ?>
+    <?php echo $hourlySalesChart->script(); ?>
+
+<?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Auto refresh every 5 minutes
         setInterval(function() {
-            @this.call('refreshData');
+            window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('refreshData');
         }, 300000);
         
         // Export button loading states
@@ -613,4 +631,4 @@
         });
     });
 </script>
-@endpush
+<?php $__env->stopPush(); ?><?php /**PATH C:\laragon\www\pos-nabila\resources\views/livewire/dashboard.blade.php ENDPATH**/ ?>

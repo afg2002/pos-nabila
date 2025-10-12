@@ -44,6 +44,8 @@ class StockHistory extends Component
 
     public $showEditModal = false;
 
+    public $showDeleteModal = false;
+
     public $selectedMovement = null;
 
     // Edit form properties
@@ -161,22 +163,37 @@ class StockHistory extends Component
 
     public function openEditModal($movementId)
     {
-        $this->selectedMovement = StockMovement::with(['product', 'warehouse'])->find($movementId);
+        try {
+            $this->selectedMovement = StockMovement::with(['product', 'warehouse'])->find($movementId);
 
-        $this->authorize('update', $this->selectedMovement);
+            if (!$this->selectedMovement) {
+                session()->flash('error', 'Pergerakan stok tidak ditemukan.');
+                return;
+            }
 
-        // Only allow editing manual movements
-        if ($this->selectedMovement->ref_type !== 'manual') {
-            session()->flash('error', 'Hanya pergerakan stok manual yang dapat diedit.');
+            // Only allow editing manual movements
+            if ($this->selectedMovement->ref_type !== 'manual') {
+                session()->flash('error', 'Hanya pergerakan stok manual yang dapat diedit.');
+                return;
+            }
 
-            return;
+            // Check authorization
+            $this->authorize('update', $this->selectedMovement);
+
+            // Fill edit form
+            $this->editQty = abs($this->selectedMovement->qty); // Always show positive value
+            $this->editNotes = $this->selectedMovement->note;
+
+            $this->showEditModal = true;
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            session()->flash('error', 'Anda tidak memiliki izin untuk mengedit pergerakan stok ini.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            \Log::error('Error opening edit modal: ' . $e->getMessage(), [
+                'movement_id' => $movementId,
+                'trace' => $e->getTraceAsString()
+            ]);
         }
-
-        // Fill edit form
-        $this->editQty = abs($this->selectedMovement->qty); // Always show positive value
-        $this->editNotes = $this->selectedMovement->note;
-
-        $this->showEditModal = true;
     }
 
     public function closeEditModal()
@@ -189,14 +206,25 @@ class StockHistory extends Component
 
     public function updateMovement()
     {
-        $this->validate([
-            'editQty' => 'required|numeric|min:1',
-            'editNotes' => 'nullable|string|max:255',
-        ]);
-
-        $this->authorize('update', $this->selectedMovement);
-
         try {
+            $this->validate([
+                'editQty' => 'required|numeric|min:1',
+                'editNotes' => 'nullable|string|max:255',
+            ]);
+
+            if (!$this->selectedMovement) {
+                session()->flash('error', 'Tidak ada pergerakan stok yang dipilih.');
+                return;
+            }
+
+            // Only allow updating manual movements
+            if ($this->selectedMovement->ref_type !== 'manual') {
+                session()->flash('error', 'Hanya pergerakan stok manual yang dapat diperbarui.');
+                return;
+            }
+
+            $this->authorize('update', $this->selectedMovement);
+
             DB::beginTransaction();
 
             $movement = $this->selectedMovement;
@@ -219,7 +247,7 @@ class StockHistory extends Component
                 $availableStock = $product->current_stock - $oldQtyChange; // Remove old effect
                 if ($availableStock < $this->editQty) {
                     $this->addError('editQty', 'Stok tidak mencukupi. Stok tersedia: '.$availableStock);
-
+                    DB::rollBack();
                     return;
                 }
             }
@@ -238,18 +266,15 @@ class StockHistory extends Component
             ]);
 
             // Log audit
-            \App\AuditLog::create([
-                'user_id' => auth()->id(),
-                'action' => 'update',
-                'model' => 'StockMovement',
-                'model_id' => $movement->id,
-                'changes' => [
-                    'old' => ['qty' => $oldQtyChange, 'note' => $movement->note],
-                    'new' => ['qty' => $newQtyChange, 'note' => $this->editNotes],
-                ],
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+            if (class_exists('\App\AuditLog')) {
+                \App\AuditLog::logUpdate(
+                    'stock_movements',
+                    $movement->id,
+                    ['qty' => $oldQtyChange, 'note' => $movement->note],
+                    ['qty' => $newQtyChange, 'note' => $this->editNotes],
+                    auth()->id()
+                );
+            }
 
             DB::commit();
 
@@ -257,98 +282,112 @@ class StockHistory extends Component
             $this->closeEditModal();
             $this->dispatch('stock-updated');
 
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            DB::rollBack();
+            session()->flash('error', 'Anda tidak memiliki izin untuk memperbarui pergerakan stok ini.');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            // Validation exceptions are handled automatically by Livewire
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
+            \Log::error('Error updating stock movement: ' . $e->getMessage(), [
+                'movement_id' => $this->selectedMovement?->id,
+                'trace' => $e->getTraceAsString()
+            ]);
         }
     }
 
     public function confirmDeleteMovement($movementId)
     {
-        $movement = StockMovement::find($movementId);
-
-        if (! $movement) {
-            session()->flash('error', 'Pergerakan stok tidak ditemukan.');
-
+        $this->selectedMovement = StockMovement::find($movementId);
+        
+        if (!$this->selectedMovement) {
+            $this->addError('general', 'Stock movement tidak ditemukan.');
             return;
         }
 
-        $this->showConfirm(
-            'Konfirmasi Hapus Pergerakan Stok',
-            'Apakah Anda yakin ingin menghapus pergerakan stok ini? Stok produk akan dikembalikan ke kondisi sebelumnya.',
-            'deleteMovement',
-            ['movementId' => $movementId]
-        );
+        // Check authorization
+        if (!auth()->user()->can('delete', $this->selectedMovement)) {
+            $this->addError('general', 'Anda tidak memiliki izin untuk menghapus stock movement ini.');
+            return;
+        }
+
+        // Check if it's a manual movement
+        if (!$this->selectedMovement->is_manual) {
+            $this->addError('general', 'Hanya stock movement manual yang dapat dihapus.');
+            return;
+        }
+
+        $this->showDeleteModal = true;
     }
 
-    public function deleteMovement($params)
+    public function deleteMovement()
     {
-        $movementId = $params['movementId'];
+        if (!$this->selectedMovement) {
+            $this->addError('general', 'Stock movement tidak ditemukan.');
+            return;
+        }
 
         try {
             DB::beginTransaction();
 
-            $movement = StockMovement::with('product')->find($movementId);
-
-            $this->authorize('delete', $movement);
-
-            if (! $movement) {
-                session()->flash('error', 'Pergerakan stok tidak ditemukan.');
-
-                return;
-            }
-
-            // Only allow deleting manual movements
-            if ($movement->ref_type !== 'manual') {
-                session()->flash('error', 'Hanya pergerakan stok manual yang dapat dihapus.');
-
-                return;
-            }
-
-            // Reverse the stock change
+            $movement = $this->selectedMovement;
             $product = $movement->product;
-            $reversedStock = $product->current_stock - $movement->qty;
 
-            // Validate that stock won't go negative
-            if ($reversedStock < 0) {
-                session()->flash('error', 'Tidak dapat menghapus pergerakan ini karena akan membuat stok menjadi negatif.');
+            // Check if deleting this movement would result in negative stock
+            $currentStock = $product->current_stock ?? 0;
+            $qtyChange = $movement->type === 'IN' ? -$movement->qty : $movement->qty;
+            $newStock = $currentStock + $qtyChange;
 
+            if ($newStock < 0) {
+                $this->addError('general', 'Tidak dapat menghapus pergerakan ini karena akan mengakibatkan stok negatif.');
+                DB::rollBack();
                 return;
             }
 
-            // Update product stock
-            $product->update(['current_stock' => $reversedStock]);
+            // Update product's current stock
+            $product->update(['current_stock' => $newStock]);
 
             // Log audit before deletion
-            \App\AuditLog::create([
-                'user_id' => auth()->id(),
-                'action' => 'delete',
-                'model' => 'StockMovement',
-                'model_id' => $movement->id,
-                'changes' => [
-                    'deleted' => [
+            if (class_exists('\App\AuditLog')) {
+                \App\AuditLog::logDelete(
+                    'stock_movements',
+                    $movement->id,
+                    [
                         'product_id' => $movement->product_id,
                         'type' => $movement->type,
                         'qty' => $movement->qty,
                         'note' => $movement->note,
                     ],
-                ],
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
+                    auth()->id()
+                );
+            }
 
             // Delete the movement
             $movement->delete();
 
             DB::commit();
 
-            session()->flash('message', 'Pergerakan stok berhasil dihapus!');
-            $this->dispatch('stock-updated');
+            $this->showDeleteModal = false;
+            $this->selectedMovement = null;
+            $this->addSuccess('Stock movement berhasil dihapus.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
+            $this->addError('general', 'Terjadi kesalahan saat menghapus stock movement: ' . $e->getMessage());
+            \Log::error('Error deleting stock movement: ' . $e->getMessage(), [
+                'movement_id' => $this->selectedMovement->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
         }
+    }
+
+    public function cancelDelete()
+    {
+        $this->showDeleteModal = false;
+        $this->selectedMovement = null;
     }
 
     public function getStockInProperty()

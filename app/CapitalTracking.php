@@ -37,13 +37,6 @@ class CapitalTracking extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Get purchase orders using this capital
-     */
-    public function purchaseOrders(): HasMany
-    {
-        return $this->hasMany(PurchaseOrder::class);
-    }
 
     /**
      * Get cash ledger entries for this capital

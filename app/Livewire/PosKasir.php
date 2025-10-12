@@ -22,11 +22,15 @@ class PosKasir extends Component
 
     public $productSearch = '';
 
+    public $cart = []; // Current active cart (reference to active tab's cart)
+
     public $carts = []; // Multiple carts structure
 
     public $activeTabId = 1; // ID of the currently active tab
 
     public $nextTabId = 2; // Next available tab ID
+    
+    public $tabName = ''; // For tab name editing
 
     public $warehouses = [];
 
@@ -128,6 +132,7 @@ class PosKasir extends Component
 
         // Initialize first tab
         $this->initializeTabs();
+        $this->updateCurrentPropertiesFromTab();
         $this->calculateTotals();
         $this->refreshCartForWarehouse();
     }
@@ -871,6 +876,9 @@ class PosKasir extends Component
         ];
         $this->activeTabId = 1;
         $this->nextTabId = 2;
+        
+        // Initialize current cart from active tab
+        $this->cart = &$this->carts[1]['cart'];
     }
 
     /**
@@ -878,6 +886,9 @@ class PosKasir extends Component
      */
     public function createNewTab()
     {
+        // Save current tab state before creating new tab
+        $this->updateActiveTabFromCurrentProperties();
+        
         $newTabId = $this->nextTabId++;
         
         $this->carts[$newTabId] = [
@@ -907,9 +918,33 @@ class PosKasir extends Component
             return;
         }
         
+        // Save current tab state before switching
+        $this->updateActiveTabFromCurrentProperties();
+        
         $this->activeTabId = $tabId;
         $this->updateCurrentPropertiesFromTab();
         $this->calculateTotals();
+    }
+    
+    /**
+     * Update tab name from input
+     */
+    public function updateTabName()
+    {
+        if (!empty($this->tabName) && isset($this->carts[$this->activeTabId])) {
+            $this->carts[$this->activeTabId]['name'] = $this->tabName;
+            session()->flash('success', 'Nama tab berhasil diubah!');
+        }
+    }
+    
+    /**
+     * Handle tab name input changes
+     */
+    public function updatedTabName()
+    {
+        if (isset($this->carts[$this->activeTabId])) {
+            $this->carts[$this->activeTabId]['name'] = $this->tabName;
+        }
     }
 
     /**
@@ -952,6 +987,9 @@ class PosKasir extends Component
             return;
         }
         
+        // Save current tab state before closing
+        $this->updateActiveTabFromCurrentProperties();
+        
         unset($this->carts[$tabId]);
         
         // If closing the active tab, switch to another tab
@@ -969,17 +1007,28 @@ class PosKasir extends Component
      */
     private function updateCurrentPropertiesFromTab()
     {
-        $activeTab = $this->carts[$this->activeTabId];
+        // Ensure the active tab exists
+        if (!isset($this->carts[$this->activeTabId])) {
+            return;
+        }
         
-        $this->cart = $activeTab['cart'];
-        $this->customerName = $activeTab['customerName'];
-        $this->customerPhone = $activeTab['customerPhone'];
-        $this->paymentMethod = $activeTab['paymentMethod'];
-        $this->amountPaid = $activeTab['amountPaid'];
-        $this->discount = $activeTab['discount'];
-        $this->discountType = $activeTab['discountType'];
-        $this->notes = $activeTab['notes'];
-        $this->paymentNotes = $activeTab['paymentNotes'];
+        $activeTab = &$this->carts[$this->activeTabId];
+        
+        // Ensure cart key exists
+        if (!isset($activeTab['cart'])) {
+            $activeTab['cart'] = [];
+        }
+        
+        $this->cart = &$activeTab['cart']; // Use reference to sync changes
+        $this->customerName = $activeTab['customerName'] ?? '';
+        $this->customerPhone = $activeTab['customerPhone'] ?? '';
+        $this->paymentMethod = $activeTab['paymentMethod'] ?? 'cash';
+        $this->amountPaid = $activeTab['amountPaid'] ?? 0;
+        $this->discount = $activeTab['discount'] ?? 0;
+        $this->discountType = $activeTab['discountType'] ?? 'amount';
+        $this->notes = $activeTab['notes'] ?? '';
+        $this->paymentNotes = $activeTab['paymentNotes'] ?? '';
+        $this->tabName = $activeTab['name'] ?? 'Tab ' . $this->activeTabId;
     }
 
     /**
@@ -987,15 +1036,25 @@ class PosKasir extends Component
      */
     private function updateActiveTabFromCurrentProperties()
     {
+        // Ensure the active tab exists
+        if (!isset($this->carts[$this->activeTabId])) {
+            return;
+        }
+        
+        // Ensure cart key exists
+        if (!isset($this->carts[$this->activeTabId]['cart'])) {
+            $this->carts[$this->activeTabId]['cart'] = [];
+        }
+        
         $this->carts[$this->activeTabId]['cart'] = $this->cart;
-        $this->carts[$this->activeTabId]['customerName'] = $this->customerName;
-        $this->carts[$this->activeTabId]['customerPhone'] = $this->customerPhone;
-        $this->carts[$this->activeTabId]['paymentMethod'] = $this->paymentMethod;
-        $this->carts[$this->activeTabId]['amountPaid'] = $this->amountPaid;
-        $this->carts[$this->activeTabId]['discount'] = $this->discount;
-        $this->carts[$this->activeTabId]['discountType'] = $this->discountType;
-        $this->carts[$this->activeTabId]['notes'] = $this->notes;
-        $this->carts[$this->activeTabId]['paymentNotes'] = $this->paymentNotes;
+        $this->carts[$this->activeTabId]['customerName'] = $this->customerName ?? '';
+        $this->carts[$this->activeTabId]['customerPhone'] = $this->customerPhone ?? '';
+        $this->carts[$this->activeTabId]['paymentMethod'] = $this->paymentMethod ?? 'cash';
+        $this->carts[$this->activeTabId]['amountPaid'] = $this->amountPaid ?? 0;
+        $this->carts[$this->activeTabId]['discount'] = $this->discount ?? 0;
+        $this->carts[$this->activeTabId]['discountType'] = $this->discountType ?? 'amount';
+        $this->carts[$this->activeTabId]['notes'] = $this->notes ?? '';
+        $this->carts[$this->activeTabId]['paymentNotes'] = $this->paymentNotes ?? '';
     }
 
     /**
@@ -1035,17 +1094,59 @@ class PosKasir extends Component
         return max(0, $total - $discountAmount);
     }
 
+    
     /**
-     * Update tab name
+     * Handle live update of tab name from wire:model
      */
-    public function updateTabName($tabId, $name)
+    public function updatedCarts($value, $key)
     {
-        if (!isset($this->carts[$tabId])) {
-            return;
+        // Extract tab ID and property from the key
+        // Key format: "1.name", "2.customerName", etc.
+        if (preg_match('/^(\d+)\.(.+)$/', $key, $matches)) {
+            $tabId = $matches[1];
+            $property = $matches[2];
+            
+            // Ensure the tab exists
+            if (!isset($this->carts[$tabId])) {
+                return;
+            }
+            
+            // Update the property
+            $this->carts[$tabId][$property] = $value;
+            
+            // If this is the active tab, also update the current properties
+            if ($tabId == $this->activeTabId) {
+                switch ($property) {
+                    case 'name':
+                        // Tab name doesn't need to sync with current properties
+                        break;
+                    case 'customerName':
+                        $this->customerName = $value;
+                        break;
+                    case 'customerPhone':
+                        $this->customerPhone = $value;
+                        break;
+                    case 'paymentMethod':
+                        $this->paymentMethod = $value;
+                        break;
+                    case 'amountPaid':
+                        $this->amountPaid = $value;
+                        break;
+                    case 'discount':
+                        $this->discount = $value;
+                        break;
+                    case 'discountType':
+                        $this->discountType = $value;
+                        break;
+                    case 'notes':
+                        $this->notes = $value;
+                        break;
+                    case 'paymentNotes':
+                        $this->paymentNotes = $value;
+                        break;
+                }
+            }
         }
-        
-        $this->carts[$tabId]['name'] = $name;
-        session()->flash('success', 'Nama tab berhasil diubah!');
     }
 
     public function render()

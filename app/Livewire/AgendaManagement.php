@@ -133,9 +133,6 @@ class AgendaManagement extends Component
         $this->selectedAgenda = Agenda::findOrFail($agendaId);
         $this->detailPO = null;
 
-        if ($this->selectedAgenda->related_type === 'purchase_order' && $this->selectedAgenda->related_id) {
-            $this->detailPO = PurchaseOrder::with(['supplier'])->find($this->selectedAgenda->related_id);
-        }
     }
 
     public function render()

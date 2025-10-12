@@ -11,7 +11,6 @@
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filter Terkait</label>
                 <select wire:model.live="filterRelatedType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     <option value="">Semua</option>
-                    <option value="purchase_order">Purchase Order</option>
                 </select>
             </div>
             <div class="flex items-end">
@@ -38,9 +37,6 @@
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $agenda->title }}</div>
-                                @if($agenda->related_type === 'purchase_order' && $agenda->related_id)
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">Terkait: Purchase Order #{{ optional($agenda->purchaseOrder)->po_number }}</div>
-                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-900 dark:text-white">{{ $agenda->agenda_date ? $agenda->agenda_date->format('d/m/Y') : '-' }} {{ $agenda->agenda_time }}</div>

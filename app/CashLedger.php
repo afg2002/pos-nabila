@@ -104,33 +104,6 @@ class CashLedger extends Model
         return $entry;
     }
 
-    /**
-     * Create cash ledger entry for purchase
-     */
-    public static function createPurchaseEntry(PurchaseOrder $purchaseOrder, float $amount, CapitalTracking $capital): self
-    {
-        $currentBalance = self::getCurrentBalance($capital->id);
-        $newBalance = $currentBalance - $amount;
-
-        $entry = self::create([
-            'transaction_date' => now()->toDateString(),
-            'type' => 'out',
-            'category' => 'purchase',
-            'description' => "Pembayaran PO #{$purchaseOrder->po_number}",
-            'amount' => $amount,
-            'balance_before' => $currentBalance,
-            'balance_after' => $newBalance,
-            'reference_type' => 'PurchaseOrder',
-            'reference_id' => $purchaseOrder->id,
-            'capital_tracking_id' => $capital->id,
-            'created_by' => auth()->id() ?? 1,
-        ]);
-
-        // Update capital tracking
-        $capital->updateAmount($amount, 'subtract');
-
-        return $entry;
-    }
 
     /**
      * Create cash ledger entry for expense

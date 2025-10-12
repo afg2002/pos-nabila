@@ -29,11 +29,4 @@ class Agenda extends Model
         'agenda_date' => 'date',
     ];
 
-    /**
-     * Optional relation to PurchaseOrder when related_type is 'purchase_order'
-     */
-    public function purchaseOrder(): BelongsTo
-    {
-        return $this->belongsTo(PurchaseOrder::class, 'related_id');
-    }
 }

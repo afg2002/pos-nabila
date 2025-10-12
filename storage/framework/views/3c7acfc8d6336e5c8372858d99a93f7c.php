@@ -1,23 +1,23 @@
 <div>
     <div class="pos-kasir-container min-h-screen bg-gray-50">
     <!-- Flash Messages -->
-    @if (session()->has('success'))
+    <!--[if BLOCK]><![endif]--><?php if(session()->has('success')): ?>
         <div id="success-alert" class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
-            <span>{{ session('success') }}</span>
+            <span><?php echo e(session('success')); ?></span>
             <button onclick="closeAlert('success-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
-    @if (session()->has('error'))
+    <?php if(session()->has('error')): ?>
         <div id="error-alert" class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
-            <span>{{ session('error') }}</span>
+            <span><?php echo e(session('error')); ?></span>
             <button onclick="closeAlert('error-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <div class="flex h-screen">
         <!-- Left Panel - Product Selection -->
@@ -55,11 +55,11 @@
                         <i class="fas fa-warehouse mr-2"></i>Gudang Toko
                     </label>
                     <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
-                        @if($warehouses->isNotEmpty())
-                            {{ $warehouses->first()->name }} ({{ $warehouses->first()->code }})
-                        @else
+                        <!--[if BLOCK]><![endif]--><?php if($warehouses->isNotEmpty()): ?>
+                            <?php echo e($warehouses->first()->name); ?> (<?php echo e($warehouses->first()->code); ?>)
+                        <?php else: ?>
                             Tidak ada gudang toko tersedia
-                        @endif
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                     </div>
                 </div>
 
@@ -87,25 +87,26 @@
             <!-- Product Grid -->
             <div class="flex-1 overflow-y-auto p-6">
                 <div class="grid grid-cols-2 gap-4">
-                    @foreach($products as $product)
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <div class="product-card relative bg-gray-50 rounded-lg p-4 hover:bg-gray-100 cursor-pointer transition-colors"
-                             wire:click="addToCart({{ $product->id }})">
+                             wire:click="addToCart(<?php echo e($product->id); ?>)">
                             <!-- Product Image -->
                             <div class="w-full h-24 mb-3 bg-gray-200 rounded-lg overflow-hidden">
-                                <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
-                                     alt="{{ $product ? $product->name : 'No Product' }}"
+                                <img src="<?php echo e($product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')); ?>" 
+                                     alt="<?php echo e($product ? $product->name : 'No Product'); ?>"
                                      class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                     onclick="openImageModal('{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $product ? addslashes($product->name) : 'No Product' }}')"
-                                     onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
+                                     onclick="openImageModal('<?php echo e($product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')); ?>', '<?php echo e($product ? addslashes($product->name) : 'No Product'); ?>')"
+                                     onerror="this.src='<?php echo e(asset('storage/placeholders/no-image.svg')); ?>'">
                             </div>
                             
                             <div class="absolute top-2 right-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                {{ $product ? $product->barcode : '-' }}
+                                <?php echo e($product ? $product->barcode : '-'); ?>
+
                             </div>
-                            <div class="text-sm font-medium text-gray-900 truncate">{{ $product ? $product->name : 'No Product' }}</div>
-                            <div class="text-xs text-gray-500 mt-1">{{ $product ? $product->sku : '-' }}</div>
+                            <div class="text-sm font-medium text-gray-900 truncate"><?php echo e($product ? $product->name : 'No Product'); ?></div>
+                            <div class="text-xs text-gray-500 mt-1"><?php echo e($product ? $product->sku : '-'); ?></div>
                             <div class="text-sm font-semibold text-blue-600 mt-2">
-                                @php
+                                <?php
                                     $displayPrice = $product ? match($pricingTier) {
                                         'retail' => $product->getPriceByType('retail'),
                                         'semi_grosir' => $product->price_semi_grosir ?? $product->price_retail,
@@ -113,31 +114,31 @@
                                         'custom' => $product->price_retail,
                                         default => $product->getPriceByType()
                                     } : 0;
-                                @endphp
-                                <div class="font-bold text-base">Rp {{ number_format($displayPrice, 0, ',', '.') }}</div>
+                                ?>
+                                <div class="font-bold text-base">Rp <?php echo e(number_format($displayPrice, 0, ',', '.')); ?></div>
                                 
                                 <!-- Show all available prices -->
                                 <div class="text-xs space-y-1 mt-1">
-                                    @if($pricingTier !== 'retail')
-                                        <div class="text-gray-500">{{ ucfirst(str_replace('_', ' ', $pricingTier)) }}</div>
-                                    @else
-                                        <div class="text-gray-500">{{ $product ? $product->getPriceTypeDisplayName() : '-' }}</div>
-                                    @endif
+                                    <!--[if BLOCK]><![endif]--><?php if($pricingTier !== 'retail'): ?>
+                                        <div class="text-gray-500"><?php echo e(ucfirst(str_replace('_', ' ', $pricingTier))); ?></div>
+                                    <?php else: ?>
+                                        <div class="text-gray-500"><?php echo e($product ? $product->getPriceTypeDisplayName() : '-'); ?></div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                     
                                     <!-- Price breakdown -->
-                                    @if($product)
+                                    <!--[if BLOCK]><![endif]--><?php if($product): ?>
                                         <div class="bg-gray-50 rounded p-1 text-xs">
-                                            <div class="text-blue-600">R: Rp {{ number_format($product->price_retail, 0, ',', '.') }}</div>
-                                            @if($product->price_semi_grosir)
-                                                <div class="text-yellow-600">SG: Rp {{ number_format($product->price_semi_grosir, 0, ',', '.') }}</div>
-                                            @endif
-                                            <div class="text-green-600">G: Rp {{ number_format($product->price_grosir, 0, ',', '.') }}</div>
+                                            <div class="text-blue-600">R: Rp <?php echo e(number_format($product->price_retail, 0, ',', '.')); ?></div>
+                                            <!--[if BLOCK]><![endif]--><?php if($product->price_semi_grosir): ?>
+                                                <div class="text-yellow-600">SG: Rp <?php echo e(number_format($product->price_semi_grosir, 0, ',', '.')); ?></div>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            <div class="text-green-600">G: Rp <?php echo e(number_format($product->price_grosir, 0, ',', '.')); ?></div>
                                         </div>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </div>
                             </div>
                             <div class="text-xs text-gray-500 mt-1">
-                                @php
+                                <?php
                                     $warehouseStock = $warehouseId ? 
                                         \App\ProductWarehouseStock::where('product_id', $product->id)
                                             ->where('warehouse_id', $warehouseId)
@@ -145,18 +146,18 @@
                                         $product->current_stock;
                                     $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
                                     $profitMargin = $costPrice > 0 && $displayPrice > 0 ? (($displayPrice - $costPrice) / $displayPrice) * 100 : 0;
-                                @endphp
-                                <div>Stok: {{ number_format($warehouseStock) }} {{ $product->unit ? $product->unit->abbreviation : 'pcs' }}</div>
-                                @if($warehouseId && $warehouseStock != $product->current_stock)
-                                    <div class="text-blue-600">(Total: {{ number_format($product->current_stock) }})</div>
-                                @endif
-                                @if($costPrice > 0)
-                                    <div class="text-orange-600 mt-1">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
-                                    <div class="text-green-600">Profit: {{ number_format($profitMargin, 1) }}%</div>
-                                @endif
+                                ?>
+                                <div>Stok: <?php echo e(number_format($warehouseStock)); ?> <?php echo e($product->unit ? $product->unit->abbreviation : 'pcs'); ?></div>
+                                <!--[if BLOCK]><![endif]--><?php if($warehouseId && $warehouseStock != $product->current_stock): ?>
+                                    <div class="text-blue-600">(Total: <?php echo e(number_format($product->current_stock)); ?>)</div>
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                <!--[if BLOCK]><![endif]--><?php if($costPrice > 0): ?>
+                                    <div class="text-orange-600 mt-1">Modal: Rp <?php echo e(number_format($costPrice, 0, ',', '.')); ?></div>
+                                    <div class="text-green-600">Profit: <?php echo e(number_format($profitMargin, 1)); ?>%</div>
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                             </div>
                         </div>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
             </div>
         </div>
@@ -169,36 +170,37 @@
                     <div class="flex items-center space-x-2">
                         <!-- Tab Buttons -->
                         <div class="flex space-x-1" id="tab-navigation" wire:key="tab-container">
-                            @foreach($carts as $tabId => $tabData)
-                                <div wire:key="tab-{{ $tabId }}">
-                                    <button wire:click="switchToTab({{ $tabId }})"
+                            <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $carts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tabId => $tabData): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <div wire:key="tab-<?php echo e($tabId); ?>">
+                                    <button wire:click="switchToTab(<?php echo e($tabId); ?>)"
                                             class="relative px-4 py-2 text-sm font-medium rounded-t-lg transition-colors
-                                                {{ $activeTabId == $tabId
+                                                <?php echo e($activeTabId == $tabId
                                                     ? 'bg-white text-blue-600 border-t-2 border-x border-blue-500 border-b-white'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'); ?>">
                                         <span class="flex items-center space-x-2">
-                                            <span>{{ $tabData['name'] ?? 'Tab ' . $tabId }}</span>
-                                            @php
+                                            <span><?php echo e($tabData['name'] ?? 'Tab ' . $tabId); ?></span>
+                                            <?php
                                                 $itemCount = count($tabData['cart'] ?? []);
-                                            @endphp
-                                            @if($itemCount > 0)
+                                            ?>
+                                            <!--[if BLOCK]><![endif]--><?php if($itemCount > 0): ?>
                                                 <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-blue-600 rounded-full">
-                                                    {{ $itemCount }}
+                                                    <?php echo e($itemCount); ?>
+
                                                 </span>
-                                            @endif
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                         </span>
                                         <!-- Close button for non-active tabs -->
-                                        @if(count($carts) > 1 && $activeTabId != $tabId)
-                                            <button wire:click.stop="closeTab({{ $tabId }})"
+                                        <!--[if BLOCK]><![endif]--><?php if(count($carts) > 1 && $activeTabId != $tabId): ?>
+                                            <button wire:click.stop="closeTab(<?php echo e($tabId); ?>)"
                                                     class="ml-2 text-gray-400 hover:text-red-600 transition-colors">
                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                                 </svg>
                                             </button>
-                                        @endif
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                     </button>
                                 </div>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                         </div>
                         
                         <!-- Add New Tab Button -->
@@ -216,14 +218,14 @@
                 <div class="px-4 pb-3">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-3">
-                            <h2 class="text-lg font-semibold text-gray-900">Keranjang - {{ $carts[$activeTabId]['name'] }}</h2>
-                            @if(!empty($carts[$activeTabId]['cart']))
+                            <h2 class="text-lg font-semibold text-gray-900">Keranjang - <?php echo e($carts[$activeTabId]['name']); ?></h2>
+                            <!--[if BLOCK]><![endif]--><?php if(!empty($carts[$activeTabId]['cart'])): ?>
                                 <button wire:click="clearCart"
                                         class="text-red-600 hover:text-red-800 text-sm font-medium"
                                         title="Shortcut: F2">
                                     Kosongkan
                                 </button>
-                            @endif
+                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                         </div>
                         
                         <!-- Tab Edit Name -->
@@ -234,53 +236,61 @@
                                    wire:keydown.enter="updateTabName"
                                    class="text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                    placeholder="Nama tab..."
-                                   value="{{ $carts[$activeTabId]['name'] ?? '' }}">
+                                   value="<?php echo e($carts[$activeTabId]['name'] ?? ''); ?>">
                         </div>
                     </div>
                 </div>
             </div>
                 
                 <!-- Bulk Price Type Control -->
-                @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
+                <!--[if BLOCK]><![endif]--><?php if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart'])): ?>
                     <div class="mt-3 p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center justify-between">
                             <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
                             <div class="flex items-center space-x-2">
-                                @foreach(\App\Product::getPriceTypes() as $value => $label)
-                                    <button wire:click="bulkSetCartPriceType('{{ $value }}')"
+                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = \App\Product::getPriceTypes(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <button wire:click="bulkSetCartPriceType('<?php echo e($value); ?>')"
                                             class="px-2 py-1 text-xs rounded-md border 
-                                                {{ $value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : '' }}
-                                                {{ $value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : '' }}
-                                                {{ $value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : '' }}
-                                                {{ $value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : '' }}">
-                                        {{ $label }}
+                                                <?php echo e($value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : ''); ?>
+
+                                                <?php echo e($value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : ''); ?>
+
+                                                <?php echo e($value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : ''); ?>
+
+                                                <?php echo e($value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : ''); ?>">
+                                        <?php echo e($label); ?>
+
                                     </button>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                             </div>
                         </div>
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 
                 <!-- Bulk Price Type Control -->
-                @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
+                <!--[if BLOCK]><![endif]--><?php if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart'])): ?>
                     <div class="mt-3 p-3 bg-gray-50 rounded-lg">
                         <div class="flex items-center justify-between">
                             <label class="text-sm font-medium text-gray-700">Set Semua ke:</label>
                             <div class="flex items-center space-x-2">
-                                @foreach(\App\Product::getPriceTypes() as $value => $label)
-                                    <button wire:click="bulkSetCartPriceType('{{ $value }}')"
+                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = \App\Product::getPriceTypes(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <button wire:click="bulkSetCartPriceType('<?php echo e($value); ?>')"
                                             class="px-2 py-1 text-xs rounded-md border 
-                                                {{ $value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : '' }}
-                                                {{ $value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : '' }}
-                                                {{ $value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : '' }}
-                                                {{ $value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : '' }}">
-                                        {{ $label }}
+                                                <?php echo e($value === 'retail' ? 'bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200' : ''); ?>
+
+                                                <?php echo e($value === 'semi_grosir' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-200' : ''); ?>
+
+                                                <?php echo e($value === 'grosir' ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200' : ''); ?>
+
+                                                <?php echo e($value === 'custom' ? 'bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-200' : ''); ?>">
+                                        <?php echo e($label); ?>
+
                                     </button>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                             </div>
                         </div>
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 
                 <!-- Pricing Tier Selector -->
                 <div class="mt-4 pricing-tier-selector">
@@ -313,7 +323,7 @@
 
             <!-- Cart Items -->
             <div class="flex-1 overflow-y-auto">
-                @if(!isset($carts[$activeTabId]) || empty($carts[$activeTabId]['cart']))
+                <!--[if BLOCK]><![endif]--><?php if(!isset($carts[$activeTabId]) || empty($carts[$activeTabId]['cart'])): ?>
                     <div class="flex items-center justify-center h-full text-gray-500">
                         <div class="text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,53 +333,54 @@
                             <p class="text-sm">Scan barcode atau pilih produk</p>
                         </div>
                     </div>
-                @else
+                <?php else: ?>
                     <div class="p-6 space-y-4">
-                        @foreach(($carts[$activeTabId]['cart'] ?? []) as $key => $item)
+                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = ($carts[$activeTabId]['cart'] ?? []); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <div class="bg-gray-50 rounded-lg p-4">
                                 <div class="flex items-start justify-between">
                                     <div class="flex items-start space-x-3 flex-1">
                                         <!-- Product Image -->
                                         <div class="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                            @if(isset($item['is_custom']) && $item['is_custom'])
+                                            <!--[if BLOCK]><![endif]--><?php if(isset($item['is_custom']) && $item['is_custom']): ?>
                                                 <!-- Custom item icon -->
                                                 <div class="w-full h-full flex items-center justify-center bg-green-100">
                                                     <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                                                     </svg>
                                                 </div>
-                                            @else
-                                                @php
+                                            <?php else: ?>
+                                                <?php
                                                     $product = $cartProducts->get($item['product_id']);
                                                     $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
-                                                @endphp
-                                                <img src="{{ $photoUrl }}" 
-                                                     alt="{{ $item['name'] }}"
+                                                ?>
+                                                <img src="<?php echo e($photoUrl); ?>" 
+                                                     alt="<?php echo e($item['name']); ?>"
                                                      class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                                     onclick="openImageModal('{{ $photoUrl }}', '{{ $item['name'] }}')"
-                                                     onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
-                                            @endif
+                                                     onclick="openImageModal('<?php echo e($photoUrl); ?>', '<?php echo e($item['name']); ?>')"
+                                                     onerror="this.src='<?php echo e(asset('storage/placeholders/no-image.svg')); ?>'">
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                         </div>
                                         
                                         <div class="flex-1">
-                                            <h4 class="font-medium text-gray-900">{{ $item['name'] }}</h4>
-                                            @if(isset($item['is_custom']) && $item['is_custom'])
+                                            <h4 class="font-medium text-gray-900"><?php echo e($item['name']); ?></h4>
+                                            <!--[if BLOCK]><![endif]--><?php if(isset($item['is_custom']) && $item['is_custom']): ?>
                                                 <p class="text-sm text-green-600">Item Custom</p>
-                                            @else
-                                                <p class="text-sm text-gray-500">{{ $item['sku'] }}</p>
-                                            @endif
+                                            <?php else: ?>
+                                                <p class="text-sm text-gray-500"><?php echo e($item['sku']); ?></p>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                         </div>
                                     </div>
                                     <div class="text-xs text-gray-500 mt-2">
-                                        @php
+                                        <?php
                                             $selectedWarehouseStock = null;
                                             if (! empty($warehouseId)) {
                                                 $selectedWarehouseStock = optional($product->warehouseStocks->first())->stock_on_hand ?? 0;
                                             }
-                                        @endphp
-                                        Stok gudang: {{ number_format($selectedWarehouseStock ?? $product->current_stock) }}
+                                        ?>
+                                        Stok gudang: <?php echo e(number_format($selectedWarehouseStock ?? $product->current_stock)); ?>
+
                                     </div>
-                                    <button wire:click="removeFromCart('{{ $key }}')"
+                                    <button wire:click="removeFromCart('<?php echo e($key); ?>')"
                                             class="text-red-500 hover:text-red-700">
                                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -382,46 +393,46 @@
                                     <div>
                                         <label class="block text-xs font-medium text-gray-700 mb-1">Jumlah</label>
                                         <input type="number" 
-                                               wire:change="updateQuantity('{{ $key }}', $event.target.value)"
-                                               value="{{ $item['quantity'] }}"
+                                               wire:change="updateQuantity('<?php echo e($key); ?>', $event.target.value)"
+                                               value="<?php echo e($item['quantity']); ?>"
                                                min="1" 
-                                               @if(!isset($item['is_custom']) || !$item['is_custom'])
-                                                   max="{{ $item['available_stock'] }}"
-                                               @endif
+                                               <?php if(!isset($item['is_custom']) || !$item['is_custom']): ?>
+                                                   max="<?php echo e($item['available_stock']); ?>"
+                                               <?php endif; ?>
                                                class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
                                     </div>
                                     
                                     <!-- Price Type Selector (only for regular products, not custom items) -->
-                                    @if(!isset($item['is_custom']) || !$item['is_custom'])
+                                    <!--[if BLOCK]><![endif]--><?php if(!isset($item['is_custom']) || !$item['is_custom']): ?>
                                         <div>
                                             <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
-                                            <select wire:change="updateItemPriceType('{{ $key }}', $event.target.value)"
+                                            <select wire:change="updateItemPriceType('<?php echo e($key); ?>', $event.target.value)"
                                                     class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                                @foreach(\App\Product::getPriceTypes() as $value => $label)
-                                                    <option value="{{ $value }}" {{ $item['pricing_tier'] === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                                @endforeach
+                                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = \App\Product::getPriceTypes(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <option value="<?php echo e($value); ?>" <?php echo e($item['pricing_tier'] === $value ? 'selected' : ''); ?>><?php echo e($label); ?></option>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                                             </select>
                                             <div class="text-xs text-gray-500 mt-1">
-                                                @php
+                                                <?php
                                                     $product = \App\Product::find($item['product_id']);
                                                     $currentPriceType = $item['pricing_tier'];
-                                                @endphp
-                                                @if($product)
-                                                    @if($currentPriceType === 'retail')
-                                                        <span class="text-blue-600">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</span>
-                                                    @elseif($currentPriceType === 'semi_grosir')
-                                                        <span class="text-yellow-600">Rp {{ number_format($product->price_semi_grosir ?? 0, 0, ',', '.') }}</span>
-                                                    @elseif($currentPriceType === 'grosir')
-                                                        <span class="text-green-600">Rp {{ number_format($product->price_grosir ?? 0, 0, ',', '.') }}</span>
-                                                    @else
+                                                ?>
+                                                <!--[if BLOCK]><![endif]--><?php if($product): ?>
+                                                    <!--[if BLOCK]><![endif]--><?php if($currentPriceType === 'retail'): ?>
+                                                        <span class="text-blue-600">Rp <?php echo e(number_format($product->price_retail ?? 0, 0, ',', '.')); ?></span>
+                                                    <?php elseif($currentPriceType === 'semi_grosir'): ?>
+                                                        <span class="text-yellow-600">Rp <?php echo e(number_format($product->price_semi_grosir ?? 0, 0, ',', '.')); ?></span>
+                                                    <?php elseif($currentPriceType === 'grosir'): ?>
+                                                        <span class="text-green-600">Rp <?php echo e(number_format($product->price_grosir ?? 0, 0, ',', '.')); ?></span>
+                                                    <?php else: ?>
                                                         <span class="text-purple-600">Custom</span>
-                                                    @endif
-                                                @else
+                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                <?php else: ?>
                                                     <span class="text-gray-500">Product not found</span>
-                                                @endif
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                             </div>
                                         </div>
-                                    @else
+                                    <?php else: ?>
                                         <!-- Custom Item Price Display -->
                                         <div>
                                             <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
@@ -429,54 +440,56 @@
                                                 <span class="text-green-600 font-medium">Item Custom</span>
                                             </div>
                                         </div>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                     
                                     <!-- Custom Price Input (only show for custom price type on regular products) -->
-                                    @if((!isset($item['is_custom']) || !$item['is_custom']) && $item['pricing_tier'] === 'custom')
+                                    <!--[if BLOCK]><![endif]--><?php if((!isset($item['is_custom']) || !$item['is_custom']) && $item['pricing_tier'] === 'custom'): ?>
                                         <div class="mt-2 col-span-2">
                                             <label class="block text-xs font-medium text-gray-700 mb-1">Harga Custom</label>
                                             <input type="number" 
-                                                   wire:change="updatePrice('{{ $key }}', $event.target.value)"
-                                                   value="{{ $item['price'] }}"
-                                                   min="{{ $item['base_cost'] * 1.1 }}"
+                                                   wire:change="updatePrice('<?php echo e($key); ?>', $event.target.value)"
+                                                   value="<?php echo e($item['price']); ?>"
+                                                   min="<?php echo e($item['base_cost'] * 1.1); ?>"
                                                    class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
                                         </div>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </div>
                                 
                                 <div class="mt-2 flex justify-between items-center">
-                                    @if(isset($item['is_custom']) && $item['is_custom'])
+                                    <!--[if BLOCK]><![endif]--><?php if(isset($item['is_custom']) && $item['is_custom']): ?>
                                         <span class="text-xs text-green-600 font-medium">Item Custom</span>
-                                    @else
+                                    <?php else: ?>
                                         <div class="text-xs text-gray-500">
-                                            <div>Stok: {{ $item['available_stock'] }}</div>
-                                            @php
+                                            <div>Stok: <?php echo e($item['available_stock']); ?></div>
+                                            <?php
                                                 $product = \App\Product::find($item['product_id']);
                                                 $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
                                                 $profit = ($item['price'] - $costPrice) * $item['quantity'];
                                                 $margin = $costPrice > 0 ? (($item['price'] - $costPrice) / $item['price']) * 100 : 0;
-                                            @endphp
-                                            <div class="text-orange-600">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
-                                            <div class="text-green-600">Profit: Rp {{ number_format($profit, 0, ',', '.') }} ({{ number_format($margin, 1) }}%)</div>
+                                            ?>
+                                            <div class="text-orange-600">Modal: Rp <?php echo e(number_format($costPrice, 0, ',', '.')); ?></div>
+                                            <div class="text-green-600">Profit: Rp <?php echo e(number_format($profit, 0, ',', '.')); ?> (<?php echo e(number_format($margin, 1)); ?>%)</div>
                                         </div>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                     <div class="text-right">
                                         <div class="text-xs text-gray-500">
-                                            {{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
+                                            <?php echo e(number_format($item['quantity'])); ?> × Rp <?php echo e(number_format($item['price'], 0, ',', '.')); ?>
+
                                         </div>
                                         <span class="font-semibold text-blue-600">
-                                            Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
+                                            Rp <?php echo e(number_format($item['price'] * $item['quantity'], 0, ',', '.')); ?>
+
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
             </div>
 
             <!-- Cart Summary & Checkout -->
-            @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
+            <!--[if BLOCK]><![endif]--><?php if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart'])): ?>
                 <div class="border-t border-gray-200 p-6">
                     <!-- Discount -->
                     <div class="mb-4">
@@ -498,15 +511,15 @@
                     <div class="space-y-2 mb-4">
                         <div class="flex justify-between text-sm">
                             <span>Subtotal:</span>
-                            <span>Rp {{ number_format($subtotal, 0, ',', '.') }}</span>
+                            <span>Rp <?php echo e(number_format($subtotal, 0, ',', '.')); ?></span>
                         </div>
-                        @if($discountAmount > 0)
+                        <!--[if BLOCK]><![endif]--><?php if($discountAmount > 0): ?>
                             <div class="flex justify-between text-sm text-red-600">
                                 <span>Diskon:</span>
-                                <span>-Rp {{ number_format($discountAmount, 0, ',', '.') }}</span>
+                                <span>-Rp <?php echo e(number_format($discountAmount, 0, ',', '.')); ?></span>
                             </div>
-                        @endif
-                        @php
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                        <?php
                             $totalCost = 0;
                             $totalProfit = 0;
                             foreach(($carts[$activeTabId]['cart'] ?? []) as $item) {
@@ -520,18 +533,18 @@
                                 }
                             }
                             $profitMargin = $subtotal > 0 ? ($totalProfit / $subtotal) * 100 : 0;
-                        @endphp
+                        ?>
                         <div class="flex justify-between text-sm text-orange-600">
                             <span>Total Modal:</span>
-                            <span>Rp {{ number_format($totalCost, 0, ',', '.') }}</span>
+                            <span>Rp <?php echo e(number_format($totalCost, 0, ',', '.')); ?></span>
                         </div>
                         <div class="flex justify-between text-sm text-green-600">
                             <span>Total Profit:</span>
-                            <span>Rp {{ number_format($totalProfit, 0, ',', '.') }} ({{ number_format($profitMargin, 1) }}%)</span>
+                            <span>Rp <?php echo e(number_format($totalProfit, 0, ',', '.')); ?> (<?php echo e(number_format($profitMargin, 1)); ?>%)</span>
                         </div>
                         <div class="flex justify-between text-lg font-semibold border-t pt-2">
                             <span>Total:</span>
-                            <span>Rp {{ number_format($total, 0, ',', '.') }}</span>
+                            <span>Rp <?php echo e(number_format($total, 0, ',', '.')); ?></span>
                         </div>
                     </div>
 
@@ -542,12 +555,12 @@
                         Checkout (F1)
                     </button>
                 </div>
-            @endif
+            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
         </div>
     </div>
 
     <!-- Checkout Modal -->
-    @if($showCheckoutModal)
+    <!--[if BLOCK]><![endif]--><?php if($showCheckoutModal): ?>
         <div class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                 <h3 class="text-lg font-semibold mb-4">Checkout</h3>
@@ -582,7 +595,7 @@
                         
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Bayar</label>
-                            <input type="number" wire:model.live="amountPaid" min="{{ $total }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="number" wire:model.live="amountPaid" min="<?php echo e($total); ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         
                         <div>
@@ -595,16 +608,17 @@
                     <div class="bg-gray-50 rounded-lg p-4 mb-6">
                         <div class="flex justify-between text-sm mb-2">
                             <span>Total:</span>
-                            <span class="font-semibold">Rp {{ number_format($total, 0, ',', '.') }}</span>
+                            <span class="font-semibold">Rp <?php echo e(number_format($total, 0, ',', '.')); ?></span>
                         </div>
                         <div class="flex justify-between text-sm mb-2">
                             <span>Bayar:</span>
-                            <span>Rp {{ number_format($amountPaid, 0, ',', '.') }}</span>
+                            <span>Rp <?php echo e(number_format($amountPaid, 0, ',', '.')); ?></span>
                         </div>
                         <div class="flex justify-between text-lg font-semibold border-t pt-2">
                             <span>Kembalian:</span>
-                            <span class="{{ $change >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                Rp {{ number_format($change, 0, ',', '.') }}
+                            <span class="<?php echo e($change >= 0 ? 'text-green-600' : 'text-red-600'); ?>">
+                                Rp <?php echo e(number_format($change, 0, ',', '.')); ?>
+
                             </span>
                         </div>
                     </div>
@@ -614,87 +628,90 @@
                         <button type="button" wire:click="closeCheckout" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
                             Batal
                         </button>
-                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" {{ $amountPaid < $total ? 'disabled' : '' }}>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" <?php echo e($amountPaid < $total ? 'disabled' : ''); ?>>
                             Proses
                         </button>
                     </div>
                 </form>
             </div>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <!-- Receipt Modal -->
-    @if($showReceiptModal && $lastSale)
+    <!--[if BLOCK]><![endif]--><?php if($showReceiptModal && $lastSale): ?>
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4" id="receipt">
                 <div class="text-center mb-6">
                     <h3 class="text-lg font-bold">STRUK PENJUALAN</h3>
-                    <p class="text-sm text-gray-600">{{ $lastSale->sale_number }}</p>
-                    <p class="text-xs text-gray-500">{{ $lastSale->created_at->format('d/m/Y H:i:s') }}</p>
+                    <p class="text-sm text-gray-600"><?php echo e($lastSale->sale_number); ?></p>
+                    <p class="text-xs text-gray-500"><?php echo e($lastSale->created_at->format('d/m/Y H:i:s')); ?></p>
                 </div>
                 
                 <!-- Customer Info -->
-                @if($lastSale->customer_name)
+                <!--[if BLOCK]><![endif]--><?php if($lastSale->customer_name): ?>
                     <div class="mb-4 text-sm">
-                        <p><strong>Pelanggan:</strong> {{ $lastSale->customer_name }}</p>
-                        @if($lastSale->customer_phone)
-                            <p><strong>Telepon:</strong> {{ $lastSale->customer_phone }}</p>
-                        @endif
+                        <p><strong>Pelanggan:</strong> <?php echo e($lastSale->customer_name); ?></p>
+                        <!--[if BLOCK]><![endif]--><?php if($lastSale->customer_phone): ?>
+                            <p><strong>Telepon:</strong> <?php echo e($lastSale->customer_phone); ?></p>
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 
                 <!-- Items -->
                 <div class="border-t border-b border-gray-300 py-3 mb-4">
-                    @foreach($lastSale->saleItems as $item)
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $lastSale->saleItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <div class="flex justify-between text-sm mb-1">
                             <div class="flex-1">
-                                <div>{{ $item->is_custom ? $item->custom_item_name : $item->product->name }}</div>
+                                <div><?php echo e($item->is_custom ? $item->custom_item_name : $item->product->name); ?></div>
                                 <div class="text-xs text-gray-500">
-                                    {{ $item->qty }} x Rp {{ number_format($item->unit_price, 0, ',', '.') }}
+                                    <?php echo e($item->qty); ?> x Rp <?php echo e(number_format($item->unit_price, 0, ',', '.')); ?>
+
                                 </div>
                             </div>
                             <div class="text-right">
-                                Rp {{ number_format($item->subtotal, 0, ',', '.') }}
+                                Rp <?php echo e(number_format($item->subtotal, 0, ',', '.')); ?>
+
                             </div>
                         </div>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                 </div>
                 
                 <!-- Summary -->
                 <div class="text-sm space-y-1 mb-4">
                     <div class="flex justify-between">
                         <span>Subtotal:</span>
-                        <span>Rp {{ number_format($lastSale->subtotal, 0, ',', '.') }}</span>
+                        <span>Rp <?php echo e(number_format($lastSale->subtotal, 0, ',', '.')); ?></span>
                     </div>
-                    @if($lastSale->discount_amount > 0)
+                    <!--[if BLOCK]><![endif]--><?php if($lastSale->discount_amount > 0): ?>
                         <div class="flex justify-between text-red-600">
                             <span>Diskon:</span>
-                            <span>-Rp {{ number_format($lastSale->discount_amount, 0, ',', '.') }}</span>
+                            <span>-Rp <?php echo e(number_format($lastSale->discount_amount, 0, ',', '.')); ?></span>
                         </div>
-                    @endif
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                     <div class="flex justify-between font-semibold border-t pt-1">
                         <span>Total:</span>
-                        <span>Rp {{ number_format($lastSale->final_total, 0, ',', '.') }}</span>
+                        <span>Rp <?php echo e(number_format($lastSale->final_total, 0, ',', '.')); ?></span>
                     </div>
                     <div class="flex justify-between">
-                        <span>Bayar ({{ ucfirst($lastSale->payment_method) }}):</span>
-                        <span>Rp {{ number_format($lastSale->amount_paid, 0, ',', '.') }}</span>
+                        <span>Bayar (<?php echo e(ucfirst($lastSale->payment_method)); ?>):</span>
+                        <span>Rp <?php echo e(number_format($lastSale->amount_paid, 0, ',', '.')); ?></span>
                     </div>
                     <div class="flex justify-between font-semibold">
                         <span>Kembalian:</span>
-                        <span>Rp {{ number_format($lastSale->change_amount, 0, ',', '.') }}</span>
+                        <span>Rp <?php echo e(number_format($lastSale->change_amount, 0, ',', '.')); ?></span>
                     </div>
                 </div>
                 
-                @if($lastSale->notes)
+                <!--[if BLOCK]><![endif]--><?php if($lastSale->notes): ?>
                     <div class="text-xs text-gray-600 mb-4">
-                        <strong>Catatan:</strong> {{ $lastSale->notes }}
+                        <strong>Catatan:</strong> <?php echo e($lastSale->notes); ?>
+
                     </div>
-                @endif
+                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 
                 <div class="text-center text-xs text-gray-500 mb-6">
                     <p>Terima kasih atas kunjungan Anda!</p>
-                    <p>Kasir: {{ $lastSale->cashier->name ?? 'System' }}</p>
+                    <p>Kasir: <?php echo e($lastSale->cashier->name ?? 'System'); ?></p>
                 </div>
                 
                 <!-- Buttons -->
@@ -708,7 +725,7 @@
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
     <!-- Image Preview Modal -->
     <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">
         <div class="relative max-w-4xl max-h-full p-4" onclick="event.stopPropagation()">
@@ -790,13 +807,13 @@
             // Ctrl+T - Create new tab
             if (e.ctrlKey && e.key === 't') {
                 e.preventDefault();
-                @this.call('createNewTab');
+                window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('createNewTab');
             }
             
             // Ctrl+W - Close current tab
             if (e.ctrlKey && e.key === 'w') {
                 e.preventDefault();
-                @this.call('closeTab', {{ $activeTabId }});
+                window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('closeTab', <?php echo e($activeTabId); ?>);
             }
             
             // Ctrl+Tab - Switch to next tab
@@ -810,12 +827,12 @@
                         return match ? parseInt(match[1]) : null;
                     }).filter(id => id !== null);
                     
-                    const currentTabId = {{ $activeTabId }};
+                    const currentTabId = <?php echo e($activeTabId); ?>;
                     const currentIndex = tabIds.indexOf(currentTabId);
                     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % tabIds.length : 0;
                     
                     if (tabIds[nextIndex]) {
-                        @this.call('switchToTab', tabIds[nextIndex]);
+                        window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('switchToTab', tabIds[nextIndex]);
                     }
                 }
             }
@@ -823,13 +840,13 @@
             // F1 - Open Checkout (if cart not empty)
             if (e.key === 'F1') {
                 e.preventDefault();
-                @this.call('openCheckout');
+                window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('openCheckout');
             }
             
             // F2 - Clear Cart
             if (e.key === 'F2') {
                 e.preventDefault();
-                @this.call('confirmClearCart');
+                window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('confirmClearCart');
             }
             
             // F3 - Focus barcode input
@@ -854,8 +871,8 @@
             // ESC - Close modals or clear search
             if (e.key === 'Escape') {
                 if (document.querySelector('.modal')) {
-                    @this.call('closeCheckout');
-                    @this.call('closeReceipt');
+                    window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('closeCheckout');
+                    window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('closeReceipt');
                 } else {
                     // Clear search and focus barcode only if not interacting with form elements
                     const activeElement = document.activeElement;
@@ -865,7 +882,7 @@
                     );
                     
                     if (!isFormInteraction) {
-                        @this.set('productSearch', '');
+                        window.Livewire.find('<?php echo e($_instance->getId()); ?>').set('productSearch', '');
                         setTimeout(() => {
                             const barcodeInput = document.getElementById('barcode-input');
                             if (barcodeInput) {
@@ -897,7 +914,7 @@
                     // Typical barcode lengths: EAN-8 (8), UPC-A (12), EAN-13 (13)
                     if ([8, 12, 13].includes(value.length)) {
                         setTimeout(() => {
-                            @this.call('addProductByBarcode');
+                            window.Livewire.find('<?php echo e($_instance->getId()); ?>').call('addProductByBarcode');
                         }, 100);
                     }
                 }
@@ -998,3 +1015,4 @@
         });
     </script>
 </div>
+<?php /**PATH C:\laragon\www\pos-nabila\resources\views/livewire/pos-kasir.blade.php ENDPATH**/ ?>

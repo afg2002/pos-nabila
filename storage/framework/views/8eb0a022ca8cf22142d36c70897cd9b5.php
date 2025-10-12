@@ -3,7 +3,7 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-semibold text-gray-900">Riwayat Stok</h2>
-            @if(auth()->user()->hasPermission('inventory.export'))
+            <!--[if BLOCK]><![endif]--><?php if(auth()->user()->hasPermission('inventory.export')): ?>
                 <button wire:click="exportData" 
                         class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-sm transition duration-150 ease-in-out">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -11,7 +11,7 @@
                     </svg>
                     Export
                 </button>
-            @endif
+            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
         </div>
         
         <!-- Statistics Cards -->
@@ -25,7 +25,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-blue-600">Total Transaksi</p>
-                        <p class="text-2xl font-semibold text-blue-900">{{ number_format($totalMovements) }}</p>
+                        <p class="text-2xl font-semibold text-blue-900"><?php echo e(number_format($totalMovements)); ?></p>
                     </div>
                 </div>
             </div>
@@ -39,7 +39,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-green-600">Stok Masuk</p>
-                        <p class="text-2xl font-semibold text-green-900">{{ number_format($this->stockIn) }}</p>
+                        <p class="text-2xl font-semibold text-green-900"><?php echo e(number_format($this->stockIn)); ?></p>
                     </div>
                 </div>
             </div>
@@ -53,7 +53,7 @@
                     </div>
                     <div class="ml-4">
                         <p class="text-sm font-medium text-red-600">Stok Keluar</p>
-                        <p class="text-2xl font-semibold text-red-900">{{ number_format($this->stockOut) }}</p>
+                        <p class="text-2xl font-semibold text-red-900"><?php echo e(number_format($this->stockOut)); ?></p>
                     </div>
                 </div>
             </div>
@@ -77,9 +77,9 @@
                 <select wire:model.live="productFilter" id="productFilter" 
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     <option value="">Semua Produk</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->name }}</option>
-                    @endforeach
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($product->id); ?>"><?php echo e($product->name); ?></option>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                 </select>
             </div>
             
@@ -89,9 +89,9 @@
                 <select wire:model.live="warehouseFilter" id="warehouseFilter"
                         class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                     <option value="">Semua Gudang</option>
-                    @foreach($warehouses as $warehouse)
-                        <option value="{{ $warehouse->id }}">{{ $warehouse->name }} ({{ $warehouse->code }})</option>
-                    @endforeach
+                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $warehouses; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $warehouse): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <option value="<?php echo e($warehouse->id); ?>"><?php echo e($warehouse->name); ?> (<?php echo e($warehouse->code); ?>)</option>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                 </select>
             </div>
 
@@ -164,114 +164,117 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($movements as $movement)
+                    <!--[if BLOCK]><![endif]--><?php $__empty_1 = true; $__currentLoopData = $movements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $movement): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <tr class="hover:bg-gray-50">
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ $movement->created_at->format('d/m/Y H:i') }}
+                                <?php echo e($movement->created_at->format('d/m/Y H:i')); ?>
+
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center space-x-3">
                                     <!-- Product Photo -->
                                     <div class="w-10 h-10 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                        <img src="{{ $movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
-                                             alt="{{ $movement->product ? $movement->product->name : 'No Product' }}"
+                                        <img src="<?php echo e($movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')); ?>" 
+                                             alt="<?php echo e($movement->product ? $movement->product->name : 'No Product'); ?>"
                                              class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                             onclick="openImageModal({{ json_encode($movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg')) }}, {{ json_encode($movement->product ? $movement->product->name : 'No Product') }})">
+                                             onclick="openImageModal(<?php echo e(json_encode($movement->product ? $movement->product->getPhotoUrl() : asset('storage/placeholders/no-image.svg'))); ?>, <?php echo e(json_encode($movement->product ? $movement->product->name : 'No Product')); ?>)">
                                     </div>
                                     
                                     <div>
-                                        <div class="text-sm font-medium text-gray-900">{{ $movement->product ? $movement->product->name : 'No Product' }}</div>
-                                        <div class="text-sm text-gray-500">{{ $movement->product ? $movement->product->sku : '-' }}</div>
+                                        <div class="text-sm font-medium text-gray-900"><?php echo e($movement->product ? $movement->product->name : 'No Product'); ?></div>
+                                        <div class="text-sm text-gray-500"><?php echo e($movement->product ? $movement->product->sku : '-'); ?></div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ $movement->warehouse_name }}
+                                <?php echo e($movement->warehouse_name); ?>
+
                                 <div class="text-xs text-gray-500">
-                                    {{ $movement->warehouse ? $movement->warehouse->code : '-' }}
+                                    <?php echo e($movement->warehouse ? $movement->warehouse->code : '-'); ?>
+
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                @if($movement->type === 'IN')
+                                <!--[if BLOCK]><![endif]--><?php if($movement->type === 'IN'): ?>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
                                         </svg>
                                         Masuk
                                     </span>
-                                @elseif($movement->type === 'OUT')
+                                <?php elseif($movement->type === 'OUT'): ?>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>
                                         </svg>
                                         Keluar
                                     </span>
-                                @else
+                                <?php else: ?>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                         </svg>
                                         Penyesuaian
                                     </span>
-                                @endif
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                @if($movement->type === 'IN')
-                                    <span class="text-green-600">+{{ number_format($movement->qty) }}</span>
-                                @elseif($movement->type === 'OUT')
-                                    <span class="text-red-600">-{{ number_format($movement->qty) }}</span>
-                                @else
-                                    <span class="text-yellow-600">{{ number_format($movement->qty) }}</span>
-                                @endif
+                                <!--[if BLOCK]><![endif]--><?php if($movement->type === 'IN'): ?>
+                                    <span class="text-green-600">+<?php echo e(number_format($movement->qty)); ?></span>
+                                <?php elseif($movement->type === 'OUT'): ?>
+                                    <span class="text-red-600">-<?php echo e(number_format($movement->qty)); ?></span>
+                                <?php else: ?>
+                                    <span class="text-yellow-600"><?php echo e(number_format($movement->qty)); ?></span>
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <span class="text-gray-600">{{ number_format($movement->stock_before) }} → {{ number_format($movement->stock_after) }}</span>
+                                <span class="text-gray-600"><?php echo e(number_format($movement->stock_before)); ?> → <?php echo e(number_format($movement->stock_after)); ?></span>
                             </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <div class="text-sm font-medium text-gray-900">{{ $movement->performedBy->name ?? $movement->user->name ?? 'System' }}</div>
-                                @if($movement->approvedBy)
-                                    <div class="text-xs text-green-600">Disetujui: {{ $movement->approvedBy->name }}</div>
-                                @elseif($movement->requires_approval && !$movement->approved_at)
+                                <div class="text-sm font-medium text-gray-900"><?php echo e($movement->performedBy->name ?? $movement->user->name ?? 'System'); ?></div>
+                                <!--[if BLOCK]><![endif]--><?php if($movement->approvedBy): ?>
+                                    <div class="text-xs text-green-600">Disetujui: <?php echo e($movement->approvedBy->name); ?></div>
+                                <?php elseif($movement->requires_approval && !$movement->approved_at): ?>
                                     <div class="text-xs text-yellow-600">Menunggu persetujuan</div>
-                                @endif
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-2">
                                     <!-- View Detail Button -->
-                                    <button wire:click="openDetailModal({{ $movement->id }})" 
+                                    <button wire:click="openDetailModal(<?php echo e($movement->id); ?>)" 
                                             class="text-blue-600 hover:text-blue-900 transition-colors duration-200"
                                             title="Lihat Detail">
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     
-                                    @if($movement->ref_type === 'manual')
+                                    <!--[if BLOCK]><![endif]--><?php if($movement->ref_type === 'manual'): ?>
                                         <!-- Edit Button -->
-                                        @can('update', $movement)
-                                            <button type="button" wire:click="openEditModal({{ $movement->id }})"
+                                        <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('update', $movement)): ?>
+                                            <button type="button" wire:click="openEditModal(<?php echo e($movement->id); ?>)"
                                                     wire:loading.attr="disabled"
                                                     class="text-yellow-600 hover:text-yellow-900 transition-colors duration-200"
                                                     title="Edit">
                                                 <i class="fas fa-edit" wire:loading.class="fa-spin"></i>
                                             </button>
-                                        @endif
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                         
                                         <!-- Delete Button -->
-                                        @can('delete', $movement)
-                                            <button type="button" wire:click="confirmDeleteMovement({{ $movement->id }})"
+                                        <?php if (app(\Illuminate\Contracts\Auth\Access\Gate::class)->check('delete', $movement)): ?>
+                                            <button type="button" wire:click="confirmDeleteMovement(<?php echo e($movement->id); ?>)"
                                                     wire:loading.attr="disabled"
                                                     class="text-red-600 hover:text-red-900 transition-colors duration-200"
                                                     title="Hapus">
                                                 <i class="fas fa-trash" wire:loading.class="fa-spin"></i>
                                             </button>
-                                        @endcan
-                                    @else
+                                        <?php endif; ?>
+                                    <?php else: ?>
                                         <span class="text-gray-400 text-xs">Auto</span>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </div>
                             </td>
                         </tr>
-                    @empty
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-500">
                                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,33 +284,34 @@
                                 <p>Belum ada transaksi stok yang tercatat dalam periode ini.</p>
                             </td>
                         </tr>
-                    @endforelse
+                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                 </tbody>
             </table>
         </div>
         
         <!-- Pagination -->
-        @if($movements->hasPages())
+        <!--[if BLOCK]><![endif]--><?php if($movements->hasPages()): ?>
             <div class="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                {{ $movements->links() }}
+                <?php echo e($movements->links()); ?>
+
             </div>
-        @endif
+        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
     </div>
 
     <!-- Flash Messages -->
-    @if (session()->has('message'))
+    <!--[if BLOCK]><![endif]--><?php if(session()->has('message')): ?>
         <div class="fixed top-4 right-4 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg" role="alert">
             <div class="flex items-center">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                 </svg>
-                <span>{{ session('message') }}</span>
+                <span><?php echo e(session('message')); ?></span>
             </div>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <!-- Modal Detail Stock Movement -->
-    @if($showDetailModal && $selectedMovement)
+    <!--[if BLOCK]><![endif]--><?php if($showDetailModal && $selectedMovement): ?>
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeDetailModal">
             <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800" wire:click.stop>
                 <div class="mt-3">
@@ -327,31 +331,31 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tanggal</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedMovement->created_at->format('d/m/Y H:i:s') }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white"><?php echo e($selectedMovement->created_at->format('d/m/Y H:i:s')); ?></p>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jenis Pergerakan</label>
                                 <p class="mt-1 text-sm">
-                                    @if($selectedMovement->type === 'IN')
+                                    <!--[if BLOCK]><![endif]--><?php if($selectedMovement->type === 'IN'): ?>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                             <i class="fas fa-arrow-up mr-1"></i> Stok Masuk
                                         </span>
-                                    @elseif($selectedMovement->type === 'OUT')
+                                    <?php elseif($selectedMovement->type === 'OUT'): ?>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                             <i class="fas fa-arrow-down mr-1"></i> Stok Keluar
                                         </span>
-                                    @else
+                                    <?php else: ?>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                             <i class="fas fa-edit mr-1"></i> Penyesuaian
                                         </span>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </p>
                             </div>
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Produk</label>
-                                <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold">{{ $selectedMovement->product->name }}</p>
-                                <p class="text-xs text-gray-500">SKU: {{ $selectedMovement->product->sku }}</p>
-                                <p class="text-xs text-gray-500">Gudang: {{ $selectedMovement->warehouse_name }}</p>
+                                <p class="mt-1 text-sm text-gray-900 dark:text-white font-semibold"><?php echo e($selectedMovement->product->name); ?></p>
+                                <p class="text-xs text-gray-500">SKU: <?php echo e($selectedMovement->product->sku); ?></p>
+                                <p class="text-xs text-gray-500">Gudang: <?php echo e($selectedMovement->warehouse_name); ?></p>
                             </div>
                         </div>
 
@@ -362,26 +366,26 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Jumlah</label>
                                     <p class="mt-1 text-sm font-semibold">
-                                        @if($selectedMovement->type === 'IN')
-                                            <span class="text-green-600">+{{ number_format($selectedMovement->qty) }}</span>
-                                        @elseif($selectedMovement->type === 'OUT')
-                                            <span class="text-red-600">{{ number_format($selectedMovement->qty) }}</span>
-                                        @else
-                                            <span class="text-yellow-600">{{ number_format($selectedMovement->qty) }}</span>
-                                        @endif
+                                        <!--[if BLOCK]><![endif]--><?php if($selectedMovement->type === 'IN'): ?>
+                                            <span class="text-green-600">+<?php echo e(number_format($selectedMovement->qty)); ?></span>
+                                        <?php elseif($selectedMovement->type === 'OUT'): ?>
+                                            <span class="text-red-600"><?php echo e(number_format($selectedMovement->qty)); ?></span>
+                                        <?php else: ?>
+                                            <span class="text-yellow-600"><?php echo e(number_format($selectedMovement->qty)); ?></span>
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                     </p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Stok Sebelum</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ number_format($selectedMovement->stock_before) }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white"><?php echo e(number_format($selectedMovement->stock_before)); ?></p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Stok Sesudah</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ number_format($selectedMovement->stock_after) }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white"><?php echo e(number_format($selectedMovement->stock_after)); ?></p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Referensi</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ ucfirst($selectedMovement->ref_type ?? 'Manual') }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white"><?php echo e(ucfirst($selectedMovement->ref_type ?? 'Manual')); ?></p>
                                 </div>
                             </div>
                         </div>
@@ -398,24 +402,25 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Dilakukan Oleh</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedMovement->performedBy->name ?? $selectedMovement->user->name ?? 'System' }}</p>
-                                    @if($selectedMovement->approvedBy)
-                                        <p class="mt-1 text-xs text-green-600">Disetujui oleh: {{ $selectedMovement->approvedBy->name }}</p>
-                                    @elseif($selectedMovement->requires_approval && !$selectedMovement->approved_at)
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white"><?php echo e($selectedMovement->performedBy->name ?? $selectedMovement->user->name ?? 'System'); ?></p>
+                                    <!--[if BLOCK]><![endif]--><?php if($selectedMovement->approvedBy): ?>
+                                        <p class="mt-1 text-xs text-green-600">Disetujui oleh: <?php echo e($selectedMovement->approvedBy->name); ?></p>
+                                    <?php elseif($selectedMovement->requires_approval && !$selectedMovement->approved_at): ?>
                                         <p class="mt-1 text-xs text-yellow-600">Menunggu persetujuan</p>
-                                    @endif
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Referensi</label>
                                     <p class="mt-1 text-sm text-gray-900 dark:text-white">
-                                        <span class="px-2 py-1 rounded-full text-xs {{ $selectedMovement->ref_type === 'manual' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
-                                            {{ ucfirst($selectedMovement->ref_type) }}
+                                        <span class="px-2 py-1 rounded-full text-xs <?php echo e($selectedMovement->ref_type === 'manual' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'); ?>">
+                                            <?php echo e(ucfirst($selectedMovement->ref_type)); ?>
+
                                         </span>
                                     </p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Catatan</label>
-                                    <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ $selectedMovement->note ?: '-' }}</p>
+                                    <p class="mt-1 text-sm text-gray-900 dark:text-white"><?php echo e($selectedMovement->note ?: '-'); ?></p>
                                 </div>
                             </div>
                             
@@ -433,10 +438,10 @@
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <!-- Modal Edit Stock Movement -->
-    @if($showEditModal && $selectedMovement)
+    <!--[if BLOCK]><![endif]--><?php if($showEditModal && $selectedMovement): ?>
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeEditModal">
             <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800" wire:click.stop>
                 <div class="mt-3">
@@ -456,9 +461,9 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Produk</label>
                             <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $selectedMovement->product?->name ?? 'N/A' }}</p>
-                                <p class="text-xs text-gray-500">SKU: {{ $selectedMovement->product?->sku ?? 'N/A' }}</p>
-                                <p class="text-xs text-gray-500">Gudang: {{ $selectedMovement->warehouse_name ?? 'N/A' }}</p>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white"><?php echo e($selectedMovement->product?->name ?? 'N/A'); ?></p>
+                                <p class="text-xs text-gray-500">SKU: <?php echo e($selectedMovement->product?->sku ?? 'N/A'); ?></p>
+                                <p class="text-xs text-gray-500">Gudang: <?php echo e($selectedMovement->warehouse_name ?? 'N/A'); ?></p>
                             </div>
                         </div>
 
@@ -466,19 +471,19 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Jenis Pergerakan</label>
                             <div class="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                                @if($selectedMovement->type === 'IN')
+                                <!--[if BLOCK]><![endif]--><?php if($selectedMovement->type === 'IN'): ?>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         <i class="fas fa-arrow-up mr-1"></i> Stok Masuk
                                     </span>
-                                @elseif($selectedMovement->type === 'OUT')
+                                <?php elseif($selectedMovement->type === 'OUT'): ?>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                         <i class="fas fa-arrow-down mr-1"></i> Stok Keluar
                                     </span>
-                                @else
+                                <?php else: ?>
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                         <i class="fas fa-edit mr-1"></i> Penyesuaian
                                     </span>
-                                @endif
+                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                             </div>
                         </div>
 
@@ -492,7 +497,14 @@
                                    step="1"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                    placeholder="Masukkan jumlah">
-                            @error('editQty') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['editQty'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                         </div>
 
                         <!-- Notes -->
@@ -503,7 +515,14 @@
                                       rows="3"
                                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                       placeholder="Catatan tambahan (opsional)"></textarea>
-                            @error('editNotes') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['editNotes'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                         </div>
 
                         <!-- Footer -->
@@ -522,7 +541,7 @@
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <!-- Image Preview Modal -->
     <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">
@@ -567,7 +586,7 @@
     </script>
     
     <!-- Delete Confirmation Modal -->
-    @if($showDeleteModal)
+    <!--[if BLOCK]><![endif]--><?php if($showDeleteModal): ?>
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" id="delete-modal">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div class="mt-3 text-center">
@@ -580,13 +599,14 @@
                 <div class="mt-2 px-7 py-3">
                     <p class="text-sm text-gray-500">
                         Apakah Anda yakin ingin menghapus stock movement ini? 
-                        @if($selectedMovement)
+                        <!--[if BLOCK]><![endif]--><?php if($selectedMovement): ?>
                             <br><br>
-                            <strong>Produk:</strong> {{ $selectedMovement->product->name ?? 'N/A' }}<br>
-                            <strong>Tipe:</strong> {{ $selectedMovement->type }}<br>
-                            <strong>Qty:</strong> {{ $selectedMovement->qty }}<br>
-                            <strong>Catatan:</strong> {{ $selectedMovement->note ?? '-' }}
-                        @endif
+                            <strong>Produk:</strong> <?php echo e($selectedMovement->product->name ?? 'N/A'); ?><br>
+                            <strong>Tipe:</strong> <?php echo e($selectedMovement->type); ?><br>
+                            <strong>Qty:</strong> <?php echo e($selectedMovement->qty); ?><br>
+                            <strong>Catatan:</strong> <?php echo e($selectedMovement->note ?? '-'); ?>
+
+                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                         <br><br>
                         Stok produk akan dikembalikan ke kondisi sebelumnya. Tindakan ini tidak dapat dibatalkan.
                     </p>
@@ -604,7 +624,7 @@
             </div>
         </div>
     </div>
-    @endif
+    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -617,3 +637,4 @@
         });
     </script>
 </div>
+<?php /**PATH C:\laragon\www\pos-nabila\resources\views/livewire/stock-history.blade.php ENDPATH**/ ?>

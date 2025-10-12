@@ -54,7 +54,6 @@ class RoleSeeder extends Seeder
             'agenda.view', 'agenda.create', 'agenda.edit', 'agenda.delete', 'agenda.payment',
             'incoming_goods_agenda.view', 'incoming_goods_agenda.create', 'incoming_goods_agenda.edit', 'incoming_goods_agenda.delete',
             'dashboard.view', 'dashboard.export',
-            'reports.view', 'reports.create', 'reports.export',
             'system.settings', 'system.logs'
         ])->get();
         $admin->permissions()->sync($adminPermissions->pluck('id'));
@@ -64,7 +63,7 @@ class RoleSeeder extends Seeder
             ['name' => 'manager'],
             [
                 'display_name' => 'Manager',
-                'description' => 'Can manage users and view reports',
+                'description' => 'Can manage users',
                 'is_active' => true,
             ]
         );
@@ -77,7 +76,7 @@ class RoleSeeder extends Seeder
             'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete', 'inventory.manage', 'inventory.history', 'inventory.export',
             'warehouses.view', 'warehouses.create', 'warehouses.edit', 'warehouses.manage',
             'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.export',
-            'pos.reports', 'dashboard.view', 'dashboard.export'
+            'dashboard.view', 'dashboard.export'
         ])->get();
         $manager->permissions()->sync($managerPermissions->pluck('id'));
         

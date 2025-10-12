@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ use App\Domains\User\Models\User;
 
 class Sale extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'sale_number',
         'cashier_id',

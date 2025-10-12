@@ -56,10 +56,6 @@ class IncomingGoodsAgenda extends Model
                     ->where('reference_type', 'incoming_goods_agenda');
     }
 
-    public function purchaseOrder()
-    {
-        return $this->belongsTo(PurchaseOrder::class);
-    }
 
     public function warehouse()
     {
