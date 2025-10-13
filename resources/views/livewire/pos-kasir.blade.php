@@ -633,10 +633,10 @@
                     <p class="text-xs text-gray-500">{{ $lastSale->created_at->format('d/m/Y H:i:s') }}</p>
                 </div>
                 
-                <!-- Customer Info -->
+                <!-- Supplier Info -->
                 @if($lastSale->customer_name)
                     <div class="mb-4 text-sm">
-                        <p><strong>Pelanggan:</strong> {{ $lastSale->customer_name }}</p>
+                        <p><strong>Supplier:</strong> {{ $lastSale->customer_name }}</p>
                         @if($lastSale->customer_phone)
                             <p><strong>Telepon:</strong> {{ $lastSale->customer_phone }}</p>
                         @endif

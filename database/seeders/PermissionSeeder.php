@@ -51,12 +51,12 @@ class PermissionSeeder extends Seeder
             ['name' => 'inventory.history', 'display_name' => 'View Stock History', 'description' => 'Can view stock movement history', 'group' => 'inventory'],
             ['name' => 'inventory.export', 'display_name' => 'Export Inventory', 'description' => 'Can export inventory reports', 'group' => 'inventory'],
 
-            // Customer permissions
-            ['name' => 'customers.view', 'display_name' => 'View Customers', 'description' => 'Can view customer list and details', 'group' => 'customers'],
-            ['name' => 'customers.create', 'display_name' => 'Create Customers', 'description' => 'Can create new customers', 'group' => 'customers'],
-            ['name' => 'customers.edit', 'display_name' => 'Edit Customers', 'description' => 'Can edit existing customers', 'group' => 'customers'],
-            ['name' => 'customers.delete', 'display_name' => 'Delete Customers', 'description' => 'Can delete customers', 'group' => 'customers'],
-            ['name' => 'customers.export', 'display_name' => 'Export Customers', 'description' => 'Can export customer data', 'group' => 'customers'],
+            // Supplier permissions
+            ['name' => 'suppliers.view', 'display_name' => 'View Suppliers', 'description' => 'Can view supplier list and details', 'group' => 'suppliers'],
+            ['name' => 'suppliers.create', 'display_name' => 'Create Suppliers', 'description' => 'Can create new suppliers', 'group' => 'suppliers'],
+            ['name' => 'suppliers.edit', 'display_name' => 'Edit Suppliers', 'description' => 'Can edit existing suppliers', 'group' => 'suppliers'],
+            ['name' => 'suppliers.delete', 'display_name' => 'Delete Suppliers', 'description' => 'Can delete suppliers', 'group' => 'suppliers'],
+            ['name' => 'suppliers.export', 'display_name' => 'Export Suppliers', 'description' => 'Can export supplier data', 'group' => 'suppliers'],
 
             // POS permissions
             ['name' => 'pos.access', 'display_name' => 'Access POS', 'description' => 'Can access POS system', 'group' => 'pos'],
@@ -103,6 +103,12 @@ class PermissionSeeder extends Seeder
             ['name' => 'incoming_goods_agenda.create', 'display_name' => 'Create Incoming Goods Agenda', 'description' => 'Can create new incoming goods agenda', 'group' => 'incoming_goods_agenda'],
             ['name' => 'incoming_goods_agenda.edit', 'display_name' => 'Edit Incoming Goods Agenda', 'description' => 'Can edit existing incoming goods agenda', 'group' => 'incoming_goods_agenda'],
             ['name' => 'incoming_goods_agenda.delete', 'display_name' => 'Delete Incoming Goods Agenda', 'description' => 'Can delete incoming goods agenda', 'group' => 'incoming_goods_agenda'],
+            
+            // Cashflow Agenda permissions
+            ['name' => 'cashflow_agenda.view', 'display_name' => 'View Cashflow Agenda', 'description' => 'Can view cashflow agenda', 'group' => 'cashflow_agenda'],
+            ['name' => 'cashflow_agenda.create', 'display_name' => 'Create Cashflow Agenda', 'description' => 'Can create new cashflow agenda', 'group' => 'cashflow_agenda'],
+            ['name' => 'cashflow_agenda.edit', 'display_name' => 'Edit Cashflow Agenda', 'description' => 'Can edit existing cashflow agenda', 'group' => 'cashflow_agenda'],
+            ['name' => 'cashflow_agenda.delete', 'display_name' => 'Delete Cashflow Agenda', 'description' => 'Can delete cashflow agenda', 'group' => 'cashflow_agenda'],
             
             // System permissions
             ['name' => 'system.settings', 'display_name' => 'System Settings', 'description' => 'Can access system settings', 'group' => 'system'],

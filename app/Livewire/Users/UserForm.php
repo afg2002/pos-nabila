@@ -54,6 +54,7 @@ class UserForm extends Component
         $this->isEditing = true;
     }
 
+    #[On('openUserForm')]
     public function openModal($userId = null)
     {
         $this->resetForm();

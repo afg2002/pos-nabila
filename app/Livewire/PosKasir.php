@@ -38,9 +38,9 @@ class PosKasir extends Component
 
     public $selectedWarehouse = '';
 
-    public $customerName = '';
+    public $supplierName = '';
 
-    public $customerPhone = '';
+    public $supplierPhone = '';
 
     public $paymentMethod = 'cash';
 
@@ -82,8 +82,8 @@ class PosKasir extends Component
     public $customItemQuantity = 1;
 
     protected $rules = [
-        'customerName' => 'nullable|string|max:255',
-        'customerPhone' => 'nullable|string|max:20',
+        'supplierName' => 'nullable|string|max:255',
+        'supplierPhone' => 'nullable|string|max:20',
         'paymentMethod' => 'required|in:cash,transfer,debit,qr',
         'warehouseId' => 'required|exists:warehouses,id',
         'pricingTier' => 'required|in:retail,semi_grosir,grosir,custom',
@@ -100,8 +100,8 @@ class PosKasir extends Component
     protected function getCheckoutRules()
     {
         return [
-            'customerName' => 'nullable|string|max:255',
-            'customerPhone' => 'nullable|string|max:20',
+            'supplierName' => 'nullable|string|max:255',
+            'supplierPhone' => 'nullable|string|max:20',
             'paymentMethod' => 'required|in:cash,transfer,debit,qr',
             'warehouseId' => 'required|exists:warehouses,id',
             'amountPaid' => 'required|numeric|min:0',
@@ -170,12 +170,12 @@ class PosKasir extends Component
         $this->change = max(0, $this->amountPaid - $this->total);
     }
 
-    public function updatedCustomerName()
+    public function updatedSupplierName()
     {
         $this->updateActiveTabFromCurrentProperties();
     }
 
-    public function updatedCustomerPhone()
+    public function updatedSupplierPhone()
     {
         $this->updateActiveTabFromCurrentProperties();
     }
@@ -681,8 +681,8 @@ class PosKasir extends Component
     {
         // Reset only the active tab's cart
         $this->carts[$this->activeTabId]['cart'] = [];
-        $this->carts[$this->activeTabId]['customerName'] = '';
-        $this->carts[$this->activeTabId]['customerPhone'] = '';
+        $this->carts[$this->activeTabId]['supplierName'] = '';
+        $this->carts[$this->activeTabId]['supplierPhone'] = '';
         $this->carts[$this->activeTabId]['paymentMethod'] = 'cash';
         $this->carts[$this->activeTabId]['amountPaid'] = 0;
         $this->carts[$this->activeTabId]['discount'] = 0;
@@ -864,8 +864,8 @@ class PosKasir extends Component
                 'id' => 1,
                 'name' => 'Transaksi 1',
                 'cart' => [],
-                'customerName' => '',
-                'customerPhone' => '',
+                'supplierName' => '',
+                'supplierPhone' => '',
                 'paymentMethod' => 'cash',
                 'amountPaid' => 0,
                 'discount' => 0,
@@ -1020,8 +1020,8 @@ class PosKasir extends Component
         }
         
         $this->cart = &$activeTab['cart']; // Use reference to sync changes
-        $this->customerName = $activeTab['customerName'] ?? '';
-        $this->customerPhone = $activeTab['customerPhone'] ?? '';
+        $this->supplierName = $activeTab['supplierName'] ?? '';
+        $this->supplierPhone = $activeTab['supplierPhone'] ?? '';
         $this->paymentMethod = $activeTab['paymentMethod'] ?? 'cash';
         $this->amountPaid = $activeTab['amountPaid'] ?? 0;
         $this->discount = $activeTab['discount'] ?? 0;
@@ -1047,8 +1047,8 @@ class PosKasir extends Component
         }
         
         $this->carts[$this->activeTabId]['cart'] = $this->cart;
-        $this->carts[$this->activeTabId]['customerName'] = $this->customerName ?? '';
-        $this->carts[$this->activeTabId]['customerPhone'] = $this->customerPhone ?? '';
+        $this->carts[$this->activeTabId]['supplierName'] = $this->supplierName ?? '';
+        $this->carts[$this->activeTabId]['supplierPhone'] = $this->supplierPhone ?? '';
         $this->carts[$this->activeTabId]['paymentMethod'] = $this->paymentMethod ?? 'cash';
         $this->carts[$this->activeTabId]['amountPaid'] = $this->amountPaid ?? 0;
         $this->carts[$this->activeTabId]['discount'] = $this->discount ?? 0;
@@ -1120,11 +1120,11 @@ class PosKasir extends Component
                     case 'name':
                         // Tab name doesn't need to sync with current properties
                         break;
-                    case 'customerName':
-                        $this->customerName = $value;
+                    case 'supplierName':
+                        $this->supplierName = $value;
                         break;
-                    case 'customerPhone':
-                        $this->customerPhone = $value;
+                    case 'supplierPhone':
+                        $this->supplierPhone = $value;
                         break;
                     case 'paymentMethod':
                         $this->paymentMethod = $value;

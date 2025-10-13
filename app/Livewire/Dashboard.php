@@ -47,6 +47,15 @@ class Dashboard extends Component
     public $grosirCount = 0;
     public $grossProfit = 0;
     public $grossProfitMargin = 0;
+    
+    // Monthly Revenue Breakdown
+    public $monthlyTotalRevenue = 0;
+    public $monthlyEcerRevenue = 0;
+    public $monthlyGrosirRevenue = 0;
+    public $monthlyEcerCount = 0;
+    public $monthlyGrosirCount = 0;
+    public $monthlyGrossProfit = 0;
+    public $monthlyGrossProfitMargin = 0;
 
     // Performance Metrics
     public $todayStats = [];
@@ -86,6 +95,7 @@ class Dashboard extends Component
     {
         $this->loadDashboardData();
         $this->loadEnhancedStats();
+        $this->loadMonthlyRevenueBreakdown();
         $this->loadPerformanceMetrics();
         $this->loadMonthlyTrendData();
         $this->generatePerformanceAlerts();
@@ -213,7 +223,7 @@ class Dashboard extends Component
         // Get ecer sales (retail) - based on price_tier in sale_items
         $ecerSales = Sale::whereBetween('created_at', $dateRange)
             ->whereHas('saleItems', function($query) {
-                $query->where('price_tier', 'ecer');
+                $query->where('price_tier', 'retail');
             })
             ->selectRaw('COUNT(*) as count, SUM(final_total) as total')
             ->first();
@@ -235,16 +245,53 @@ class Dashboard extends Component
         $this->calculateGrossProfit($dateRange);
     }
 
+    private function loadMonthlyRevenueBreakdown()
+    {
+        $monthStart = Carbon::now()->startOfMonth();
+        $monthEnd = Carbon::now()->endOfMonth();
+        $monthlyRange = [$monthStart, $monthEnd];
+        
+        // Get monthly total revenue
+        $monthlyTotal = Sale::whereBetween('created_at', $monthlyRange)
+            ->sum('final_total');
+        $this->monthlyTotalRevenue = $monthlyTotal;
+        
+        // Get monthly ecer (retail) revenue and count
+        $monthlyEcer = Sale::whereBetween('created_at', $monthlyRange)
+            ->whereHas('saleItems', function($query) {
+                $query->where('price_tier', 'retail');
+            })
+            ->selectRaw('COUNT(*) as count, SUM(final_total) as total')
+            ->first();
+        
+        $this->monthlyEcerCount = $monthlyEcer->count ?? 0;
+        $this->monthlyEcerRevenue = $monthlyEcer->total ?? 0;
+        
+        // Get monthly grosir (wholesale) revenue and count
+        $monthlyGrosir = Sale::whereBetween('created_at', $monthlyRange)
+            ->whereHas('saleItems', function($query) {
+                $query->where('price_tier', 'grosir');
+            })
+            ->selectRaw('COUNT(*) as count, SUM(final_total) as total')
+            ->first();
+        
+        $this->monthlyGrosirCount = $monthlyGrosir->count ?? 0;
+        $this->monthlyGrosirRevenue = $monthlyGrosir->total ?? 0;
+        
+        // Calculate monthly gross profit
+        $this->calculateMonthlyGrossProfit($monthlyRange);
+    }
+
     private function calculateGrossProfit($dateRange)
     {
-        // Get sales with cost data from PO or base_cost
+        // Get sales with cost data using effective cost price (cost_price or base_cost)
         $salesData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('products', 'sale_items.product_id', '=', 'products.id')
             ->whereBetween('sales.created_at', $dateRange)
             ->selectRaw('
                 SUM(sale_items.unit_price * sale_items.qty) as total_revenue,
                 SUM(
-                    COALESCE(products.base_cost, 0) * sale_items.qty
+                    COALESCE(products.cost_price, products.base_cost, 0) * sale_items.qty
                 ) as total_cost
             ')
             ->first();
@@ -254,6 +301,27 @@ class Dashboard extends Component
         
         $this->grossProfit = $totalRevenue - $totalCost;
         $this->grossProfitMargin = $totalRevenue > 0 ? (($this->grossProfit / $totalRevenue) * 100) : 0;
+    }
+
+    private function calculateMonthlyGrossProfit($dateRange)
+    {
+        // Get monthly sales with cost data using effective cost price
+        $salesData = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->whereBetween('sales.created_at', $dateRange)
+            ->selectRaw('
+                SUM(sale_items.unit_price * sale_items.qty) as total_revenue,
+                SUM(
+                    COALESCE(products.cost_price, products.base_cost, 0) * sale_items.qty
+                ) as total_cost
+            ')
+            ->first();
+        
+        $totalRevenue = $salesData->total_revenue ?? 0;
+        $totalCost = $salesData->total_cost ?? 0;
+        
+        $this->monthlyGrossProfit = $totalRevenue - $totalCost;
+        $this->monthlyGrossProfitMargin = $totalRevenue > 0 ? (($this->monthlyGrossProfit / $totalRevenue) * 100) : 0;
     }
 
     private function calculateMonthlyTargetProgress()
@@ -421,6 +489,15 @@ class Dashboard extends Component
             'grossProfit' => $this->grossProfit,
             'grossProfitMargin' => $this->grossProfitMargin,
 
+            // Monthly Revenue Breakdown
+            'monthlyTotalRevenue' => $this->monthlyTotalRevenue,
+            'monthlyEcerRevenue' => $this->monthlyEcerRevenue,
+            'monthlyGrosirRevenue' => $this->monthlyGrosirRevenue,
+            'monthlyEcerCount' => $this->monthlyEcerCount,
+            'monthlyGrosirCount' => $this->monthlyGrosirCount,
+            'monthlyGrossProfit' => $this->monthlyGrossProfit,
+            'monthlyGrossProfitMargin' => $this->monthlyGrossProfitMargin,
+
             // Performance Metrics
             'todayStats' => $this->todayStats,
             'weekStats' => $this->weekStats,
@@ -544,20 +621,22 @@ class Dashboard extends Component
                 
                 // Get total sales for the month
                 $monthlySales = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                    ->sum('total_amount');
+                    ->sum('final_total');
                 
                 // Get transaction count for the month
                 $monthlyTransactions = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
                     ->count();
                 
-                // Get ecer and grosir breakdown
-                $monthlyEcer = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                    ->where('sale_type', 'ecer')
-                    ->sum('total_amount');
+                // Get ecer and grosir breakdown using sale_items
+                $monthlyEcer = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                    ->whereBetween('sales.created_at', [$startOfMonth, $endOfMonth])
+                    ->where('sale_items.price_tier', 'retail')
+                    ->sum('sale_items.unit_price * sale_items.qty');
                 
-                $monthlyGrosir = Sale::whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                    ->where('sale_type', 'grosir')
-                    ->sum('total_amount');
+                $monthlyGrosir = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                    ->whereBetween('sales.created_at', [$startOfMonth, $endOfMonth])
+                    ->where('sale_items.price_tier', 'grosir')
+                    ->sum('sale_items.unit_price * sale_items.qty');
                 
                 $monthlyData->push([
                     'month' => $month->format('M Y'),
@@ -574,8 +653,8 @@ class Dashboard extends Component
             // Create the chart
             if ($monthlyData->count() > 0) {
                 $this->monthlyTrendChart = (new LarapexChart)->lineChart()
-                    ->setTitle('Trend Omset Bulanan')
-                    ->setSubtitle('Perbandingan omset 12 bulan terakhir')
+                    ->setTitle('Trend Omset Bulanan (Ecer vs Grosir)')
+                    ->setSubtitle('Perbandingan omset ecer dan grosir 12 bulan terakhir')
                     ->addData('Total Omset (Juta)', $monthlyData->pluck('total_sales')->map(function ($sales) {
                         return round($sales / 1000000, 2);
                     })->toArray())

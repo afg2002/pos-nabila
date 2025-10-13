@@ -54,24 +54,16 @@ Route::middleware('auth')->group(function () {
     })->name('inventory.index');
 });
 
-// Customer Management
-Route::middleware(['auth', 'permission:customers.view'])->group(function () {
-    Route::get('/customers', function () {
-        return view('customers.index');
-    })->name('customers.index');
+// Supplier Management
+Route::middleware(['auth', 'permission:suppliers.view'])->group(function () {
+    Route::get('/suppliers', function () {
+        return view('suppliers.index');
+    })->name('suppliers.index');
 });
 
-// Dashboard
-Route::get('/dashboard', function () {
-    return view('dashboard.index');
-})->name('dashboard');
 
-// Inventory Management System
-Route::middleware(['auth', 'permission:inventory.view'])->group(function () {
-    Route::get('/inventory', function () {
-        return view('inventory.index');
-    })->name('inventory.index');
-});
+
+
 
 
 // POS (Point of Sale) Management
@@ -102,10 +94,27 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Incoming Goods Agenda Management
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'permission:incoming_goods_agenda.view'])->group(function () {
     Route::get('/incoming-goods-agenda', function () {
         return view('incoming-goods-agenda.index');
     })->name('incoming-goods-agenda.index');
+});
+
+// Cashflow Agenda Management
+Route::middleware(['auth', 'permission:cashflow_agenda.view'])->group(function () {
+    Route::get('/cashflow-agenda', function () {
+        return view('cashflow-agenda.index');
+    })->name('cashflow-agenda.index');
+});
+
+// Warehouse Management
+Route::middleware(['auth', 'permission:warehouses.view'])->group(function () {
+    Route::get('/warehouses', function () {
+        return view('warehouses.index');
+    })->name('warehouses.index');
+    
+    // Warehouse management routes
+    Route::resource('warehouses', 'App\\Http\\Controllers\\WarehouseController')->middleware('auth');
 });
 
 // Profile Settings Routes
@@ -115,50 +124,7 @@ Route::middleware(['auth'])->group(function () {
     })->name('profile.index');
 });
 
-Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard.index');
-    })->name('dashboard');
-    Route::get('/pos', function () {
-        return view('pos.index');
-    })->name('pos.index');
-    
-    Route::get('/inventory', function () {
-        return view('inventory.index');
-    })->name('inventory.index');
-    Route::get('/products', function () {
-        return view('products.index');
-    })->name('products.index');
-    Route::get('/categories', function () {
-        return view('categories.index');
-    })->name('categories.index');
-    Route::get('/units', function () {
-        return view('product-units.index');
-    })->name('units.index');
-    Route::get('/suppliers', function () {
-        return view('suppliers.index');
-    })->name('suppliers.index');
-    Route::get('/customers', function () {
-        return view('customers.index');
-    })->name('customers.index');
-    Route::get('/transactions', function () {
-        return view('transactions.index');
-    })->name('transactions.index');
-    Route::get('/cash-ledger', function () {
-        return view('cash-ledger.index');
-    })->name('cash-ledger.index');
-    Route::get('/incoming-goods', function () {
-        return view('incoming-goods-agenda.index');
-    })->name('incoming-goods.index');
-    Route::get('/warehouses', function () {
-        return view('warehouses.index');
-    })->name('warehouses.index');
-    
-    // Warehouse management routes
-    Route::resource('warehouses', 'App\\Http\\Controllers\\WarehouseController')->middleware('auth');
-    
 
-});
 
 Auth::routes();
 

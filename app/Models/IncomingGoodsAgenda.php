@@ -67,6 +67,11 @@ class IncomingGoodsAgenda extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
     // Scopes
     public function scopeScheduledToday($query)
     {
@@ -252,5 +257,84 @@ class IncomingGoodsAgenda extends Model
         static::updating(function ($agenda) {
             $agenda->remaining_amount = $agenda->total_amount - $agenda->paid_amount;
         });
+    }
+
+    // Profit Calculation Methods
+    public function getExpectedProfitAttribute(): float
+    {
+        if (!$this->purchaseOrder) {
+            return 0;
+        }
+        
+        return $this->purchaseOrder->total_profit;
+    }
+
+    public function getExpectedProfitMarginAttribute(): float
+    {
+        if (!$this->purchaseOrder) {
+            return 0;
+        }
+        
+        return $this->purchaseOrder->average_profit_margin;
+    }
+
+    public function getExpectedSellingValueAttribute(): float
+    {
+        if (!$this->purchaseOrder) {
+            return 0;
+        }
+        
+        return $this->purchaseOrder->total_selling_value;
+    }
+
+    public function getFormattedExpectedProfitAttribute(): string
+    {
+        return 'Rp ' . number_format($this->expected_profit, 0, ',', '.');
+    }
+
+    public function getFormattedExpectedProfitMarginAttribute(): string
+    {
+        return number_format($this->expected_profit_margin, 2) . '%';
+    }
+
+    public function getFormattedExpectedSellingValueAttribute(): string
+    {
+        return 'Rp ' . number_format($this->expected_selling_value, 0, ',', '.');
+    }
+
+    public function getProfitabilityStatusAttribute(): string
+    {
+        $margin = $this->expected_profit_margin;
+        
+        if ($margin >= 30) {
+            return 'high';
+        } elseif ($margin >= 15) {
+            return 'medium';
+        } elseif ($margin > 0) {
+            return 'low';
+        } else {
+            return 'none';
+        }
+    }
+
+    public function getProfitabilityStatusBadgeClassAttribute(): string
+    {
+        return match($this->profitability_status) {
+            'high' => 'bg-green-100 text-green-800',
+            'medium' => 'bg-blue-100 text-blue-800',
+            'low' => 'bg-yellow-100 text-yellow-800',
+            'none' => 'bg-red-100 text-red-800',
+            default => 'bg-gray-100 text-gray-800',
+        };
+    }
+
+    public function getIsLinkedToPurchaseOrderAttribute(): bool
+    {
+        return !is_null($this->purchase_order_id);
+    }
+
+    public function getPurchaseOrderNumberAttribute(): ?string
+    {
+        return $this->purchaseOrder?->po_number;
     }
 }

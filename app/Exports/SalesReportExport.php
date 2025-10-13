@@ -33,7 +33,7 @@ class SalesReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         return [
             'No. Penjualan',
             'Tanggal',
-            'Pelanggan',
+            'Supplier',
             'Telepon',
             'Subtotal',
             'Diskon',

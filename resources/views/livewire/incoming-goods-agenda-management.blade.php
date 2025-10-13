@@ -208,8 +208,8 @@
                                                        ($agenda->isOverdue ? 'bg-red-50 text-red-700 border-red-200' : 
                                                         'bg-blue-50 text-blue-700 border-blue-200') }}"
                                              wire:click.stop="selectDate('{{ $day['date'] }}')">
-                                            <div class="font-medium truncate text-xs">{{ Str::limit($agenda->supplier_name, 12) }}</div>
-                                            <div class="opacity-80 truncate text-xs">{{ Str::limit($agenda->goods_name ?? $agenda->item_name ?? 'Barang', 12) }}</div>
+                                            <div class="font-medium truncate text-xs">{{ Str::limit($agenda->effective_supplier_name, 12) }}</div>
+                                            <div class="opacity-80 truncate text-xs">{{ Str::limit($agenda->is_simplified ? 'Barang Various' : ($agenda->goods_name ?? $agenda->item_name ?? 'Barang'), 12) }}</div>
                                         </div>
                                     @endforeach
                                     
@@ -285,6 +285,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Masuk</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jatuh Tempo</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -293,13 +294,20 @@
                         @forelse($agendas as $agenda)
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">{{ $agenda->supplier_name }}</div>
-                                    <div class="text-sm text-green-600 font-medium">{{ $agenda->goods_name ?? $agenda->item_name }}</div>
+                                    <div class="text-sm font-medium text-gray-900">{{ $agenda->effective_supplier_name }}</div>
+                                    <div class="text-sm text-green-600 font-medium">
+                                        {{ $agenda->is_simplified ? 'Barang Various (Input Sederhana)' : ($agenda->goods_name ?? $agenda->item_name) }}
+                                        @if($agenda->is_simplified)
+                                            <span class="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Sederhana</span>
+                                        @endif
+                                    </div>
                                     <div class="text-sm text-gray-500">{{ $agenda->description }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $agenda->quantity ?? '-' }} {{ $agenda->unit ?? '' }}</div>
-                                    <div class="text-sm text-gray-500">@ Rp {{ number_format($agenda->unit_price ?? 0, 0, ',', '.') }}</div>
+                                    <div class="text-sm text-gray-900">{{ $agenda->effective_quantity }} {{ $agenda->effective_unit }}</div>
+                                    @if(!$agenda->is_simplified)
+                                        <div class="text-sm text-gray-500">@ Rp {{ number_format($agenda->unit_price ?? 0, 0, ',', '.') }}</div>
+                                    @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ $agenda->scheduled_date->format('d M Y') }}
@@ -308,10 +316,24 @@
                                     {{ $agenda->payment_due_date->format('d M Y') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <div class="font-medium">Rp {{ number_format($agenda->total_amount ?? $agenda->amount ?? 0, 0, ',', '.') }}</div>
+                                    <div class="font-medium">Rp {{ number_format($agenda->effective_total_amount, 0, ',', '.') }}</div>
                                     @if($agenda->paid_amount > 0)
                                         <div class="text-xs text-green-600">Dibayar: Rp {{ number_format($agenda->paid_amount, 0, ',', '.') }}</div>
                                         <div class="text-xs text-red-600">Sisa: Rp {{ number_format($agenda->remaining_amount, 0, ',', '.') }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    @if($agenda->is_linked_to_purchase_order && $agenda->purchaseOrder)
+                                        <div class="space-y-1">
+                                            <div class="font-medium text-green-600">{{ $agenda->formatted_expected_profit }}</div>
+                                            <div class="text-xs text-gray-600">Margin: {{ $agenda->formatted_expected_profit_margin }}</div>
+                                            <div class="text-xs text-blue-600">PO: {{ $agenda->purchase_order_number }}</div>
+                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $agenda->profitability_status_badge_class }}">
+                                                {{ ucfirst($agenda->profitability_status) }}
+                                            </span>
+                                        </div>
+                                    @else
+                                        <div class="text-sm text-gray-400">-</div>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -348,7 +370,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                <td colspan="8" class="px-6 py-4 text-center text-gray-500">
                                     Tidak ada agenda yang ditemukan.
                                 </td>
                             </tr>
@@ -373,77 +395,158 @@
                     <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $editingId ? 'Edit' : 'Tambah' }} Agenda</h3>
                     
                     <form wire:submit="save">
+                        <!-- Input Mode Toggle -->
+                        <div class="mb-6">
+                            <div class="flex bg-gray-100 rounded-lg p-1">
+                                <button type="button"
+                                        class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 {{ $input_mode === 'simplified' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                                        wire:click="switchInputMode('simplified')">
+                                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    Sederhana
+                                </button>
+                                <button type="button"
+                                        class="flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 {{ $input_mode === 'detailed' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                                        wire:click="switchInputMode('detailed')">
+                                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    </svg>
+                                    Detail
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Supplier</label>
-                                <input type="text" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                       wire:model="supplier_name"
-                                       required>
-                                @error('supplier_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
-                                <input type="text" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                       wire:model="goods_name"
-                                       required>
-                                @error('goods_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
+                            <!-- Simplified Mode Fields -->
+                            @if($input_mode === 'simplified')
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
-                                    <input type="number" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model.live="quantity"
-                                           min="1"
-                                           required>
-                                    @error('quantity') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
                                     <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                            wire:model="unit_id"
+                                            wire:model="supplier_id"
                                             required>
-                                        <option value="">Pilih Satuan</option>
-                                        @foreach($productUnits as $productUnit)
-                                            <option value="{{ $productUnit->id }}">{{ $productUnit->name }} ({{ $productUnit->abbreviation }})</option>
+                                        <option value="">Pilih Supplier</option>
+                                        @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
                                         @endforeach
                                     </select>
-                                    @error('unit_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    @error('supplier_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Total Jumlah Barang</label>
+                                        <input type="number"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="total_quantity"
+                                               min="0.01"
+                                               step="0.01"
+                                               required>
+                                        @error('total_quantity') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
+                                        <input type="text"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="quantity_unit"
+                                               placeholder="misal: dus, karung, box"
+                                               required>
+                                        @error('quantity_unit') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                                
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
-                                    <input type="number" 
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Total Belanja (Rp)</label>
+                                    <input type="number"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model.live="unit_price"
-                                           min="0"
+                                           wire:model="total_purchase_amount"
+                                           min="0.01"
                                            step="0.01"
                                            required>
-                                    @error('unit_price') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    @error('total_purchase_amount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
+                                
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span class="text-sm text-blue-800">Mode sederhana: Input total barang dan total pembayaran langsung tanpa detail per item</span>
+                                    </div>
+                                </div>
+                            @else
+                                <!-- Detailed Mode Fields -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Total (Rp)</label>
-                                    <input type="number" 
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="total_amount"
-                                           readonly>
-                                    @error('total_amount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Supplier</label>
+                                    <input type="text"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                           wire:model="supplier_name"
+                                           required>
+                                    @error('supplier_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                                <textarea class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                          wire:model="description"
-                                          rows="3"></textarea>
-                                @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Nama Barang</label>
+                                    <input type="text"
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                           wire:model="goods_name"
+                                           required>
+                                    @error('goods_name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
+                                        <input type="number"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model.live="quantity"
+                                               min="1"
+                                               required>
+                                        @error('quantity') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
+                                        <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                wire:model="unit_id"
+                                                required>
+                                            <option value="">Pilih Satuan</option>
+                                            @foreach($productUnits as $productUnit)
+                                                <option value="{{ $productUnit->id }}">{{ $productUnit->name }} ({{ $productUnit->abbreviation }})</option>
+                                            @endforeach
+                                        </select>
+                                        @error('unit_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
+                                        <input type="number"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model.live="unit_price"
+                                               min="0"
+                                               step="0.01"
+                                               required>
+                                        @error('unit_price') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Total (Rp)</label>
+                                        <input type="number"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="total_amount"
+                                               readonly>
+                                        @error('total_amount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                                    <textarea class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                              wire:model="description"
+                                              rows="3"></textarea>
+                                    @error('description') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                                </div>
+                            @endif
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Masuk</label>
@@ -463,18 +566,6 @@
                                 @error('payment_due_date') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
                             
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Modal Usaha</label>
-                                <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                        wire:model="capital_tracking_id"
-                                        required>
-                                    <option value="">Pilih Modal Usaha</option>
-                                    @foreach($capitalTrackings as $capital)
-                                        <option value="{{ $capital->id }}">{{ $capital->name }} - Rp {{ number_format($capital->current_amount, 0, ',', '.') }}</option>
-                                    @endforeach
-                                </select>
-                                @error('capital_tracking_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Gudang (Opsional)</label>
@@ -527,9 +618,12 @@
                     
                     @if($selectedAgenda)
                         <div class="mb-4 p-4 bg-gray-50 rounded-lg">
-                            <p class="text-sm text-gray-600">Supplier: <span class="font-medium">{{ $selectedAgenda->supplier_name }}</span></p>
-                            <p class="text-sm text-gray-600">Item: <span class="font-medium">{{ $selectedAgenda->goods_name }}</span></p>
-                            <p class="text-sm text-gray-600">Total: <span class="font-medium">Rp {{ number_format($selectedAgenda->total_amount, 0, ',', '.') }}</span></p>
+                            <p class="text-sm text-gray-600">Supplier: <span class="font-medium">{{ $selectedAgenda->effective_supplier_name }}</span></p>
+                            <p class="text-sm text-gray-600">Item: <span class="font-medium">{{ $selectedAgenda->is_simplified ? 'Barang Various (Input Sederhana)' : $selectedAgenda->goods_name }}</span></p>
+                            @if($selectedAgenda->is_simplified)
+                                <p class="text-sm text-gray-600">Total Barang: <span class="font-medium">{{ $selectedAgenda->effective_quantity }} {{ $selectedAgenda->effective_unit }}</span></p>
+                            @endif
+                            <p class="text-sm text-gray-600">Total: <span class="font-medium">Rp {{ number_format($selectedAgenda->effective_total_amount, 0, ',', '.') }}</span></p>
                             <p class="text-sm text-gray-600">Sudah Dibayar: <span class="font-medium">Rp {{ number_format($selectedAgenda->paid_amount, 0, ',', '.') }}</span></p>
                             <p class="text-sm text-gray-600">Sisa: <span class="font-medium text-red-600">Rp {{ number_format($selectedAgenda->remaining_amount, 0, ',', '.') }}</span></p>
                         </div>
@@ -550,18 +644,6 @@
                                 @error('paymentAmount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                             </div>
                             
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Modal Usaha</label>
-                                <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                        wire:model="paymentCapitalId"
-                                        required>
-                                    <option value="">Pilih Modal Usaha</option>
-                                    @foreach($capitalTrackings as $capital)
-                                        <option value="{{ $capital->id }}">{{ $capital->businessModal->name }} (Saldo: Rp {{ number_format($capital->current_amount, 0, ',', '.') }})</option>
-                                    @endforeach
-                                </select>
-                                @error('paymentCapitalId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>

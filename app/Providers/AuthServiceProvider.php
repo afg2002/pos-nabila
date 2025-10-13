@@ -6,11 +6,13 @@ use App\Policies\ProductPolicy;
 use App\Policies\SalePolicy;
 use App\Policies\StockMovementPolicy;
 use App\Policies\CustomerPolicy;
+use App\Policies\SupplierPolicy;
 use App\Policies\AgendaPolicy;
 use App\Product;
 use App\Sale;
 use App\StockMovement;
 use App\Customer;
+use App\Supplier;
 use App\IncomingGoods;
 use App\PaymentSchedule;
 use App\CashBalance;
@@ -30,6 +32,7 @@ class AuthServiceProvider extends ServiceProvider
         Sale::class => SalePolicy::class,
         StockMovement::class => StockMovementPolicy::class,
         Customer::class => CustomerPolicy::class,
+        Supplier::class => SupplierPolicy::class,
         IncomingGoods::class => AgendaPolicy::class,
         PaymentSchedule::class => AgendaPolicy::class,
         CashBalance::class => AgendaPolicy::class,

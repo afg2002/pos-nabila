@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "laravel-boost": {
+      "command": "php",
+      "args": ["artisan", "boost:mcp"],
+      "cwd": "c:\\laragon\\www\\laravel_livewire_RBAC_boilerplate"
+    }
+  }
+}

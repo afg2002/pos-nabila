@@ -196,10 +196,10 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label class="form-label">Nama Pelanggan</label>
-                                    <input type="text" class="form-control" wire:model="receivable_customer_name"
-                                           placeholder="Nama pelanggan...">
-                                    @error('receivable_customer_name') <div class="text-danger">{{ $message }}</div> @enderror
+                                    <label class="form-label">Nama Supplier</label>
+                                    <input type="text" class="form-control" wire:model="receivable_supplier_name"
+                                           placeholder="Nama supplier...">
+                                    @error('receivable_supplier_name') <div class="text-danger">{{ $message }}</div> @enderror
                                 </div>
                             </div>
                             <div class="col-md-6">

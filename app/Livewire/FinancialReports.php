@@ -23,11 +23,13 @@ class FinancialReports extends Component
     public $summaryData = [];
 
     public $showFilters = false;
-    public $selectedCustomer = '';
+    public $selectedSupplier = '';
     public $amountMin;
     public $amountMax;
 
-    public function mount(): void\n    {\n        if (! Gate::allows('agenda.export')) {
+    public function mount(): void
+    {
+        if (! Gate::allows('agenda.export')) {
             abort(403, 'Unauthorized access to financial reports');
         }
 
@@ -89,8 +91,8 @@ class FinancialReports extends Component
             $query->where('status', $this->status);
         }
 
-        if ($this->selectedCustomer) {
-            $query->where('customer_name', 'like', '%' . $this->selectedCustomer . '%');
+        if ($this->selectedSupplier) {
+            $query->where('customer_name', 'like', '%' . $this->selectedSupplier . '%');
         }
 
         if ($this->amountMin !== null) {
@@ -215,7 +217,7 @@ class FinancialReports extends Component
                 $remaining = max(0, $item->amount - $item->paid_amount);
 
                 return [
-                    'Customer' => $item->customer_name,
+                    'Supplier' => $item->customer_name,
                     'Status' => ucfirst($item->status),
                     'Total' => number_format($item->amount, 0, ',', '.'),
                     'Paid' => number_format($item->paid_amount, 0, ',', '.'),

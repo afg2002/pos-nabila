@@ -89,7 +89,9 @@
 <script>
     document.addEventListener('livewire:init', () => {
         Livewire.on('openUserForm', (event) => {
-            @this.openModal(event.userId);
+            // Find the UserForm component and call openModal
+            const userId = event ? event.userId : null;
+            Livewire.find('{{ $this->getId() }}').openModal(userId);
         });
         
         // Listen for userSaved event to close modal and refresh

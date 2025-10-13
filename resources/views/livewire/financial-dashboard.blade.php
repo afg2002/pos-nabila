@@ -45,7 +45,7 @@
                 <div>
                     <p class="text-sm font-medium text-gray-600">Total Piutang</p>
                     <p class="text-2xl font-bold text-gray-900">Rp {{ number_format($totalReceivables, 0, ',', '.') }}</p>
-                    <p class="text-xs text-gray-500 mt-1">Customer belum melunasi</p>
+                    <p class="text-xs text-gray-500 mt-1">Supplier belum melunasi</p>
                 </div>
                 <div class="p-3 bg-blue-100 text-blue-600 rounded-full">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

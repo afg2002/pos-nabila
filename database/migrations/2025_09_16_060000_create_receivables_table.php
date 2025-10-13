@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('receivables', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_name');
+            $table->string('customer_name'); // Keeping as customer_name for DB compatibility but will be used for suppliers
             $table->decimal('amount', 15, 2);
             $table->decimal('paid_amount', 15, 2)->default(0);
             $table->enum('status', ['pending', 'partial', 'paid', 'overdue'])->default('pending');

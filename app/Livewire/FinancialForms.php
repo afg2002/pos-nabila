@@ -31,7 +31,7 @@ class FinancialForms extends Component
     public $payment_method = 'cash';
     public $payment_notes;
 
-    public $receivable_customer_name;
+    public $receivable_supplier_name;
     public $receivable_amount;
     public $receivable_due_date;
     public $receivable_notes;
@@ -70,7 +70,7 @@ class FinancialForms extends Component
     ];
 
     protected $receivableRules = [
-        'receivable_customer_name' => 'required|string|max:255',
+        'receivable_supplier_name' => 'required|string|max:255',
         'receivable_amount' => 'required|numeric|min:0',
         'receivable_due_date' => 'required|date|after:today',
         'receivable_notes' => 'nullable|string|max:500',
@@ -202,7 +202,7 @@ class FinancialForms extends Component
         $this->payment_method = 'cash';
         $this->payment_notes = null;
 
-        $this->receivable_customer_name = null;
+        $this->receivable_supplier_name = null;
         $this->receivable_amount = null;
         $this->receivable_due_date = null;
         $this->receivable_notes = null;
@@ -327,7 +327,7 @@ class FinancialForms extends Component
         try {
             DB::transaction(function () {
                 $receivable = Receivable::create([
-                    'customer_name' => $this->receivable_customer_name,
+                    'customer_name' => $this->receivable_supplier_name,
                     'amount' => $this->receivable_amount,
                     'paid_amount' => 0,
                     'status' => $this->receivable_status,
@@ -432,7 +432,7 @@ class FinancialForms extends Component
         $this->editingType = 'receivable';
         $this->activeForm = 'receivable';
         
-        $this->receivable_customer_name = $receivable->customer_name;
+        $this->receivable_supplier_name = $receivable->customer_name;
         $this->receivable_amount = $receivable->amount;
         $this->receivable_due_date = $receivable->due_date->format('Y-m-d');
         $this->receivable_notes = $receivable->notes;
@@ -451,7 +451,7 @@ class FinancialForms extends Component
                 $original = $receivable->toArray();
 
                 $receivable->update([
-                    'customer_name' => $this->receivable_customer_name,
+                    'customer_name' => $this->receivable_supplier_name,
                     'amount' => $this->receivable_amount,
                     'due_date' => Carbon::parse($this->receivable_due_date),
                     'notes' => $this->receivable_notes,
@@ -734,7 +734,11 @@ class FinancialForms extends Component
                 fclose($file);
             };
 
-            return response()->stream($callback, 200, $headers);
+            $this->dispatch('download-file', [
+                'content' => $callback,
+                'filename' => $filename,
+                'headers' => $headers
+            ]);
 
         } catch (\Throwable $e) {
             $this->dispatch('export-error', [
@@ -800,7 +804,11 @@ class FinancialForms extends Component
                 fclose($file);
             };
 
-            return response()->stream($callback, 200, $headers);
+            $this->dispatch('download-file', [
+                'content' => $callback,
+                'filename' => $filename,
+                'headers' => $headers
+            ]);
 
         } catch (\Throwable $e) {
             $this->dispatch('export-error', [

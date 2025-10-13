@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\CapitalTracking;
 use App\IncomingGoodsAgenda;
 use App\ProductUnit;
 use Carbon\Carbon;
@@ -15,20 +14,23 @@ class IncomingGoodsAgendaManagement extends Component
 
     // Form properties
     public $supplier_name = '';
+    public $supplier_id = '';
 
     public $goods_name = '';
 
     public $description = '';
 
     public $quantity = '';
+    public $total_quantity = '';
 
     public $unit = '';
-
+    public $quantity_unit = '';
     public $unit_id = '';
 
     public $unit_price = '';
 
     public $total_amount = '';
+    public $total_purchase_amount = '';
 
     public $scheduled_date = '';
 
@@ -40,11 +42,12 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $phone_number = '';
 
-    public $capital_tracking_id = '';
 
     public $warehouse_id = '';
 
     public $product_id = '';
+
+    public $input_mode = 'simplified'; // 'simplified' or 'detailed'
 
     public $editingId = null;
 
@@ -67,7 +70,6 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $paymentNotes = '';
 
-    public $paymentCapitalId = '';
 
     // Calendar and filters
     public $currentDate;
@@ -85,40 +87,59 @@ class IncomingGoodsAgendaManagement extends Component
     public $search = '';
 
     protected $rules = [
-        'supplier_name' => 'required|string|max:255',
-        'goods_name' => 'required|string|max:255',
+        // Simplified mode rules
+        'supplier_id' => 'required_if:input_mode,simplified|exists:suppliers,id',
+        'supplier_name' => 'required_if:input_mode,detailed|string|max:255',
+        'total_quantity' => 'required_if:input_mode,simplified|numeric|min:0.01',
+        'quantity_unit' => 'required_if:input_mode,simplified|string|max:50',
+        'total_purchase_amount' => 'required_if:input_mode,simplified|numeric|min:0.01',
+        
+        // Detailed mode rules
+        'goods_name' => 'required_if:input_mode,detailed|string|max:255',
+        'quantity' => 'required_if:input_mode,detailed|integer|min:1',
+        'unit_id' => 'required_if:input_mode,detailed|exists:product_units,id',
+        'unit_price' => 'required_if:input_mode,detailed|numeric|min:0',
+        
+        // Common rules
         'description' => 'nullable|string|max:500',
-        'quantity' => 'required|integer|min:1',
-        'unit' => 'nullable|string|max:50',
-        'unit_id' => 'required|exists:product_units,id',
-        'unit_price' => 'required|numeric|min:0',
         'scheduled_date' => 'required|date|after_or_equal:today',
         'payment_due_date' => 'required|date|after_or_equal:scheduled_date',
         'notes' => 'nullable|string|max:1000',
         'contact_person' => 'nullable|string|max:255',
         'phone_number' => 'nullable|string|max:20',
-        'capital_tracking_id' => 'required|exists:capital_tracking,id',
         'warehouse_id' => 'nullable|exists:warehouses,id',
         'product_id' => 'nullable|exists:products,id',
     ];
 
     protected $messages = [
-        'supplier_name.required' => 'Nama supplier harus diisi.',
-        'goods_name.required' => 'Nama barang harus diisi.',
-        'quantity.required' => 'Jumlah barang harus diisi.',
+        // Simplified mode messages
+        'supplier_id.required_if' => 'Supplier harus dipilih.',
+        'supplier_id.exists' => 'Supplier tidak valid.',
+        'total_quantity.required_if' => 'Total jumlah barang harus diisi.',
+        'total_quantity.numeric' => 'Total jumlah barang harus berupa angka.',
+        'total_quantity.min' => 'Total jumlah barang minimal 0.01.',
+        'quantity_unit.required_if' => 'Satuan barang harus diisi.',
+        'total_purchase_amount.required_if' => 'Jumlah total belanja harus diisi.',
+        'total_purchase_amount.numeric' => 'Jumlah total belanja harus berupa angka.',
+        'total_purchase_amount.min' => 'Jumlah total belanja minimal 0.01.',
+        
+        // Detailed mode messages
+        'supplier_name.required_if' => 'Nama supplier harus diisi.',
+        'goods_name.required_if' => 'Nama barang harus diisi.',
+        'quantity.required_if' => 'Jumlah barang harus diisi.',
         'quantity.integer' => 'Jumlah barang harus berupa angka.',
         'quantity.min' => 'Jumlah barang minimal 1.',
-        'unit_id.required' => 'Satuan barang harus dipilih.',
+        'unit_id.required_if' => 'Satuan barang harus dipilih.',
         'unit_id.exists' => 'Satuan barang tidak valid.',
-        'unit_price.required' => 'Harga per unit harus diisi.',
+        'unit_price.required_if' => 'Harga per unit harus diisi.',
         'unit_price.numeric' => 'Harga per unit harus berupa angka.',
         'unit_price.min' => 'Harga per unit tidak boleh negatif.',
+        
+        // Common messages
         'scheduled_date.required' => 'Tanggal jadwal barang masuk harus diisi.',
         'scheduled_date.after_or_equal' => 'Tanggal jadwal tidak boleh kurang dari hari ini.',
         'payment_due_date.required' => 'Tanggal jatuh tempo pembayaran harus diisi.',
         'payment_due_date.after_or_equal' => 'Tanggal jatuh tempo tidak boleh kurang dari tanggal jadwal.',
-        'capital_tracking_id.required' => 'Modal usaha harus dipilih.',
-        'capital_tracking_id.exists' => 'Modal usaha tidak valid.',
     ];
 
     public function mount()
@@ -157,7 +178,7 @@ class IncomingGoodsAgendaManagement extends Component
 
     public function render()
     {
-        $query = IncomingGoodsAgenda::with('capitalTracking');
+        $query = IncomingGoodsAgenda::with(['supplier']);
 
         // Apply search filter
         if ($this->search) {
@@ -165,7 +186,10 @@ class IncomingGoodsAgendaManagement extends Component
                 $q->where('supplier_name', 'like', '%'.$this->search.'%')
                     ->orWhere('goods_name', 'like', '%'.$this->search.'%')
                     ->orWhere('description', 'like', '%'.$this->search.'%')
-                    ->orWhere('contact_person', 'like', '%'.$this->search.'%');
+                    ->orWhere('contact_person', 'like', '%'.$this->search.'%')
+                    ->orWhereHas('supplier', function($subQuery) {
+                        $subQuery->where('name', 'like', '%'.$this->search.'%');
+                    });
             });
         }
 
@@ -187,10 +211,10 @@ class IncomingGoodsAgendaManagement extends Component
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
-        $capitalTrackings = CapitalTracking::where('is_active', true)->get();
         $productUnits = ProductUnit::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
         $warehouses = \App\Warehouse::orderBy('name')->get();
         $products = \App\Product::where('is_active', true)->orderBy('name')->get();
+        $suppliers = \App\Supplier::where('is_active', true)->orderBy('name')->get();
 
         // Get statistics
         $this->totalAgendas = IncomingGoodsAgenda::count();
@@ -241,10 +265,10 @@ class IncomingGoodsAgendaManagement extends Component
 
         return view('livewire.incoming-goods-agenda-management', [
             'agendas' => $agendas,
-            'capitalTrackings' => $capitalTrackings,
             'productUnits' => $productUnits,
             'warehouses' => $warehouses,
             'products' => $products,
+            'suppliers' => $suppliers,
             'scheduledTodayCount' => $scheduledTodayCount,
             'paymentDueTodayCount' => $paymentDueTodayCount,
             'overduePaymentCount' => $overduePaymentCount,
@@ -286,28 +310,31 @@ class IncomingGoodsAgendaManagement extends Component
     {
         $this->showPaymentModal = false;
         $this->selectedAgenda = null;
-        $this->paymentCapitalId = null;
         $this->paymentNotes = '';
     }
 
     public function resetForm()
     {
         $this->supplier_name = '';
+        $this->supplier_id = '';
         $this->goods_name = '';
         $this->description = '';
         $this->quantity = '';
+        $this->total_quantity = '';
         $this->unit = '';
+        $this->quantity_unit = '';
         $this->unit_id = '';
         $this->unit_price = '';
         $this->total_amount = '';
+        $this->total_purchase_amount = '';
         $this->scheduled_date = '';
         $this->payment_due_date = '';
         $this->notes = '';
         $this->contact_person = '';
         $this->phone_number = '';
-        $this->capital_tracking_id = '';
         $this->warehouse_id = '';
         $this->product_id = '';
+        $this->input_mode = 'simplified';
         $this->editingId = null;
         $this->resetErrorBag();
     }
@@ -315,57 +342,58 @@ class IncomingGoodsAgendaManagement extends Component
     public function save()
     {
         $this->validate();
-        $this->calculateTotal();
 
-        // Get unit name from selected ProductUnit
-        if ($this->unit_id) {
-            $productUnit = ProductUnit::find($this->unit_id);
-            if ($productUnit) {
-                $this->unit = $productUnit->name;
-            }
+        // For detailed mode, calculate total
+        if ($this->input_mode === 'detailed') {
+            $this->calculateTotal();
         }
 
         try {
+            $data = [
+                'scheduled_date' => $this->scheduled_date,
+                'payment_due_date' => $this->payment_due_date,
+                'notes' => $this->notes,
+                'warehouse_id' => $this->warehouse_id ?: null,
+                'product_id' => $this->product_id ?: null,
+            ];
+
+            if ($this->input_mode === 'simplified') {
+                // Simplified mode data
+                $data['supplier_id'] = $this->supplier_id;
+                $data['supplier_name'] = $this->supplier_name; // Will be auto-populated by model
+                $data['total_quantity'] = $this->total_quantity;
+                $data['quantity_unit'] = $this->quantity_unit;
+                $data['total_purchase_amount'] = $this->total_purchase_amount;
+                $data['goods_name'] = 'Barang Various'; // Default for simplified mode
+                $data['description'] = 'Input sederhana - total barang';
+            } else {
+                // Detailed mode data
+                $data['supplier_name'] = $this->supplier_name;
+                $data['goods_name'] = $this->goods_name;
+                $data['description'] = $this->description;
+                $data['quantity'] = $this->quantity;
+                $data['unit'] = $this->unit;
+                $data['unit_id'] = $this->unit_id;
+                $data['unit_price'] = $this->unit_price;
+                $data['total_amount'] = $this->total_amount;
+                $data['contact_person'] = $this->contact_person;
+                $data['phone_number'] = $this->phone_number;
+
+                // Get unit name from selected ProductUnit
+                if ($this->unit_id) {
+                    $productUnit = ProductUnit::find($this->unit_id);
+                    if ($productUnit) {
+                        $data['unit'] = $productUnit->name;
+                    }
+                }
+            }
+
             if ($this->editingId) {
                 $agenda = IncomingGoodsAgenda::findOrFail($this->editingId);
-                $agenda->update([
-                    'supplier_name' => $this->supplier_name,
-                    'goods_name' => $this->goods_name,
-                    'description' => $this->description,
-                    'quantity' => $this->quantity,
-                    'unit' => $this->unit,
-                    'unit_id' => $this->unit_id,
-                    'unit_price' => $this->unit_price,
-                    'total_amount' => $this->total_amount,
-                    'scheduled_date' => $this->scheduled_date,
-                    'payment_due_date' => $this->payment_due_date,
-                    'notes' => $this->notes,
-                    'contact_person' => $this->contact_person,
-                    'phone_number' => $this->phone_number,
-                    'capital_tracking_id' => $this->capital_tracking_id,
-                    'warehouse_id' => $this->warehouse_id ?: null,
-                    'product_id' => $this->product_id ?: null,
-                ]);
+                $agenda->update($data);
                 session()->flash('message', 'Agenda barang masuk berhasil diperbarui.');
             } else {
-                IncomingGoodsAgenda::create([
-                    'supplier_name' => $this->supplier_name,
-                    'goods_name' => $this->goods_name,
-                    'description' => $this->description,
-                    'quantity' => $this->quantity,
-                    'unit' => $this->unit,
-                    'unit_id' => $this->unit_id,
-                    'unit_price' => $this->unit_price,
-                    'total_amount' => $this->total_amount,
-                    'scheduled_date' => $this->scheduled_date,
-                    'payment_due_date' => $this->payment_due_date,
-                    'notes' => $this->notes,
-                    'contact_person' => $this->contact_person,
-                    'phone_number' => $this->phone_number,
-                    'capital_tracking_id' => $this->capital_tracking_id,
-                    'warehouse_id' => $this->warehouse_id ?: null,
-                    'product_id' => $this->product_id ?: null,
-                ]);
+                IncomingGoodsAgenda::create($data);
                 session()->flash('message', 'Agenda barang masuk berhasil ditambahkan.');
             }
 
@@ -379,28 +407,46 @@ class IncomingGoodsAgendaManagement extends Component
     {
         $agenda = IncomingGoodsAgenda::findOrFail($id);
         $this->editingId = $id;
-        $this->supplier_name = $agenda->supplier_name;
-        $this->goods_name = $agenda->goods_name;
-        $this->description = $agenda->description;
-        $this->quantity = $agenda->quantity;
-        $this->unit = $agenda->unit;
-        $this->unit_id = $agenda->unit_id;
+        
+        // Determine input mode based on whether it's simplified
+        $this->input_mode = $agenda->is_simplified ? 'simplified' : 'detailed';
+        
+        if ($this->input_mode === 'simplified') {
+            $this->supplier_id = $agenda->supplier_id;
+            $this->supplier_name = $agenda->effective_supplier_name;
+            $this->total_quantity = $agenda->total_quantity;
+            $this->quantity_unit = $agenda->quantity_unit;
+            $this->total_purchase_amount = $agenda->total_purchase_amount;
+        } else {
+            $this->supplier_name = $agenda->supplier_name;
+            $this->goods_name = $agenda->goods_name;
+            $this->description = $agenda->description;
+            $this->quantity = $agenda->quantity;
+            $this->unit = $agenda->unit;
+            $this->unit_id = $agenda->unit_id;
 
-        // If unit_id exists, get unit name from productUnit relation
-        if ($agenda->unit_id && $agenda->productUnit) {
-            $this->unit = $agenda->productUnit->name;
+            // If unit_id exists, get unit name from productUnit relation
+            if ($agenda->unit_id && $agenda->productUnit) {
+                $this->unit = $agenda->productUnit->name;
+            }
+            $this->unit_price = $agenda->unit_price;
+            $this->total_amount = $agenda->total_amount;
+            $this->contact_person = $agenda->contact_person;
+            $this->phone_number = $agenda->phone_number;
         }
-        $this->unit_price = $agenda->unit_price;
-        $this->total_amount = $agenda->total_amount;
+        
         $this->scheduled_date = $agenda->scheduled_date->format('Y-m-d');
         $this->payment_due_date = $agenda->payment_due_date->format('Y-m-d');
         $this->notes = $agenda->notes;
-        $this->contact_person = $agenda->contact_person;
-        $this->phone_number = $agenda->phone_number;
-        $this->capital_tracking_id = $agenda->capital_tracking_id;
         $this->warehouse_id = $agenda->warehouse_id;
         $this->product_id = $agenda->product_id;
         $this->showModal = true;
+    }
+
+    public function switchInputMode($mode)
+    {
+        $this->input_mode = $mode;
+        $this->resetErrorBag();
     }
 
     public function markAsReceived($id)
@@ -425,37 +471,13 @@ class IncomingGoodsAgendaManagement extends Component
     {
         $this->validate([
             'paymentAmount' => 'required|numeric|min:0.01',
-            'paymentCapitalId' => 'required|exists:capital_tracking,id',
         ]);
 
         try {
-            $capitalTracking = CapitalTracking::findOrFail($this->paymentCapitalId);
-
-            // Check if capital tracking has enough balance
-            if ($capitalTracking->current_amount < $this->paymentAmount) {
-                session()->flash('error', 'Saldo modal tidak mencukupi.');
-                return;
-            }
-
             // Use the new makePayment method from the model
             $this->selectedAgenda->makePayment($this->paymentAmount, $this->paymentNotes);
 
-            // Update capital tracking - deduct payment amount
-            $capitalTracking->current_amount -= $this->paymentAmount;
-            $capitalTracking->save();
-
-            // Create capital tracking transaction record
-            CapitalTracking::create([
-                'business_modal_id' => $capitalTracking->business_modal_id,
-                'transaction_type' => 'expense',
-                'amount' => $this->paymentAmount,
-                'description' => 'Pembayaran agenda barang masuk: '.$this->selectedAgenda->supplier_name.' - '.$this->selectedAgenda->item_name,
-                'transaction_date' => now(),
-                'current_amount' => $capitalTracking->current_amount,
-                'notes' => $this->paymentNotes,
-            ]);
-
-            session()->flash('message', 'Pembayaran berhasil diproses. Saldo modal berkurang sebesar Rp '.number_format($this->paymentAmount, 0, ',', '.'));
+            session()->flash('message', 'Pembayaran berhasil diproses sebesar Rp '.number_format($this->paymentAmount, 0, ',', '.'));
             $this->closePaymentModal();
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());

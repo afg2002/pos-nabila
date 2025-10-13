@@ -49,10 +49,11 @@ class RoleSeeder extends Seeder
             'products.view', 'products.create', 'products.edit', 'products.delete', 'products.restore', 'products.view_trashed', 'products.manage_status', 'products.export',
             'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete', 'inventory.manage', 'inventory.history', 'inventory.export',
             'warehouses.view', 'warehouses.create', 'warehouses.edit', 'warehouses.delete', 'warehouses.manage',
-            'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.export',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.export',
             'pos.access', 'pos.sell', 'pos.reports', 'pos.refund',
             'agenda.view', 'agenda.create', 'agenda.edit', 'agenda.delete', 'agenda.payment',
             'incoming_goods_agenda.view', 'incoming_goods_agenda.create', 'incoming_goods_agenda.edit', 'incoming_goods_agenda.delete',
+            'cashflow_agenda.view', 'cashflow_agenda.create', 'cashflow_agenda.edit', 'cashflow_agenda.delete',
             'dashboard.view', 'dashboard.export',
             'system.settings', 'system.logs'
         ])->get();
@@ -75,7 +76,8 @@ class RoleSeeder extends Seeder
             'products.view', 'products.create', 'products.edit', 'products.delete', 'products.restore', 'products.view_trashed', 'products.manage_status', 'products.export',
             'inventory.view', 'inventory.create', 'inventory.update', 'inventory.delete', 'inventory.manage', 'inventory.history', 'inventory.export',
             'warehouses.view', 'warehouses.create', 'warehouses.edit', 'warehouses.manage',
-            'customers.view', 'customers.create', 'customers.edit', 'customers.delete', 'customers.export',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.export',
+            'cashflow_agenda.view', 'cashflow_agenda.create', 'cashflow_agenda.edit', 'cashflow_agenda.delete',
             'dashboard.view', 'dashboard.export'
         ])->get();
         $manager->permissions()->sync($managerPermissions->pluck('id'));
@@ -114,7 +116,7 @@ class RoleSeeder extends Seeder
             'products.view', 'products.create', 'products.edit',
             'inventory.view', 'inventory.create', 'inventory.update', 'inventory.manage', 'inventory.history',
             'warehouses.view',
-            'customers.view', 'customers.create', 'customers.edit',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit',
             'dashboard.view'
         ])->get();
         $staff->permissions()->sync($staffPermissions->pluck('id'));

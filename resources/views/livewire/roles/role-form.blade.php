@@ -136,7 +136,9 @@
 <script>
     document.addEventListener('livewire:init', () => {
         Livewire.on('openRoleForm', (event) => {
-            @this.openModal(event.roleId);
+            // Find the RoleForm component and call openModal
+            const roleId = event ? event.roleId : null;
+            Livewire.find('{{ $this->getId() }}').openModal(roleId);
         });
         
         // Listen for roleSaved event to close modal and refresh

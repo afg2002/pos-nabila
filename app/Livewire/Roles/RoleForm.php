@@ -67,6 +67,7 @@ class RoleForm extends Component
         $this->isEditing = true;
     }
 
+    #[On('openRoleForm')]
     public function openModal($roleId = null)
     {
         $this->resetForm();
