@@ -379,11 +379,33 @@
 </div>
 
 <script>
-    // Handle confirmation actions from SweetAlert2
-    window.addEventListener('livewire-confirm-action', function(event) {
-        const { method, params } = event.detail;
-        
-        // Call the method on this Livewire component
-        @this.call(method, params);
+    // Ensure confirm dialogs trigger the intended Livewire actions for Suppliers
+    document.addEventListener('livewire:load', () => {
+        window.addEventListener('livewire-confirm-action', (event) => {
+            const detail = event.detail || {};
+            const method = detail.method;
+            const params = detail.params;
+            const targetComponentId = detail.component;
+            try {
+                const currentComponentId = @this.__instance?.id;
+                if (targetComponentId && currentComponentId && targetComponentId !== currentComponentId) {
+                    return;
+                }
+            } catch (e) {
+                // Proceed without component filtering if Livewire internals change
+            }
+
+            if (method) {
+                // Support single param, array of params, or no params
+                if (Array.isArray(params)) {
+                    @this.call(method, ...params);
+                } else if (params !== undefined) {
+                    @this.call(method, params);
+                } else {
+                    @this.call(method);
+                }
+            }
+        });
     });
+    
 </script>

@@ -199,6 +199,12 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap gap-2">
+            @can('create', App\Warehouse::class)
+                <button wire:click="openCreateModal"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-plus mr-2"></i>Tambah Gudang
+                </button>
+            @endcan
             @if(count($selectedWarehouses) > 0)
                 <button wire:click="confirmBulkDelete" 
                         class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
@@ -382,7 +388,84 @@
     </div>
 
     <!-- Create Modal -->
-    <!-- Modal dihapus sesuai permintaan -->
+    @if($showCreateModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeModal">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white dark:bg-gray-800" wire:click.stop>
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white">Tambah Gudang</h3>
+                    <form wire:submit.prevent="createWarehouse">
+                        <div class="mt-4 space-y-4">
+                            <div>
+                                <label for="create_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Nama Gudang</label>
+                                <input type="text" wire:model="name" id="create_name"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                @error('name') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="create_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Kode Gudang</label>
+                                <input type="text" wire:model="code" id="create_code"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                @error('code') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="create_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipe</label>
+                                <select wire:model="type" id="create_type"
+                                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <option value="">Pilih Tipe</option>
+                                    @foreach($warehouseTypes as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('type') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="create_branch" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Cabang</label>
+                                <input type="text" wire:model="branch" id="create_branch"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                @error('branch') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="create_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Alamat</label>
+                                <textarea wire:model="address" id="create_address" rows="3"
+                                          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea>
+                                @error('address') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div>
+                                <label for="create_phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Telepon</label>
+                                <input type="text" wire:model="phone" id="create_phone"
+                                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                @error('phone') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div class="flex items-center">
+                                <input type="checkbox" wire:model="is_default" id="create_is_default"
+                                       class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                                <label for="create_is_default" class="ml-2 block text-sm text-gray-900 dark:text-white">
+                                    Jadikan sebagai gudang default
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end space-x-3">
+                            <button type="button" wire:click="closeModal"
+                                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                Batal
+                            </button>
+                            <button type="submit"
+                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Simpan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- Edit Modal -->
     @if($showEditModal)

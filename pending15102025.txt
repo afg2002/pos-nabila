@@ -1,0 +1,39 @@
+Pending Tasks — 15/10/2025
+
+Catatan: File ini melacak progres perbaikan fitur sesuai brief. Setiap item akan diupdate (status dan catatan) setelah task selesai diverifikasi.
+
+/user
+1) [ ] Delete tidak bisa terhapus — Perbaiki agar benar-benar menghapus dari DB & tabel.
+2) [ ] Tombol deactivate hanya keluar modal — Perbaiki agar status aktif/nonaktif berubah sesuai aksi.
+3) [ ] Edit & create tidak bisa — Perbaiki form (buka, validasi, simpan/update) dan refresh tabel.
+
+/roles
+4) [ ] Delete tidak bisa digunakan — Perbaiki agar delete berfungsi sesuai aturan (hindari hapus role super-admin jika ada).
+5) [ ] Saat edit table tidak berubah — Pastikan tabel refresh dan menampilkan perubahan.
+6) [ ] Fitur delete tidak menghapus apapun — Pastikan data benar-benar terhapus (sesuai kebijakan soft/hard delete).
+
+/agenda-management
+8) [x] Hapus halaman ini. Pastikan /incoming-goods-agenda tetap tersedia dan hilangkan pesan:
+   - "Enhanced Agenda Management Available"
+   - "This page has been replaced by the enhanced Agenda Management system with cashflow and purchase order integration. Click the button above to access the new system with improved features."
+
+/pos
+9) [x] Fitur item custom jangan di-disable dan bisa tambah barang yang tidak ada di product.
+10) [ ] Multi table: masing-masing keranjang bisa menampilkan product-nya. (verifikasi visual masih berlangsung)
+11) [x] Tampilan responsive (hp, tablet, pc).
+12) [x] Hilangkan fitur diskon dari UI & perhitungan. (diverifikasi via preview /pos/enhanced)
+
+/suppliers
+13) [ ] Tombol delete hanya menampilkan toast "Supplier berhasil dihapus!" — Perbaiki agar benar-benar menghapus dari DB & tabel.
+14) [ ] Edit/update 404 Not Found — Perbaiki routing/aksi agar update berjalan.
+
+Log Progres:
+- 15/10/2025: File pending15102025.txt dibuat dan semua task diinisialisasi ke status pending.
+- 15/10/2025: POS — Fitur item custom diaktifkan; checkout mendukung SaleItem is_custom, name, description.
+- 15/10/2025: POS — Tampilan responsive diterapkan (panel bertumpuk di mobile, grid produk adaptif 1/2/3 kolom, tab scroll horizontal).
+- 15/10/2025: POS — Konsistensi label pembayaran: UI menggunakan "EDC/Kartu"; label model SalesInvoice & InvoicePayment diselaraskan; SaleFactory mengganti 'debit' menjadi 'edc'.
+- 15/10/2025: POS — Multi-tab: struktur Blade menampilkan keranjang tab aktif; verifikasi visual masih berjalan.
+- 15/10/2025: POS — Penghapusan fitur diskon: kalkulasi diskon di PosKasir (non-enhanced) sudah nol; di PosKasirEnhanced perhitungan total tanpa diskon (discount_total/discount_amount diset 0), baris Diskon di UI dihapus.
+- 15/10/2025: POS — Route preview POS Enhanced ditambahkan (/pos/enhanced) dengan view pos/enhanced.blade.php yang extend layout utama agar Livewire & assets termuat.
+ - 15/10/2025: POS — Preview /pos & /pos/enhanced dibuka; tidak ada error browser; penghapusan diskon terverifikasi secara visual (baris Diskon hilang, total = subtotal).
+ - 15/10/2025: Agenda Management — Halaman /agenda-management dihapus (route & view). Halaman legacy /incoming-goods-agenda tetap tersedia.

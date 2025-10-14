@@ -19,34 +19,39 @@ class DatabaseSeeder extends Seeder
             UpdateProductStatusSeeder::class,
         ]);
         
-        // Create a super admin user manually
-        $superAdmin = User::create([
-            'name' => 'Super Admin',
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-            'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
+        // Create or update a super admin user
+        $superAdmin = User::updateOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Super Admin',
+                'password' => bcrypt('password'),
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ]
+        );
         
-        // Assign super admin role
-        $superAdminRole = \App\Domains\Role\Models\Role::where('name', 'super-admin')->first();
+        // Assign super admin role (use RBAC role name "super_admin")
+        $superAdminRole = \App\Domains\Role\Models\Role::where('name', 'super_admin')->first();
         if ($superAdminRole) {
-            $superAdmin->roles()->attach($superAdminRole->id);
+            // Ensure role assignment without duplicates
+            $superAdmin->roles()->syncWithoutDetaching([$superAdminRole->id]);
         }
         
-        // Create a test user manually
-        $testUser = User::create([
-            'name' => 'Test User',
-            'email' => 'user@example.com',
-            'password' => bcrypt('password'),
-            'is_active' => true,
-            'email_verified_at' => now(),
-        ]);
+        // Create or update a test user
+        $testUser = User::updateOrCreate(
+            ['email' => 'user@example.com'],
+            [
+                'name' => 'Test User',
+                'password' => bcrypt('password'),
+                'is_active' => true,
+                'email_verified_at' => now(),
+            ]
+        );
         
-        // Assign user role
-        $userRole = \App\Domains\Role\Models\Role::where('name', 'user')->first();
-        if ($userRole) {
-            $testUser->roles()->attach($userRole->id);
+        // Assign a default role to test user if available
+        $defaultRole = \App\Domains\Role\Models\Role::whereIn('name', ['kasir', 'manager', 'admin'])->first();
+        if ($defaultRole) {
+            $testUser->roles()->syncWithoutDetaching([$defaultRole->id]);
         }
         
         // Run seeders that depend on users

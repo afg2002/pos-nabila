@@ -246,3 +246,35 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Ensure confirm dialogs trigger the intended Livewire actions for Roles
+    document.addEventListener('livewire:init', () => {
+        window.addEventListener('livewire-confirm-action', (event) => {
+            const detail = event.detail || {};
+            const method = detail.method;
+            const params = detail.params;
+            
+            console.log('Role List - Received livewire-confirm-action:', { method, params });
+
+            if (method) {
+                try {
+                    if (Array.isArray(params)) {
+                        console.log('Calling method with array params:', method, params);
+                        @this.call(method, ...params);
+                    } else if (params !== undefined && params !== null) {
+                        console.log('Calling method with object params:', method, params);
+                        @this.call(method, params);
+                    } else {
+                        console.log('Calling method without params:', method);
+                        @this.call(method);
+                    }
+                } catch (error) {
+                    console.error('Error calling Livewire method:', error);
+                }
+            } else {
+                console.warn('No method specified in livewire-confirm-action event');
+            }
+        });
+    });
+</script>

@@ -77,22 +77,29 @@ class PosKasir extends Component
     // Custom Item Properties
     public $customItemName = '';
 
+    public $customItemDescription = '';
+
     public $customItemPrice = 0;
 
     public $customItemQuantity = 1;
 
+    // Optional customer fields (used in checkout modal)
+    public $customerName = '';
+    public $customerPhone = '';
+
     protected $rules = [
         'supplierName' => 'nullable|string|max:255',
         'supplierPhone' => 'nullable|string|max:20',
-        'paymentMethod' => 'required|in:cash,transfer,debit,qr',
+        'customerName' => 'nullable|string|max:255',
+        'customerPhone' => 'nullable|string|max:20',
+        'paymentMethod' => 'required|in:cash,transfer,edc,qr',
         'warehouseId' => 'required|exists:warehouses,id',
         'pricingTier' => 'required|in:retail,semi_grosir,grosir,custom',
         'paymentNotes' => 'nullable|string|max:255',
         'amountPaid' => 'required|numeric|min:0',
-        'discount' => 'nullable|numeric|min:0',
-        'discountType' => 'required|in:amount,percentage',
         'notes' => 'nullable|string|max:500',
         'customItemName' => 'required|string|max:255',
+        'customItemDescription' => 'nullable|string|max:500',
         'customItemPrice' => 'required|numeric|min:0.01',
         'customItemQuantity' => 'required|integer|min:1',
     ];
@@ -102,11 +109,11 @@ class PosKasir extends Component
         return [
             'supplierName' => 'nullable|string|max:255',
             'supplierPhone' => 'nullable|string|max:20',
-            'paymentMethod' => 'required|in:cash,transfer,debit,qr',
+            'customerName' => 'nullable|string|max:255',
+            'customerPhone' => 'nullable|string|max:20',
+            'paymentMethod' => 'required|in:cash,transfer,edc,qr',
             'warehouseId' => 'required|exists:warehouses,id',
             'amountPaid' => 'required|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'discountType' => 'required|in:amount,percentage',
             'notes' => 'nullable|string|max:500',
         ];
     }
@@ -152,17 +159,7 @@ class PosKasir extends Component
         }
     }
 
-    public function updatedDiscount()
-    {
-        $this->updateActiveTabFromCurrentProperties();
-        $this->calculateTotals();
-    }
-
-    public function updatedDiscountType()
-    {
-        $this->updateActiveTabFromCurrentProperties();
-        $this->calculateTotals();
-    }
+    // Discount features removed from calculation; watchers no longer needed
 
     public function updatedAmountPaid()
     {
@@ -389,12 +386,13 @@ class PosKasir extends Component
         }
 
         if (isset($this->cart[$cartKey])) {
-            $availableStock = $this->cart[$cartKey]['available_stock'];
-
-            if ($quantity > $availableStock) {
-                session()->flash('error', 'Stok tidak mencukupi! Stok tersedia: '.$availableStock);
-
-                return;
+            // Skip stock checks for custom items
+            if (!isset($this->cart[$cartKey]['is_custom']) || !$this->cart[$cartKey]['is_custom']) {
+                $availableStock = $this->cart[$cartKey]['available_stock'];
+                if ($quantity > $availableStock) {
+                    session()->flash('error', 'Stok tidak mencukupi! Stok tersedia: '.$availableStock);
+                    return;
+                }
             }
 
             $this->cart[$cartKey]['quantity'] = $quantity;
@@ -500,14 +498,9 @@ class PosKasir extends Component
             $this->subtotal += $item['price'] * $item['quantity'];
         }
 
-        // Calculate discount
-        if ($this->discountType === 'percentage') {
-            $this->discountAmount = ($this->subtotal * $this->discount) / 100;
-        } else {
-            $this->discountAmount = $this->discount;
-        }
-
-        $this->total = max(0, $this->subtotal - $this->discountAmount);
+        // Discounts removed: total equals subtotal
+        $this->discountAmount = 0;
+        $this->total = max(0, $this->subtotal);
         $this->change = max(0, $this->amountPaid - $this->total);
     }
 
@@ -533,7 +526,7 @@ class PosKasir extends Component
     public function processCheckout()
     {
         // Check if user has permission to process sales
-        if (! auth()->user()->hasPermission('pos.sell')) {
+        if (! auth()->user()->hasPermission('pos.create_sales')) {
             session()->flash('error', 'Anda tidak memiliki izin untuk memproses penjualan!');
 
             return;
@@ -556,7 +549,7 @@ class PosKasir extends Component
                 'sale_number' => 'POS-'.date('Ymd').'-'.str_pad(Sale::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT),
                 'cashier_id' => Auth::id(),
                 'subtotal' => $this->subtotal,
-                'discount_total' => $this->discountAmount,
+                'discount_total' => 0,
                 'final_total' => $this->total,
                 'payment_method' => $this->paymentMethod,
                 'payment_notes' => $this->paymentNotes,
@@ -580,15 +573,16 @@ class PosKasir extends Component
                 
                 $saleItemData = [
                     'sale_id' => $sale->id,
-                    'product_id' => $item['product_id'],
+                    'product_id' => $item['is_custom'] ?? false ? null : $item['product_id'],
                     'qty' => $item['quantity'],
                     'unit_price' => $item['price'],
-                    'price_tier' => $this->pricingTier ?? 'retail',
+                    // Persist the item's pricing tier from the cart (custom items will carry 'custom')
+                    'price_tier' => $item['pricing_tier'] ?? ($this->pricingTier ?? 'retail'),
                     'margin_pct_at_sale' => 0.00,
                     'below_margin_flag' => false,
                     'is_custom' => $item['is_custom'] ?? false,
                     'custom_item_name' => $item['is_custom'] ?? false ? $item['name'] : null,
-                    'custom_item_description' => null, // Could be added later if needed
+                    'custom_item_description' => $item['is_custom'] ?? false ? ($item['description'] ?? null) : null,
                 ];
                 
                 \Log::info('POS Checkout: Creating sale item with data', $saleItemData);
@@ -642,7 +636,34 @@ class PosKasir extends Component
                     \Log::info('POS Checkout: Stock movement created');
                 }
             }
-            
+
+            // Save payment breakdown to sale if columns exist
+            try {
+                // Map payment method to columns
+                $cashAmount = 0; $qrAmount = 0; $edcAmount = 0;
+                switch ($this->paymentMethod) {
+                    case 'cash':
+                        $cashAmount = $this->amountPaid;
+                        break;
+                    case 'qr':
+                        $qrAmount = $this->amountPaid;
+                        break;
+                    case 'edc':
+                        $edcAmount = $this->amountPaid;
+                        break;
+                    case 'transfer':
+                        // transfer disimpan sebagai metode utama; breakdown tetap 0
+                        break;
+                }
+                $sale->cash_amount = $cashAmount;
+                $sale->qr_amount = $qrAmount;
+                $sale->edc_amount = $edcAmount;
+                $sale->change_amount = max(0, $this->amountPaid - $this->total);
+                $sale->save();
+            } catch (\Throwable $e) {
+                \Log::warning('POS Checkout: Could not save payment breakdown fields', ['error' => $e->getMessage()]);
+            }
+
             DB::commit();
             \Log::info('POS Checkout: Transaction committed successfully');
 
@@ -683,10 +704,10 @@ class PosKasir extends Component
         $this->carts[$this->activeTabId]['cart'] = [];
         $this->carts[$this->activeTabId]['supplierName'] = '';
         $this->carts[$this->activeTabId]['supplierPhone'] = '';
+        $this->carts[$this->activeTabId]['customerName'] = '';
+        $this->carts[$this->activeTabId]['customerPhone'] = '';
         $this->carts[$this->activeTabId]['paymentMethod'] = 'cash';
         $this->carts[$this->activeTabId]['amountPaid'] = 0;
-        $this->carts[$this->activeTabId]['discount'] = 0;
-        $this->carts[$this->activeTabId]['discountType'] = 'amount';
         $this->carts[$this->activeTabId]['notes'] = '';
         
         // Update current properties from active tab
@@ -821,8 +842,8 @@ class PosKasir extends Component
      */
     public function showCustomItemModal()
     {
-        session()->flash('error', 'Fitur item custom telah dinonaktifkan. Hanya produk dari gudang toko yang tersedia.');
-        return;
+        $this->resetCustomItemForm();
+        $this->showCustomItemModal = true;
     }
 
     /**
@@ -840,9 +861,10 @@ class PosKasir extends Component
     public function resetCustomItemForm()
     {
         $this->customItemName = '';
+        $this->customItemDescription = '';
         $this->customItemPrice = 0;
         $this->customItemQuantity = 1;
-        $this->resetErrorBag(['customItemName', 'customItemPrice', 'customItemQuantity']);
+        $this->resetErrorBag(['customItemName', 'customItemDescription', 'customItemPrice', 'customItemQuantity']);
     }
 
     /**
@@ -850,8 +872,31 @@ class PosKasir extends Component
      */
     public function addCustomItem()
     {
-        session()->flash('error', 'Fitur item custom telah dinonaktifkan. Hanya produk dari gudang toko yang tersedia.');
-        return;
+        $this->validate([
+            'customItemName' => 'required|string|max:255',
+            'customItemDescription' => 'nullable|string|max:500',
+            'customItemPrice' => 'required|numeric|min:0.01',
+            'customItemQuantity' => 'required|integer|min:1',
+        ]);
+
+        $cartKey = 'custom_' . uniqid();
+        $this->cart[$cartKey] = [
+            'is_custom' => true,
+            'name' => $this->customItemName,
+            'description' => $this->customItemDescription ?: null,
+            'price' => (float) $this->customItemPrice,
+            'base_cost' => 0,
+            'quantity' => (int) $this->customItemQuantity,
+            'available_stock' => PHP_INT_MAX, // not applicable
+            'pricing_tier' => 'custom',
+            'warehouse_id' => $this->warehouseId,
+        ];
+
+        $this->updateActiveTabFromCurrentProperties();
+        $this->calculateTotals();
+        $this->showCustomItemModal = false;
+        $this->resetCustomItemForm();
+        session()->flash('success', 'Item custom ditambahkan ke keranjang!');
     }
 
     /**
@@ -866,10 +911,10 @@ class PosKasir extends Component
                 'cart' => [],
                 'supplierName' => '',
                 'supplierPhone' => '',
+                'customerName' => '',
+                'customerPhone' => '',
                 'paymentMethod' => 'cash',
                 'amountPaid' => 0,
-                'discount' => 0,
-                'discountType' => 'amount',
                 'notes' => '',
                 'paymentNotes' => '',
             ]
@@ -895,12 +940,12 @@ class PosKasir extends Component
             'id' => $newTabId,
             'name' => 'Transaksi ' . $newTabId,
             'cart' => [],
+            'supplierName' => '',
+            'supplierPhone' => '',
             'customerName' => '',
             'customerPhone' => '',
             'paymentMethod' => 'cash',
             'amountPaid' => 0,
-            'discount' => 0,
-            'discountType' => 'amount',
             'notes' => '',
             'paymentNotes' => '',
         ];
@@ -1022,10 +1067,10 @@ class PosKasir extends Component
         $this->cart = &$activeTab['cart']; // Use reference to sync changes
         $this->supplierName = $activeTab['supplierName'] ?? '';
         $this->supplierPhone = $activeTab['supplierPhone'] ?? '';
+        $this->customerName = $activeTab['customerName'] ?? '';
+        $this->customerPhone = $activeTab['customerPhone'] ?? '';
         $this->paymentMethod = $activeTab['paymentMethod'] ?? 'cash';
         $this->amountPaid = $activeTab['amountPaid'] ?? 0;
-        $this->discount = $activeTab['discount'] ?? 0;
-        $this->discountType = $activeTab['discountType'] ?? 'amount';
         $this->notes = $activeTab['notes'] ?? '';
         $this->paymentNotes = $activeTab['paymentNotes'] ?? '';
         $this->tabName = $activeTab['name'] ?? 'Tab ' . $this->activeTabId;
@@ -1049,10 +1094,10 @@ class PosKasir extends Component
         $this->carts[$this->activeTabId]['cart'] = $this->cart;
         $this->carts[$this->activeTabId]['supplierName'] = $this->supplierName ?? '';
         $this->carts[$this->activeTabId]['supplierPhone'] = $this->supplierPhone ?? '';
+        $this->carts[$this->activeTabId]['customerName'] = $this->customerName ?? '';
+        $this->carts[$this->activeTabId]['customerPhone'] = $this->customerPhone ?? '';
         $this->carts[$this->activeTabId]['paymentMethod'] = $this->paymentMethod ?? 'cash';
         $this->carts[$this->activeTabId]['amountPaid'] = $this->amountPaid ?? 0;
-        $this->carts[$this->activeTabId]['discount'] = $this->discount ?? 0;
-        $this->carts[$this->activeTabId]['discountType'] = $this->discountType ?? 'amount';
         $this->carts[$this->activeTabId]['notes'] = $this->notes ?? '';
         $this->carts[$this->activeTabId]['paymentNotes'] = $this->paymentNotes ?? '';
     }
@@ -1082,16 +1127,8 @@ class PosKasir extends Component
         foreach ($this->carts[$tabId]['cart'] as $item) {
             $total += $item['price'] * $item['quantity'];
         }
-        
-        // Apply discount
-        $discountAmount = 0;
-        if ($this->carts[$tabId]['discountType'] === 'percentage') {
-            $discountAmount = ($total * $this->carts[$tabId]['discount']) / 100;
-        } else {
-            $discountAmount = $this->carts[$tabId]['discount'];
-        }
-        
-        return max(0, $total - $discountAmount);
+        // Discounts removed
+        return max(0, $total);
     }
 
     

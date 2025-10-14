@@ -21,7 +21,7 @@ class SaleFactory extends Factory
             'subtotal' => $subtotal,
             'discount_total' => $discountTotal,
             'final_total' => $subtotal - $discountTotal,
-            'payment_method' => $this->faker->randomElement(['cash', 'transfer', 'debit', 'qr']),
+            'payment_method' => $this->faker->randomElement(['cash', 'transfer', 'edc', 'qr']),
             'payment_notes' => $this->faker->optional()->sentence(),
             'status' => 'PAID',
         ];
@@ -56,7 +56,7 @@ class SaleFactory extends Factory
     public function card(): self
     {
         return $this->state(fn(array $attributes) => [
-            'payment_method' => 'debit',
+            'payment_method' => 'edc',
         ]);
     }
 }

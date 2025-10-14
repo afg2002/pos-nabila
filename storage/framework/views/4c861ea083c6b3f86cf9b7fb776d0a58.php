@@ -1,4 +1,25 @@
-<div class="space-y-6">
+<div class="space-y-6" x-data="{
+    currencyFormatter: {
+        displayValue: '',
+        init() {
+            this.displayValue = this.formatCurrency($wire.get(this.$el.getAttribute('wire:model')));
+        },
+        updateValue(value) {
+            const numericValue = this.parseNumeric(value);
+            $wire.set(this.$el.getAttribute('wire:model'), numericValue);
+            this.displayValue = this.formatCurrency(numericValue);
+        },
+        formatCurrency(value) {
+            if (!value || value === '') return '';
+            const num = parseFloat(value);
+            if (isNaN(num)) return '';
+            return 'Rp ' + num.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+        },
+        parseNumeric(value) {
+            return value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+        }
+    }
+}">
     <!--[if BLOCK]><![endif]--><?php if(session()->has('message')): ?>
         <div class="bg-green-50 border border-green-200 rounded-lg p-4">
             <div class="flex items-center">
@@ -285,10 +306,10 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier & Barang</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty & Harga</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch & Expired</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal Masuk</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jatuh Tempo</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profit</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
@@ -313,6 +334,48 @@
                                         <div class="text-sm text-gray-500">@ Rp <?php echo e(number_format($agenda->unit_price ?? 0, 0, ',', '.')); ?></div>
                                     <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <!--[if BLOCK]><![endif]--><?php if($agenda->batch_number || $agenda->expired_date): ?>
+                                        <div class="space-y-1">
+                                            <!--[if BLOCK]><![endif]--><?php if($agenda->batch_number): ?>
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
+                                                        Batch: <?php echo e($agenda->batch_number); ?>
+
+                                                    </span>
+                                                </div>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            <!--[if BLOCK]><![endif]--><?php if($agenda->expired_date): ?>
+                                                <?php
+                                                    $expiredDate = \Carbon\Carbon::parse($agenda->expired_date);
+                                                    $daysUntilExpiry = now()->diffInDays($expiredDate, false);
+                                                    $isExpired = $daysUntilExpiry < 0;
+                                                    $isNearExpiry = $daysUntilExpiry >= 0 && $daysUntilExpiry <= 30;
+                                                ?>
+                                                <div class="text-xs <?php echo e($isExpired ? 'text-red-600 font-semibold' : ($isNearExpiry ? 'text-yellow-600 font-medium' : 'text-gray-600')); ?>">
+                                                    <!--[if BLOCK]><![endif]--><?php if($isExpired): ?>
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-red-100 text-red-800">
+                                                            ⚠️ Expired: <?php echo e($expiredDate->format('d M Y')); ?>
+
+                                                        </span>
+                                                    <?php elseif($isNearExpiry): ?>
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-yellow-100 text-yellow-800">
+                                                            ⏰ Exp: <?php echo e($expiredDate->format('d M Y')); ?>
+
+                                                        </span>
+                                                    <?php else: ?>
+                                                        <span class="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-600">
+                                                            Exp: <?php echo e($expiredDate->format('d M Y')); ?>
+
+                                                        </span>
+                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                </div>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="text-sm text-gray-400">-</div>
+                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <?php echo e($agenda->scheduled_date->format('d M Y')); ?>
 
@@ -326,21 +389,6 @@
                                     <!--[if BLOCK]><![endif]--><?php if($agenda->paid_amount > 0): ?>
                                         <div class="text-xs text-green-600">Dibayar: Rp <?php echo e(number_format($agenda->paid_amount, 0, ',', '.')); ?></div>
                                         <div class="text-xs text-red-600">Sisa: Rp <?php echo e(number_format($agenda->remaining_amount, 0, ',', '.')); ?></div>
-                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    <!--[if BLOCK]><![endif]--><?php if($agenda->is_linked_to_purchase_order && $agenda->purchaseOrder): ?>
-                                        <div class="space-y-1">
-                                            <div class="font-medium text-green-600"><?php echo e($agenda->formatted_expected_profit); ?></div>
-                                            <div class="text-xs text-gray-600">Margin: <?php echo e($agenda->formatted_expected_profit_margin); ?></div>
-                                            <div class="text-xs text-blue-600">PO: <?php echo e($agenda->purchase_order_number); ?></div>
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full <?php echo e($agenda->profitability_status_badge_class); ?>">
-                                                <?php echo e(ucfirst($agenda->profitability_status)); ?>
-
-                                            </span>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="text-sm text-gray-400">-</div>
                                     <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -488,11 +536,13 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Total Belanja (Rp)</label>
-                                    <input type="number"
+                                    <input type="text"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                           x-data="currencyFormatter"
+                                           x-model="displayValue"
+                                           @input="updateValue($event.target.value)"
                                            wire:model="total_purchase_amount"
-                                           min="0.01"
-                                           step="0.01"
+                                           placeholder="Rp 0"
                                            required>
                                     <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['total_purchase_amount'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -502,6 +552,38 @@ $message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs"
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
+                                        <input type="text"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="batch_number"
+                                               placeholder="Opsional">
+                                        <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['batch_number'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
+                                        <input type="date"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="expired_date">
+                                        <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['expired_date'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+                                    </div>
                                 </div>
                                 
                                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -516,10 +598,91 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                 <!-- Detailed Mode Fields -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Nama Supplier</label>
-                                    <input type="text"
-                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           wire:model="supplier_name"
-                                           required>
+                                    <div class="relative" x-data="{ showResults: <?php if ((object) ('showSupplierResults') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierResults'->value()); ?>')<?php echo e('showSupplierResults'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierResults'); ?>')<?php endif; ?>, showDropdown: <?php if ((object) ('showSupplierDropdown') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierDropdown'->value()); ?>')<?php echo e('showSupplierDropdown'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierDropdown'); ?>')<?php endif; ?> }">
+                                        <div class="relative">
+                                            <input type="text" 
+                                                   wire:model.live.debounce.300ms="supplierSearch" 
+                                                   placeholder="Cari nama supplier..."
+                                                   class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                   autocomplete="off"
+                                                   required>
+                                            
+                                            <!-- Dropdown Arrow Button -->
+                                            <button type="button" 
+                                                    wire:click="toggleSupplierDropdown"
+                                                    class="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
+                                                <!--[if BLOCK]><![endif]--><?php if($supplierSearch): ?>
+                                                    <!-- Clear button when there's text -->
+                                                    <svg wire:click.stop="clearSupplierSearch" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                <?php else: ?>
+                                                    <!-- Dropdown arrow when no text -->
+                                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Search Results Dropdown -->
+                                        <!--[if BLOCK]><![endif]--><?php if($showSupplierResults && count($supplierSearchResults) > 0): ?>
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $supplierSearchResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <button type="button" 
+                                                            wire:click="selectSupplier(<?php echo e($supplier->id); ?>)"
+                                                            class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                        <div class="flex justify-between items-center">
+                                                            <div>
+                                                                <div class="font-medium text-gray-900"><?php echo e($supplier->name); ?></div>
+                                                                <!--[if BLOCK]><![endif]--><?php if($supplier->email): ?>
+                                                                    <div class="text-sm text-gray-500"><?php echo e($supplier->email); ?></div>
+                                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                                <!--[if BLOCK]><![endif]--><?php if($supplier->phone): ?>
+                                                                    <div class="text-xs text-gray-400"><?php echo e($supplier->phone); ?></div>
+                                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                            </div>
+                                        <?php elseif($showSupplierResults && strlen($supplierSearch) >= 2): ?>
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                <div class="px-3 py-2 text-gray-500 text-sm">
+                                                    Tidak ada supplier ditemukan untuk "<?php echo e($supplierSearch); ?>"
+                                                </div>
+                                            </div>
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                        
+                                        <!-- All Suppliers Dropdown (when no search) -->
+                                        <!--[if BLOCK]><![endif]--><?php if($showSupplierDropdown && empty($supplierSearch)): ?>
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                <!--[if BLOCK]><![endif]--><?php if(count($suppliers) > 0): ?>
+                                                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $suppliers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                        <button type="button" 
+                                                                wire:click="selectSupplier(<?php echo e($supplier->id); ?>)"
+                                                                class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                            <div class="flex justify-between items-center">
+                                                                <div>
+                                                                    <div class="font-medium text-gray-900"><?php echo e($supplier->name); ?></div>
+                                                                    <!--[if BLOCK]><![endif]--><?php if($supplier->email): ?>
+                                                                        <div class="text-sm text-gray-500"><?php echo e($supplier->email); ?></div>
+                                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                                    <!--[if BLOCK]><![endif]--><?php if($supplier->phone): ?>
+                                                                        <div class="text-xs text-gray-400"><?php echo e($supplier->phone); ?></div>
+                                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                                <?php else: ?>
+                                                    <div class="px-3 py-2 text-gray-500 text-sm">
+                                                        Tidak ada supplier tersedia
+                                                    </div>
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            </div>
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                    </div>
                                     <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['supplier_name'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -587,11 +750,13 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
-                                        <input type="number"
+                                        <input type="text"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               x-data="currencyFormatter"
+                                               x-model="displayValue"
+                                               @input="updateValue($event.target.value)"
                                                wire:model.live="unit_price"
-                                               min="0"
-                                               step="0.01"
+                                               placeholder="Rp 0"
                                                required>
                                         <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['unit_price'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -604,9 +769,15 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Total (Rp)</label>
-                                        <input type="number"
+                                        <input type="text"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               wire:model="total_amount"
+                                               x-data="{ 
+                                                   get formattedValue() { 
+                                                       const value = parseFloat($wire.total_amount || 0);
+                                                       return 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+                                                   }
+                                               }"
+                                               x-bind:value="formattedValue"
                                                readonly>
                                         <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['total_amount'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -632,6 +803,38 @@ $message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs"
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
+                                        <input type="text"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="batch_number"
+                                               placeholder="Opsional">
+                                        <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['batch_number'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Kadaluarsa</label>
+                                        <input type="date"
+                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                               wire:model="expired_date">
+                                        <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['expired_date'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
+                                    </div>
                                 </div>
                             <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                             

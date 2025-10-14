@@ -20,7 +20,7 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $description = '';
 
-    public $quantity = '';
+    public $quantity = 1; // Set default value to 1
     public $total_quantity = '';
 
     public $unit = '';
@@ -42,6 +42,9 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $phone_number = '';
 
+    public $batch_number = '';
+
+    public $expired_date = '';
 
     public $warehouse_id = '';
 
@@ -86,6 +89,11 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $search = '';
 
+    // Supplier search properties
+    public $supplierSearch = '';
+    public $showSupplierDropdown = false;
+    public $filteredSuppliers = [];
+
     protected $rules = [
         // Simplified mode rules
         'supplier_id' => 'required_if:input_mode,simplified|exists:suppliers,id',
@@ -104,6 +112,8 @@ class IncomingGoodsAgendaManagement extends Component
         'description' => 'nullable|string|max:500',
         'scheduled_date' => 'required|date|after_or_equal:today',
         'payment_due_date' => 'required|date|after_or_equal:scheduled_date',
+        'batch_number' => 'nullable|string|max:50|unique:incoming_goods_agenda,batch_number',
+        'expired_date' => 'nullable|date|after:scheduled_date',
         'notes' => 'nullable|string|max:1000',
         'contact_person' => 'nullable|string|max:255',
         'phone_number' => 'nullable|string|max:20',
@@ -319,7 +329,7 @@ class IncomingGoodsAgendaManagement extends Component
         $this->supplier_id = '';
         $this->goods_name = '';
         $this->description = '';
-        $this->quantity = '';
+        $this->quantity = 1; // Set default value to 1
         $this->total_quantity = '';
         $this->unit = '';
         $this->quantity_unit = '';
@@ -329,6 +339,8 @@ class IncomingGoodsAgendaManagement extends Component
         $this->total_purchase_amount = '';
         $this->scheduled_date = '';
         $this->payment_due_date = '';
+        $this->batch_number = '';
+        $this->expired_date = '';
         $this->notes = '';
         $this->contact_person = '';
         $this->phone_number = '';
@@ -336,6 +348,12 @@ class IncomingGoodsAgendaManagement extends Component
         $this->product_id = '';
         $this->input_mode = 'simplified';
         $this->editingId = null;
+        
+        // Reset supplier search properties
+        $this->supplierSearch = '';
+        $this->showSupplierDropdown = false;
+        $this->filteredSuppliers = [];
+        
         $this->resetErrorBag();
     }
 
@@ -352,9 +370,12 @@ class IncomingGoodsAgendaManagement extends Component
             $data = [
                 'scheduled_date' => $this->scheduled_date,
                 'payment_due_date' => $this->payment_due_date,
+                'batch_number' => $this->batch_number,
+                'expired_date' => $this->expired_date,
                 'notes' => $this->notes,
                 'warehouse_id' => $this->warehouse_id ?: null,
                 'product_id' => $this->product_id ?: null,
+                'input_mode' => $this->input_mode,  // Add input_mode to data
             ];
 
             if ($this->input_mode === 'simplified') {
@@ -393,6 +414,7 @@ class IncomingGoodsAgendaManagement extends Component
                 $agenda->update($data);
                 session()->flash('message', 'Agenda barang masuk berhasil diperbarui.');
             } else {
+                $data['created_by'] = auth()->id();
                 IncomingGoodsAgenda::create($data);
                 session()->flash('message', 'Agenda barang masuk berhasil ditambahkan.');
             }
@@ -437,6 +459,8 @@ class IncomingGoodsAgendaManagement extends Component
         
         $this->scheduled_date = $agenda->scheduled_date->format('Y-m-d');
         $this->payment_due_date = $agenda->payment_due_date->format('Y-m-d');
+        $this->batch_number = $agenda->batch_number;
+        $this->expired_date = $agenda->expired_date ? $agenda->expired_date->format('Y-m-d') : null;
         $this->notes = $agenda->notes;
         $this->warehouse_id = $agenda->warehouse_id;
         $this->product_id = $agenda->product_id;
@@ -522,5 +546,46 @@ class IncomingGoodsAgendaManagement extends Component
         $currentMonth = Carbon::parse($this->filterMonth.'-01');
         $this->filterMonth = $currentMonth->addMonth()->format('Y-m');
         $this->resetPage();
+    }
+
+    // Supplier search methods
+    public function updatedSupplierSearch()
+    {
+        if (strlen($this->supplierSearch) >= 2) {
+            $this->filteredSuppliers = \App\Supplier::where('is_active', true)
+                ->where('name', 'like', '%' . $this->supplierSearch . '%')
+                ->orderBy('name')
+                ->limit(10)
+                ->get();
+            $this->showSupplierDropdown = true;
+        } else {
+            $this->filteredSuppliers = [];
+            $this->showSupplierDropdown = false;
+        }
+    }
+
+    public function selectSupplier($supplierId, $supplierName)
+    {
+        $this->supplier_name = $supplierName;
+        $this->supplierSearch = $supplierName;
+        $this->showSupplierDropdown = false;
+        $this->filteredSuppliers = [];
+    }
+
+    public function clearSupplierSearch()
+    {
+        $this->supplierSearch = '';
+        $this->supplier_name = '';
+        $this->showSupplierDropdown = false;
+        $this->filteredSuppliers = [];
+    }
+
+    public function toggleSupplierDropdown()
+    {
+        if ($this->showSupplierDropdown) {
+            $this->showSupplierDropdown = false;
+        } else {
+            $this->updatedSupplierSearch();
+        }
     }
 }

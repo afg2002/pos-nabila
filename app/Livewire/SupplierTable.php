@@ -152,6 +152,9 @@ class SupplierTable extends Component
                 Supplier::create($data);
                 session()->flash('message', 'Supplier baru berhasil ditambahkan!');
             }
+            // Clear cached supplier lists so UI reflects changes immediately
+            $this->clearSupplierCache();
+            $this->resetPage();
             
             $this->closeModal();
             
@@ -190,6 +193,9 @@ class SupplierTable extends Component
             
             $supplier->delete();
             session()->flash('message', 'Supplier berhasil dihapus!');
+            // Clear cache so the list updates immediately
+            $this->clearSupplierCache();
+            $this->resetPage();
             
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -204,6 +210,8 @@ class SupplierTable extends Component
             
             $status = $supplier->is_active ? 'diaktifkan' : 'dinonaktifkan';
             session()->flash('message', "Supplier berhasil {$status}!");
+            // Clear cache so status change is reflected
+            $this->clearSupplierCache();
             
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -273,6 +281,9 @@ class SupplierTable extends Component
             
             $this->selectedSuppliers = [];
             $this->selectAll = false;
+            // Clear cache so bulk delete is reflected
+            $this->clearSupplierCache();
+            $this->resetPage();
             
         } catch (\Exception $e) {
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -339,13 +350,35 @@ class SupplierTable extends Component
             ->paginate($this->perPage);
     }
 
-    // Add cache clearing method
+    // Add cache clearing method (safe across cache drivers)
     private function clearSupplierCache()
     {
-        // Clear all supplier cache keys
-        $cacheKeys = cache()->getRedis()->keys('*suppliers_*');
-        if ($cacheKeys) {
-            cache()->getRedis()->del($cacheKeys);
+        try {
+            // Try Redis connection via store
+            $store = cache()->getStore();
+            if (method_exists($store, 'connection')) {
+                $redis = $store->connection();
+                $keys = $redis->keys('*suppliers_*');
+                if (!empty($keys)) {
+                    $redis->del($keys);
+                }
+                return;
+            }
+
+            // Try direct redis via cache()->getRedis()
+            if (method_exists(cache(), 'getRedis')) {
+                $keys = cache()->getRedis()->keys('*suppliers_*');
+                if (!empty($keys)) {
+                    cache()->getRedis()->del($keys);
+                }
+                return;
+            }
+
+            // Fallback: flush cache to ensure UI updates (may affect other caches)
+            cache()->flush();
+        } catch (\Throwable $e) {
+            // As last resort, flush cache
+            try { cache()->flush(); } catch (\Throwable $ignored) {}
         }
     }
     

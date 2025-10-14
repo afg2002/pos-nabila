@@ -45,6 +45,7 @@ class UserList extends Component
     public function refreshUserList()
     {
         $this->resetPage();
+        $this->clearUserListCache();
         $this->dispatch('$refresh');
     }
 
@@ -72,6 +73,7 @@ class UserList extends Component
         // Clear user cache
         CacheService::clearUserCache($userId);
         CacheService::clearDashboardCache();
+        $this->clearUserListCache();
         
         // Refresh the component to show updated data
         $this->dispatch('$refresh');
@@ -94,32 +96,49 @@ class UserList extends Component
 
     public function deleteUser($params)
     {
-        $userId = $params['userId'];
-        $user = User::findOrFail($userId);
-        
-        // Log the action before deletion
-        LoggerService::logUserAction(
-            'delete',
-            'User',
-            $userId,
-            [
-                'deleted_user_email' => $user->email,
-                'deleted_user_name' => $user->name,
-                'had_roles' => $user->roles->pluck('name')->toArray()
-            ],
-            'warning'
-        );
-        
-        // Clear user cache before deletion
-        CacheService::clearUserCache($userId);
-        CacheService::clearDashboardCache();
-        
-        $user->delete();
-        
-        // Refresh the component to show updated data
-        $this->dispatch('$refresh');
-        
-        $this->showSuccessToast('User deleted successfully!');
+        try {
+            $userId = $params['userId'];
+            $user = User::findOrFail($userId);
+            
+            // Prevent deletion of current user
+            if ($user->id === auth()->id()) {
+                $this->showErrorToast('Cannot delete your own account.');
+                return;
+            }
+            
+            // Log the action before deletion
+            LoggerService::logUserAction(
+                'delete',
+                'User',
+                $userId,
+                [
+                    'deleted_user_email' => $user->email,
+                    'deleted_user_name' => $user->name,
+                    'had_roles' => $user->roles->pluck('name')->toArray()
+                ],
+                'warning'
+            );
+            
+            // Clear user cache before deletion
+            CacheService::clearUserCache($userId);
+            CacheService::clearDashboardCache();
+            $this->clearUserListCache();
+            
+            // Perform soft delete
+            $user->delete();
+            
+            // After deletion, reset pagination to avoid empty pages when the last item on a page is removed
+            $this->resetPage();
+            
+            // Force refresh the component data
+            $this->dispatch('$refresh');
+            
+            $this->showSuccessToast('User deleted successfully!');
+            
+        } catch (\Exception $e) {
+            \Log::error('Error deleting user: ' . $e->getMessage());
+            $this->showErrorToast('Failed to delete user. Please try again.');
+        }
     }
 
     public function render()
@@ -164,5 +183,33 @@ class UserList extends Component
             ->with(['roles:id,name,display_name']) // Only select needed columns
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
+    }
+
+    // Clear cached users listing so changes reflect immediately
+    private function clearUserListCache()
+    {
+        try {
+            $store = cache()->getStore();
+            if (method_exists($store, 'connection')) {
+                $redis = $store->connection();
+                $keys = $redis->keys('*users_*');
+                if (!empty($keys)) {
+                    $redis->del($keys);
+                }
+                return;
+            }
+
+            if (method_exists(cache(), 'getRedis')) {
+                $keys = cache()->getRedis()->keys('*users_*');
+                if (!empty($keys)) {
+                    cache()->getRedis()->del($keys);
+                }
+                return;
+            }
+
+            cache()->flush();
+        } catch (\Throwable $e) {
+            try { cache()->flush(); } catch (\Throwable $ignored) {}
+        }
     }
 }

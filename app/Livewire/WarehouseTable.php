@@ -262,6 +262,18 @@ class WarehouseTable extends Component
         $this->selectedWarehouse = null;
     }
 
+    public function closeModal()
+    {
+        // Generic closer for all modals used in the Blade
+        $this->showCreateModal = false;
+        $this->showEditModal = false;
+        $this->showDeleteModal = false;
+        $this->showBulkDeleteModal = false;
+        $this->showDetailModal = false;
+        $this->warehouseToDelete = null;
+        $this->resetErrorBag();
+    }
+
     public function getWarehouseTypesProperty()
     {
         return [

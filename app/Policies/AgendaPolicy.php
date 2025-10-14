@@ -12,7 +12,7 @@ class AgendaPolicy
      */
     public function view(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.view');
+        return $user->hasPermission('agenda.view');
     }
 
     /**
@@ -20,7 +20,7 @@ class AgendaPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.create');
+        return $user->hasPermission('agenda.create');
     }
 
     /**
@@ -28,7 +28,7 @@ class AgendaPolicy
      */
     public function update(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.edit');
+        return $user->hasPermission('agenda.edit');
     }
 
     /**
@@ -36,7 +36,7 @@ class AgendaPolicy
      */
     public function delete(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.delete');
+        return $user->hasPermission('agenda.delete');
     }
 
     /**
@@ -44,7 +44,7 @@ class AgendaPolicy
      */
     public function managePayments(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.payment');
+        return $user->hasPermission('agenda.payment');
     }
 
     /**
@@ -52,7 +52,7 @@ class AgendaPolicy
      */
     public function accessFinancial(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.financial');
+        return $user->hasPermission('agenda.financial');
     }
 
     /**
@@ -60,7 +60,7 @@ class AgendaPolicy
      */
     public function export(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.export');
+        return $user->hasPermission('agenda.export');
     }
 
     /**
@@ -69,7 +69,7 @@ class AgendaPolicy
      */
     public function viewFinancialDashboard(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.financial') && 
+        return $user->hasPermission('agenda.financial') && 
                ($user->hasRole('owner') || $user->hasRole('manager'));
     }
 
@@ -79,7 +79,7 @@ class AgendaPolicy
      */
     public function manageCashBalance(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.financial') && 
+        return $user->hasPermission('agenda.financial') && 
                ($user->hasRole('owner') || $user->hasRole('manager'));
     }
 
@@ -89,7 +89,7 @@ class AgendaPolicy
      */
     public function makePayments(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.payment') && 
+        return $user->hasPermission('agenda.payment') && 
                ($user->hasRole('owner') || $user->hasRole('manager') || $user->hasRole('staff'));
     }
 
@@ -99,7 +99,7 @@ class AgendaPolicy
      */
     public function manageReceivables(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.financial') && 
+        return $user->hasPermission('agenda.financial') && 
                ($user->hasRole('owner') || $user->hasRole('manager'));
     }
 
@@ -118,7 +118,7 @@ class AgendaPolicy
      */
     public function modifyPaymentSchedules(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.edit') && 
+        return $user->hasPermission('agenda.edit') && 
                ($user->hasRole('owner') || $user->hasRole('manager'));
     }
 
@@ -137,7 +137,7 @@ class AgendaPolicy
      */
     public function generateReports(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.export') && 
+        return $user->hasPermission('agenda.export') && 
                ($user->hasRole('owner') || $user->hasRole('manager'));
     }
 
@@ -147,7 +147,7 @@ class AgendaPolicy
      */
     public function viewNotifications(User $user): bool
     {
-        return $user->hasPermissionTo('agenda.view');
+        return $user->hasPermission('agenda.view');
     }
 
     /**

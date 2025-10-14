@@ -57,7 +57,7 @@
 
     @if($selectedWarehouse)
         <!-- Stock Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
@@ -65,9 +65,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-blue-600">Total Produk</p>
-                        <p class="text-2xl font-semibold text-blue-900">{{ number_format($stockSummary['total_products']) }}</p>
+                    <div class="ml-4 min-w-0 flex-1">
+                        <p class="text-sm font-medium text-blue-600 truncate">Total Produk</p>
+                        <p class="text-xl lg:text-2xl font-semibold text-blue-900 truncate">{{ number_format($stockSummary['total_products']) }}</p>
                     </div>
                 </div>
             </div>
@@ -79,9 +79,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
                         </svg>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-green-600">Total Stok</p>
-                        <p class="text-2xl font-semibold text-green-900">{{ number_format($stockSummary['total_stock']) }}</p>
+                    <div class="ml-4 min-w-0 flex-1">
+                        <p class="text-sm font-medium text-green-600 truncate">Total Stok</p>
+                        <p class="text-xl lg:text-2xl font-semibold text-green-900 truncate">{{ number_format($stockSummary['total_stock']) }}</p>
                     </div>
                 </div>
             </div>
@@ -93,9 +93,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-yellow-600">Stok Menipis</p>
-                        <p class="text-2xl font-semibold text-yellow-900">{{ number_format($stockSummary['low_stock']) }}</p>
+                    <div class="ml-4 min-w-0 flex-1">
+                        <p class="text-sm font-medium text-yellow-600 truncate">Stok Menipis</p>
+                        <p class="text-xl lg:text-2xl font-semibold text-yellow-900 truncate">{{ number_format($stockSummary['low_stock']) }}</p>
                     </div>
                 </div>
             </div>
@@ -107,9 +107,9 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-red-600">Stok Habis</p>
-                        <p class="text-2xl font-semibold text-red-900">{{ number_format($stockSummary['out_of_stock']) }}</p>
+                    <div class="ml-4 min-w-0 flex-1">
+                        <p class="text-sm font-medium text-red-600 truncate">Stok Habis</p>
+                        <p class="text-xl lg:text-2xl font-semibold text-red-900 truncate">{{ number_format($stockSummary['out_of_stock']) }}</p>
                     </div>
                 </div>
             </div>
@@ -121,9 +121,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
                         </svg>
                     </div>
-                    <div class="ml-4">
-                        <p class="text-sm font-medium text-purple-600">Nilai Stok</p>
-                        <p class="text-2xl font-semibold text-purple-900">Rp {{ number_format($stockSummary['total_value'], 0, ',', '.') }}</p>
+                    <div class="ml-4 min-w-0 flex-1">
+                        <p class="text-sm font-medium text-purple-600 truncate">Nilai Stok</p>
+                        <p class="text-lg lg:text-xl font-semibold text-purple-900 break-words" title="Rp {{ number_format($stockSummary['total_value'], 0, ',', '.') }}">
+                            Rp {{ number_format($stockSummary['total_value'], 0, ',', '.') }}
+                        </p>
                     </div>
                 </div>
             </div>

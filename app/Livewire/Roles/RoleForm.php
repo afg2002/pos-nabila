@@ -127,15 +127,15 @@ class RoleForm extends Component
 
     public function save()
     {
-        $this->validate();
-
-        // Prevent editing super-admin role
-        if ($this->isEditing && $this->name === 'super-admin') {
-            session()->flash('error', 'Cannot modify super-admin role.');
-            return;
-        }
-
         try {
+            $this->validate();
+
+            // Prevent editing super-admin role
+            if ($this->isEditing && $this->name === 'super-admin') {
+                session()->flash('error', 'Cannot modify super-admin role.');
+                return;
+            }
+
             if ($this->isEditing) {
                 $role = Role::findOrFail($this->roleId);
                 $role->update([
@@ -144,6 +144,8 @@ class RoleForm extends Component
                     'description' => $this->description,
                     'is_active' => $this->is_active,
                 ]);
+                
+                $message = 'Role updated successfully.';
             } else {
                 $role = Role::create([
                     'name' => $this->name,
@@ -151,17 +153,28 @@ class RoleForm extends Component
                     'description' => $this->description,
                     'is_active' => $this->is_active,
                 ]);
+                
+                $message = 'Role created successfully.';
             }
 
+            // Sync permissions
             $role->permissions()->sync($this->selectedPermissions);
 
-            session()->flash('message', $this->isEditing ? 'Role updated successfully.' : 'Role created successfully.');
+            // Clear caches
+            if ($this->isEditing) {
+                \App\Shared\Services\CacheService::clearRoleCache($this->roleId);
+            }
+            \App\Shared\Services\CacheService::clearAllUserCaches();
+            \App\Shared\Services\CacheService::clearDashboardCache();
+
+            session()->flash('message', $message);
             
             $this->closeModal();
             $this->dispatch('roleSaved');
             
         } catch (\Exception $e) {
-            session()->flash('error', 'An error occurred: ' . $e->getMessage());
+            \Log::error('Error saving role: ' . $e->getMessage());
+            session()->flash('error', 'Failed to save role. Please try again.');
         }
     }
 

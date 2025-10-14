@@ -52,8 +52,11 @@ class RoleList extends Component
     public function refreshRoleList()
     {
         $this->resetPage();
+        $this->clearRoleListCache();
         $this->dispatch('$refresh');
     }
+
+  
 
     public function toggleRoleStatus($roleId)
     {
@@ -80,6 +83,7 @@ class RoleList extends Component
         CacheService::clearRoleCache($roleId);
         CacheService::clearAllUserCaches();
         CacheService::clearDashboardCache();
+        $this->clearRoleListCache();
         
         // Refresh the component to show updated data
         $this->dispatch('$refresh');
@@ -109,33 +113,45 @@ class RoleList extends Component
 
     public function deleteRole($params)
     {
-        $roleId = $params['roleId'];
-        $role = Role::findOrFail($roleId);
-        
-        // Log the action before deletion
-        LoggerService::logUserAction(
-            'delete',
-            'Role',
-            $roleId,
-            [
-                'deleted_role_name' => $role->name,
-                'deleted_role_display_name' => $role->display_name,
-                'had_permissions' => $role->permissions->pluck('name')->toArray()
-            ],
-            'warning'
-        );
-        
-        // Clear related caches before deletion
-        CacheService::clearRoleCache($roleId);
-        CacheService::clearAllUserCaches();
-        CacheService::clearDashboardCache();
-        
-        $role->delete();
-        
-        // Refresh the component to show updated data
-        $this->dispatch('$refresh');
-        
-        $this->showSuccessToast('Role deleted successfully!');
+        try {
+            $roleId = $params['roleId'];
+            $role = Role::findOrFail($roleId);
+            
+            // Log the action before deletion
+            LoggerService::logUserAction(
+                'delete',
+                'Role',
+                $roleId,
+                [
+                    'deleted_role_name' => $role->name,
+                    'deleted_role_display_name' => $role->display_name,
+                    'had_users_count' => $role->users()->count(),
+                    'had_permissions' => $role->permissions->pluck('name')->toArray()
+                ],
+                'warning'
+            );
+            
+            // Clear various caches before deletion
+            CacheService::clearRoleCache($roleId);
+            CacheService::clearAllUserCaches();
+            CacheService::clearDashboardCache();
+            $this->clearRoleListCache();
+            
+            // Perform soft delete
+            $role->delete();
+            
+            // After deletion, reset pagination to avoid empty pages when the last item on a page is removed
+            $this->resetPage();
+            
+            // Force refresh the component data
+            $this->dispatch('$refresh');
+            
+            $this->showSuccessToast('Role deleted successfully!');
+            
+        } catch (\Exception $e) {
+            \Log::error('Error deleting role: ' . $e->getMessage());
+            $this->showErrorToast('Failed to delete role. Please try again.');
+        }
     }
 
     public function render()
@@ -194,5 +210,33 @@ class RoleList extends Component
             ->withCount(['permissions', 'users']) // Use withCount for better performance
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate($this->perPage);
+    }
+
+    // Clear cached roles listing so changes reflect immediately
+    private function clearRoleListCache()
+    {
+        try {
+            $store = cache()->getStore();
+            if (method_exists($store, 'connection')) {
+                $redis = $store->connection();
+                $keys = $redis->keys('*roles_*');
+                if (!empty($keys)) {
+                    $redis->del($keys);
+                }
+                return;
+            }
+
+            if (method_exists(cache(), 'getRedis')) {
+                $keys = cache()->getRedis()->keys('*roles_*');
+                if (!empty($keys)) {
+                    cache()->getRedis()->del($keys);
+                }
+                return;
+            }
+
+            cache()->flush();
+        } catch (\Throwable $e) {
+            try { cache()->flush(); } catch (\Throwable $ignored) {}
+        }
     }
 }

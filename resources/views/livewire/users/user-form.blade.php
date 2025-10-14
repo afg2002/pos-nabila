@@ -15,6 +15,12 @@
                     </div>
 
                     <form wire:submit="save" class="space-y-4">
+                        @error('general')
+                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                                {{ $message }}
+                            </div>
+                        @enderror
+                        
                         <div>
                             <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
                             <input wire:model="name" type="text" id="name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
@@ -88,14 +94,20 @@
 
 <script>
     document.addEventListener('livewire:init', () => {
-        Livewire.on('openUserForm', (event) => {
-            // Find the UserForm component and call openModal
-            const userId = event ? event.userId : null;
-            Livewire.find('{{ $this->getId() }}').openModal(userId);
+        // Listen for openUserForm event
+        window.addEventListener('openUserForm', (event) => {
+            console.log('UserForm - Received openUserForm event:', event.detail);
+            try {
+                const userId = event.detail && event.detail.userId ? event.detail.userId : null;
+                @this.call('openModal', userId);
+            } catch (error) {
+                console.error('Error opening user form:', error);
+            }
         });
         
         // Listen for userSaved event to close modal and refresh
-        Livewire.on('userSaved', () => {
+        window.addEventListener('userSaved', () => {
+            console.log('UserForm - Received userSaved event');
             // Modal will be closed by the component itself
             // This is just for any additional UI updates if needed
         });

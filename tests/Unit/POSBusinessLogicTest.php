@@ -347,7 +347,8 @@ class POSBusinessLogicTest extends TestCase
     /** @test */
     public function it_can_validate_payment_methods()
     {
-        $validMethods = ['cash', 'transfer', 'debit', 'qr'];
+        // Updated to align with POS: EDC replaces debit terminology
+        $validMethods = ['cash', 'transfer', 'edc', 'qr'];
         $testMethod = 'cash';
 
         $isValidMethod = in_array($testMethod, $validMethods);

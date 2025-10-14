@@ -87,34 +87,54 @@ class UserForm extends Component
 
     public function save()
     {
-        $this->validate();
+        try {
+            $this->validate();
 
-        if ($this->isEditing) {
-            $user = User::findOrFail($this->userId);
-            $user->update([
-                'name' => $this->name,
-                'email' => $this->email,
-                'is_active' => $this->is_active,
-            ]);
-            
-            if ($this->password) {
-                $user->update(['password' => Hash::make($this->password)]);
+            if ($this->isEditing) {
+                $user = User::findOrFail($this->userId);
+                $user->update([
+                    'name' => $this->name,
+                    'email' => $this->email,
+                    'is_active' => $this->is_active,
+                ]);
+                
+                if ($this->password) {
+                    $user->update(['password' => Hash::make($this->password)]);
+                }
+                
+                $message = 'User updated successfully.';
+            } else {
+                $user = User::create([
+                    'name' => $this->name,
+                    'email' => $this->email,
+                    'password' => Hash::make($this->password),
+                    'is_active' => $this->is_active,
+                ]);
+                
+                $message = 'User created successfully.';
             }
-        } else {
-            $user = User::create([
-                'name' => $this->name,
-                'email' => $this->email,
-                'password' => Hash::make($this->password),
-                'is_active' => $this->is_active,
-            ]);
+
+            // Sync roles
+            $user->roles()->sync($this->selectedRoles);
+
+            // Clear caches
+            if ($this->isEditing) {
+                \App\Shared\Services\CacheService::clearUserCache($this->userId);
+            }
+            \App\Shared\Services\CacheService::clearDashboardCache();
+
+            session()->flash('message', $message);
+            
+            $this->closeModal();
+            $this->dispatch('userSaved');
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Re-throw validation exceptions so they display properly
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error saving user: ' . $e->getMessage());
+            $this->addError('general', 'Failed to save user. Please try again.');
         }
-
-        $user->roles()->sync($this->selectedRoles);
-
-        session()->flash('message', $this->isEditing ? 'User updated successfully.' : 'User created successfully.');
-        
-        $this->closeModal();
-        $this->dispatch('userSaved');
     }
 
     public function render()

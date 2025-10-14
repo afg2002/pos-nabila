@@ -61,11 +61,6 @@ Route::middleware(['auth', 'permission:suppliers.view'])->group(function () {
     })->name('suppliers.index');
 });
 
-
-
-
-
-
 // POS (Point of Sale) Management
 Route::middleware(['auth', 'permission:pos.access'])->group(function () {
     Route::get('/pos', function () {
@@ -80,7 +75,6 @@ Route::middleware(['auth'])->group(function () {
     })->name('capital-tracking.index');
 });
 
-
 // Cash Ledger Management
 Route::middleware(['auth'])->group(function () {
     Route::get('/cash-ledger', function () {
@@ -93,19 +87,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/cash-ledger/print', [\App\Livewire\CashLedgerManagement::class, 'printReport'])->name('cash-ledger.print');
 });
 
-// Incoming Goods Agenda Management
-Route::middleware(['auth', 'permission:incoming_goods_agenda.view'])->group(function () {
-    Route::get('/incoming-goods-agenda', function () {
-        return view('incoming-goods-agenda.index');
-    })->name('incoming-goods-agenda.index');
-});
-
 // Cashflow Agenda Management
 Route::middleware(['auth', 'permission:cashflow_agenda.view'])->group(function () {
     Route::get('/cashflow-agenda', function () {
         return view('cashflow-agenda.index');
     })->name('cashflow-agenda.index');
 });
+
+// Incoming Goods Agenda Management (Legacy - for backward compatibility)
+Route::middleware(['auth', 'permission:incoming_goods_agenda.view'])->group(function () {
+    Route::get('/incoming-goods-agenda', function () {
+        return view('incoming-goods-agenda.index');
+    })->name('incoming-goods-agenda.index');
+});
+
+// Agenda Management (halaman dihapus sesuai instruksi; menggunakan halaman legacy incoming-goods-agenda)
 
 // Warehouse Management
 Route::middleware(['auth', 'permission:warehouses.view'])->group(function () {
@@ -123,8 +119,6 @@ Route::middleware(['auth'])->group(function () {
         return view('profile.index');
     })->name('profile.index');
 });
-
-
 
 Auth::routes();
 
