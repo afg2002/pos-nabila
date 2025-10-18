@@ -280,10 +280,6 @@
                             </div>
                             <h3 class="text-lg font-semibold text-gray-900">Ringkasan Penjualan & Inventori</h3>
                         </div>
-                        <div class="flex items-center space-x-2 text-sm text-gray-500">
-                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                            <span>Live updates</span>
-                        </div>
                     </div>
                 </div>
 
