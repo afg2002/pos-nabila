@@ -267,80 +267,190 @@
             </div>
         </div>
 
-        <!-- Modern Recent Users -->
+        <!-- Store Owner Metrics: Sales & Inventory Overview -->
         <div class="lg:col-span-2">
             <div class="bg-white shadow-xl rounded-2xl border border-gray-200 overflow-hidden">
                 <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-5 border-b border-gray-200">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center mr-3">
                                 <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3v18h18M7 13l3 3 7-7"></path>
                                 </svg>
                             </div>
-                            <h3 class="text-lg font-semibold text-gray-900">Recent Users</h3>
+                            <h3 class="text-lg font-semibold text-gray-900">Ringkasan Penjualan & Inventori</h3>
                         </div>
                         <div class="flex items-center space-x-2 text-sm text-gray-500">
-                            <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                             <span>Live updates</span>
                         </div>
                     </div>
                 </div>
-                <div class="divide-y divide-gray-100">
-                    @foreach($stats['recent_users'] as $user)
-                        <div class="px-6 py-4 hover:bg-gray-50 transition-colors duration-200">
+
+                @php
+                    $today = \Carbon\Carbon::today();
+                    $weekStart = \Carbon\Carbon::now()->subDays(7);
+
+                    $todaySales = \App\Sale::whereDate('created_at', $today)->get();
+                    $weekSales = \App\Sale::where('created_at', '>=', $weekStart)->get();
+
+                    $todayTransactions = $todaySales->count();
+                    $todayRevenue = (float) $todaySales->sum('final_total');
+                    $todayItemsSold = (int) \App\SaleItem::whereIn('sale_id', $todaySales->pluck('id'))->sum('qty');
+
+                    $weekTransactions = $weekSales->count();
+                    $weekRevenue = (float) $weekSales->sum('final_total');
+                    $weekItemsSold = (int) \App\SaleItem::whereIn('sale_id', $weekSales->pluck('id'))->sum('qty');
+
+                    $lowStockThreshold = 5; // default threshold, dapat diubah
+                    $lowStockProducts = \App\Product::where('is_active', true)
+                        ->where('current_stock', '<=', $lowStockThreshold)
+                        ->orderBy('current_stock', 'asc')
+                        ->limit(10)
+                        ->get();
+
+                    $weekSaleIds = $weekSales->pluck('id');
+                    $topProducts = \App\SaleItem::with('product')
+                        ->selectRaw('product_id, SUM(qty) as total_qty, SUM(qty * unit_price) as total_revenue')
+                        ->whereIn('sale_id', $weekSaleIds)
+                        ->where('is_custom', false)
+                        ->groupBy('product_id')
+                        ->orderByDesc('total_qty')
+                        ->limit(10)
+                        ->get();
+                @endphp
+
+                <div class="px-6 py-6 space-y-8">
+                    <!-- Sales Summary Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-5 rounded-xl border border-gray-200 bg-gradient-to-br from-green-50 to-white">
                             <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <div class="relative">
-                                        <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                                            <span class="text-sm font-bold text-white">{{ substr($user->name, 0, 2) }}</span>
-                                        </div>
-                                        @if($user->is_active)
-                                            <div class="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                                        @endif
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-sm font-semibold text-gray-900">{{ $user->name }}</p>
-                                        <p class="text-sm text-gray-500">{{ $user->email }}</p>
-                                        <div class="flex items-center space-x-2 mt-1">
-                                            @foreach($user->roles->take(2) as $role)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {{ $role->display_name }}
-                                                </span>
-                                            @endforeach
-                                            @if($user->roles->count() > 2)
-                                                <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-600">
-                                                    +{{ $user->roles->count() - 2 }} more
-                                                </span>
-                                            @endif
-                                        </div>
-                                    </div>
+                                <p class="text-sm font-medium text-gray-600">Hari Ini</p>
+                                <span class="px-2 py-1 text-xs font-semibold bg-green-100 text-green-700 rounded-md">{{ $today->isoFormat('D MMMM') }}</span>
+                            </div>
+                            <div class="mt-4 grid grid-cols-3 gap-3">
+                                <div>
+                                    <p class="text-xs text-gray-500">Transaksi</p>
+                                    <p class="text-xl font-bold text-gray-900">{{ number_format($todayTransactions, 0, ',', '.') }}</p>
                                 </div>
-                                <div class="flex flex-col items-end space-y-1">
-                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold {{ $user->is_active ? 'bg-green-100 text-green-800 shadow-green-100' : 'bg-red-100 text-red-800 shadow-red-100' }} shadow-sm">
-                                        {{ $user->is_active ? 'Active' : 'Inactive' }}
-                                    </span>
-                                    <span class="text-xs text-gray-500 flex items-center">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                        {{ $user->created_at->diffForHumans() }}
-                                    </span>
+                                <div>
+                                    <p class="text-xs text-gray-500">Item Terjual</p>
+                                    <p class="text-xl font-bold text-gray-900">{{ number_format($todayItemsSold, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Omzet</p>
+                                    <p class="text-xl font-bold text-green-700">Rp {{ number_format($todayRevenue, 0, ',', '.') }}</p>
                                 </div>
                             </div>
                         </div>
-                    @endforeach
+                        <div class="p-5 rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50 to-white">
+                            <div class="flex items-center justify-between">
+                                <p class="text-sm font-medium text-gray-600">7 Hari Terakhir</p>
+                                <span class="px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-700 rounded-md">{{ $weekStart->isoFormat('D MMM') }} - {{ now()->isoFormat('D MMM') }}</span>
+                            </div>
+                            <div class="mt-4 grid grid-cols-3 gap-3">
+                                <div>
+                                    <p class="text-xs text-gray-500">Transaksi</p>
+                                    <p class="text-xl font-bold text-gray-900">{{ number_format($weekTransactions, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Item Terjual</p>
+                                    <p class="text-xl font-bold text-gray-900">{{ number_format($weekItemsSold, 0, ',', '.') }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Omzet</p>
+                                    <p class="text-xl font-bold text-blue-700">Rp {{ number_format($weekRevenue, 0, ',', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Low Stock Products -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-md font-semibold text-gray-900">Stok Menipis (≤ {{ $lowStockThreshold }} unit)</h4>
+                            <a href="{{ route('products.index') }}" class="text-sm text-blue-600 hover:text-blue-800">Kelola Produk</a>
+                        </div>
+                        <div class="overflow-hidden rounded-xl border border-gray-200">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Stok</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-100">
+                                    @forelse($lowStockProducts as $p)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-2 text-sm text-gray-900">
+                                                <a href="{{ route('products.index') }}" class="text-blue-600 hover:text-blue-800">{{ $p->name }}</a>
+                                            </td>
+                                            <td class="px-4 py-2 text-sm text-right font-semibold {{ ($p->current_stock ?? 0) <= 0 ? 'text-red-600' : 'text-yellow-600' }}">
+                                                {{ number_format($p->current_stock ?? 0, 0, ',', '.') }}
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="2" class="px-4 py-3 text-sm text-gray-500 text-center">Tidak ada produk dengan stok menipis.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top Products (7 Days) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-md font-semibold text-gray-900">Produk Terlaris (7 Hari)</h4>
+                            <a href="{{ route('kasir.management') }}" class="text-sm text-green-600 hover:text-green-800">Buka Kasir</a>
+                        </div>
+                        <div class="overflow-hidden rounded-xl border border-gray-200">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produk</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Omzet</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-100">
+                                    @forelse($topProducts as $t)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-4 py-2 text-sm text-gray-900">
+                                                {{ optional($t->product)->name ?? 'Produk Tidak Dikenal' }}
+                                            </td>
+                                            <td class="px-4 py-2 text-sm text-right text-gray-900">{{ number_format($t->total_qty ?? 0, 0, ',', '.') }}</td>
+                                            <td class="px-4 py-2 text-sm text-right font-semibold text-gray-900">Rp {{ number_format($t->total_revenue ?? 0, 0, ',', '.') }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="3" class="px-4 py-3 text-sm text-gray-500 text-center">Belum ada data penjualan untuk periode ini.</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                @permission('users.view')
-                    <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-100">
-                        <a href="{{ route('users.index') }}" class="group flex items-center justify-center text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-200">
-                            <span>View all users</span>
-                            <svg class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
-                            </svg>
+
+                <!-- Quick Actions -->
+                <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-green-50 border-t border-gray-100">
+                    <div class="flex flex-wrap items-center justify-center gap-3">
+                        <a href="{{ route('kasir.management') }}" class="inline-flex items-center px-3 py-2 text-sm font-semibold text-green-700 bg-green-100 hover:bg-green-200 rounded-md">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16"></path></svg>
+                            Kasir (POS)
+                        </a>
+                        <a href="{{ route('products.index') }}" class="inline-flex items-center px-3 py-2 text-sm font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-md">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3"></path></svg>
+                            Kelola Produk
+                        </a>
+                        <a href="{{ route('products.import') }}" class="inline-flex items-center px-3 py-2 text-sm font-semibold text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v16h16M4 4l8 8"></path></svg>
+                            Import Stok
                         </a>
                     </div>
-                @endpermission
+                </div>
             </div>
         </div>
     </div>
