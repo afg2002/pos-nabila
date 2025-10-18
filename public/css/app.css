@@ -83,3 +83,35 @@
     max-height: 90%;
     overflow-y: auto;
 }
+
+/* Mobile: fix tap highlight causing white overlay on anchors/buttons */
+@media (hover: none) and (pointer: coarse) {
+  a, button, [role="button"], .btn-primary, .btn-secondary {
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* iOS Safari: reduce white flash on clickable elements with rounded corners */
+a, button, [role="button"] {
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+
+/* Ensure anchors inside flex containers don't stretch and cause full-width white blocks on mobile */
+.group a {
+  display: inline-flex;
+}
+
+/* Disable hover-only color swaps on mobile to prevent full-white anchors when tapped */
+@media (hover: none) and (pointer: coarse) {
+  a:hover {
+    background-color: unset !important;
+    color: unset !important;
+  }
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    filter: none !important;
+    background-color: inherit !important;
+    color: inherit !important;
+  }
+}
