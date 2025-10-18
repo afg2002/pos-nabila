@@ -1,22 +1,25 @@
 <div class="space-y-6" x-data="{
-    currencyFormatter: {
-        displayValue: '',
-        init() {
-            this.displayValue = this.formatCurrency($wire.get(this.$el.getAttribute('wire:model')));
-        },
-        updateValue(value) {
-            const numericValue = this.parseNumeric(value);
-            $wire.set(this.$el.getAttribute('wire:model'), numericValue);
-            this.displayValue = this.formatCurrency(numericValue);
-        },
-        formatCurrency(value) {
-            if (!value || value === '') return '';
-            const num = parseFloat(value);
-            if (isNaN(num)) return '';
-            return 'Rp ' + num.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
-        },
-        parseNumeric(value) {
-            return value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+    currencyFormatter() {
+        return {
+            displayValue: '',
+            init() {
+                // Read the current input value directly to avoid Alpine parsing $wire during init
+                this.displayValue = this.formatCurrency(this.$el.value);
+            },
+            updateValue(value) {
+                const numericValue = this.parseNumeric(value);
+                $wire.set(this.$el.getAttribute('wire:model'), numericValue);
+                this.displayValue = this.formatCurrency(numericValue);
+            },
+            formatCurrency(value) {
+                if (!value || value === '') return '';
+                const num = parseFloat(value);
+                if (isNaN(num)) return '';
+                return 'Rp ' + num.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+            },
+            parseNumeric(value) {
+                return value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+            }
         }
     }
 }">
@@ -323,6 +326,7 @@
                                         @endif
                                     </div>
                                     <div class="text-sm text-gray-500">{{ $agenda->description }}</div>
+<div class="text-xs text-gray-500">Gudang: {{ optional($agenda->warehouse)->name ?? '-' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900">{{ $agenda->effective_quantity }} {{ $agenda->effective_unit }}</div>
@@ -435,11 +439,11 @@
     <!-- Modal Form -->
     @if($showModal)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop wire:key="agenda-modal-{{ $editingId ?? 'new' }}">
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">{{ $editingId ? 'Edit' : 'Tambah' }} Agenda</h3>
                     
-                    <form wire:submit="save">
+                    <form wire:submit.prevent="save">
                         <!-- Input Mode Toggle -->
                         <div class="mb-6">
                             <div class="flex bg-gray-100 rounded-lg p-1">
@@ -467,14 +471,91 @@
                             @if($input_mode === 'simplified')
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                            wire:model="supplier_id"
-                                            required>
-                                        <option value="">Pilih Supplier</option>
-                                        @foreach($suppliers as $supplier)
-                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <div class="relative" x-data="{ showResults: @entangle('showSupplierResults'), showDropdown: @entangle('showSupplierDropdown') }">
+                                        <div class="relative">
+                                            <input type="text"
+                                                   wire:model.live.debounce.300ms="supplierSearch"
+                                                   placeholder="Cari nama supplier..."
+                                                   class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                   autocomplete="off"
+                                                   required>
+
+                                            <!-- Dropdown Arrow / Clear Button -->
+                                            <button type="button"
+                                                    wire:click="toggleSupplierDropdown"
+                                                    class="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
+                                                @if(!empty($supplierSearch))
+                                                    <!-- Clear button when there's text -->
+                                                    <svg wire:click.stop="clearSupplierSearch" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                @else
+                                                    <!-- Dropdown arrow when no text -->
+                                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                @endif
+                                            </button>
+                                        </div>
+
+                                        <!-- Search Results Dropdown -->
+                                        @if($showSupplierResults && count($supplierSearchResults) > 0)
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                @foreach($supplierSearchResults as $supplier)
+                                                    <button type="button"
+                                                            wire:click="selectSupplier({{ $supplier->id }}, '{{ addslashes($supplier->name) }}')"
+                                                            class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                        <div class="flex justify-between items-center">
+                                                            <div>
+                                                                <div class="font-medium text-gray-900">{{ $supplier->name }}</div>
+                                                                @if($supplier->email)
+                                                                    <div class="text-sm text-gray-500">{{ $supplier->email }}</div>
+                                                                @endif
+                                                                @if($supplier->phone)
+                                                                    <div class="text-xs text-gray-400">{{ $supplier->phone }}</div>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+                                        @elseif($showSupplierResults && strlen($supplierSearch ?? '') >= 2)
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                <div class="px-3 py-2 text-gray-500 text-sm">
+                                                    Tidak ada supplier ditemukan untuk "{{ $supplierSearch }}"
+                                                </div>
+                                            </div>
+                                        @endif
+
+                                        <!-- All Suppliers Dropdown (when no search) -->
+                                        @if($showSupplierDropdown && empty($supplierSearch))
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                @if(count($suppliers) > 0)
+                                                    @foreach($suppliers as $supplier)
+                                                        <button type="button"
+                                                                wire:click="selectSupplier({{ $supplier->id }}, '{{ addslashes($supplier->name) }}')"
+                                                                class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                            <div class="flex justify-between items-center">
+                                                                <div>
+                                                                    <div class="font-medium text-gray-900">{{ $supplier->name }}</div>
+                                                                    @if($supplier->email)
+                                                                        <div class="text-sm text-gray-500">{{ $supplier->email }}</div>
+                                                                    @endif
+                                                                    @if($supplier->phone)
+                                                                        <div class="text-xs text-gray-400">{{ $supplier->phone }}</div>
+                                                                    @endif
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    @endforeach
+                                                @else
+                                                    <div class="px-3 py-2 text-gray-500 text-sm">
+                                                        Tidak ada supplier tersedia
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </div>
                                     @error('supplier_id') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                 </div>
                                 
@@ -491,20 +572,94 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
-                                        <input type="text"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               wire:model="quantity_unit"
-                                               placeholder="misal: dus, karung, box"
-                                               required>
+                                        <div class="relative" x-data="{ showResults: @entangle('showQuantityUnitResults'), showDropdown: @entangle('showQuantityUnitDropdown') }">
+                                            <input type="text"
+                                                   class="w-full px-3 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                   wire:model.live.debounce.300ms="quantityUnitSearch"
+                                                   placeholder="misal: dus, karung, box"
+                                                   autocomplete="off"
+                                                   required>
+
+                                            <!-- Dropdown Arrow / Clear Button -->
+                                            <button type="button"
+                                                    wire:click="toggleQuantityUnitDropdown"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                                @if($quantityUnitSearch)
+                                                    <!-- Clear when there is input -->
+                                                    <svg wire:click.stop="clearQuantityUnitSearch" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                @else
+                                                    <!-- Dropdown arrow when empty -->
+                                                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                @endif
+                                            </button>
+
+                                            <!-- Search Results -->
+                                            @if($showQuantityUnitResults && count($quantityUnitSearchResults) > 0)
+                                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                    @foreach($quantityUnitSearchResults as $unit)
+                                                        <button type="button"
+                                                                wire:click="selectQuantityUnit({{ $unit->id }}, '{{ addslashes($unit->name) }}')"
+                                                                class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                            <div class="flex justify-between items-center">
+                                                                <div>
+                                                                    <div class="font-medium text-gray-900">{{ $unit->name }}</div>
+                                                                    <div class="text-sm text-gray-500">Singkatan: {{ $unit->abbreviation }}</div>
+                                                                </div>
+                                                                <span class="text-xs px-2 py-0.5 rounded-full {{ $unit->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                                    {{ $unit->is_active ? 'Aktif' : 'Nonaktif' }}
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    @endforeach
+                                                </div>
+                                            @elseif($showQuantityUnitResults && strlen($quantityUnitSearch) >= 2)
+                                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                    <div class="px-3 py-2 text-gray-500 text-sm">
+                                                        Tidak ada satuan ditemukan untuk "{{ $quantityUnitSearch }}"
+                                                    </div>
+                                                </div>
+                                            @endif
+
+                                            <!-- All Units Dropdown (no search) -->
+                                            @if($showQuantityUnitDropdown && empty($quantityUnitSearch))
+                                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                    @if(isset($productUnits) && count($productUnits) > 0)
+                                                        @foreach($productUnits as $unit)
+                                                            <button type="button"
+                                                                    wire:click="selectQuantityUnit({{ $unit->id }}, '{{ addslashes($unit->name) }}')"
+                                                                    class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                                <div class="flex justify-between items-center">
+                                                                    <div>
+                                                                        <div class="font-medium text-gray-900">{{ $unit->name }}</div>
+                                                                        <div class="text-sm text-gray-500">Singkatan: {{ $unit->abbreviation }}</div>
+                                                                    </div>
+                                                                    <span class="text-xs px-2 py-0.5 rounded-full {{ $unit->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                                        {{ $unit->is_active ? 'Aktif' : 'Nonaktif' }}
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+                                                        @endforeach
+                                                    @else
+                                                        <div class="px-3 py-2 text-gray-500 text-sm">
+                                                            Tidak ada satuan tersedia
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </div>
                                         @error('quantity_unit') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Total Belanja (Rp)</label>
-                                    <input type="text"
+                                    <input wire:ignore type="text"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           x-data="currencyFormatter"
+                                           x-data="currencyFormatter()"
                                            x-model="displayValue"
                                            @input="updateValue($event.target.value)"
                                            wire:model="total_purchase_amount"
@@ -556,7 +711,7 @@
                                             <button type="button" 
                                                     wire:click="toggleSupplierDropdown"
                                                     class="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
-                                                @if($supplierSearch)
+                                                @if(!empty($supplierSearch))
                                                     <!-- Clear button when there's text -->
                                                     <svg wire:click.stop="clearSupplierSearch" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -591,7 +746,7 @@
                                                     </button>
                                                 @endforeach
                                             </div>
-                                        @elseif($showSupplierResults && strlen($supplierSearch) >= 2)
+                                        @elseif($showSupplierResults && strlen($supplierSearch ?? '') >= 2)
                                             <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
                                                 <div class="px-3 py-2 text-gray-500 text-sm">
                                                     Tidak ada supplier ditemukan untuk "{{ $supplierSearch }}"
@@ -667,9 +822,9 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
-                                        <input type="text"
+                                        <input wire:ignore type="text"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               x-data="currencyFormatter"
+                                               x-data="currencyFormatter()"
                                                x-model="displayValue"
                                                @input="updateValue($event.target.value)"
                                                wire:model.live="unit_price"
@@ -681,13 +836,8 @@
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Total (Rp)</label>
                                         <input type="text"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               x-data="{ 
-                                                   get formattedValue() { 
-                                                       const value = parseFloat($wire.total_amount || 0);
-                                                       return 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
-                                                   }
-                                               }"
-                                               x-bind:value="formattedValue"
+                                               x-data="{ total: @entangle('total_amount') }"
+                                               x-bind:value="'Rp ' + parseFloat(total || 0).toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})"
                                                readonly>
                                         @error('total_amount') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                                     </div>
@@ -784,7 +934,7 @@
     <!-- Modal Pembayaran -->
     @if($showPaymentModal)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closePaymentModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop wire:key="payment-modal-{{ $selectedAgenda?->id ?? 'none' }}">
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Proses Pembayaran</h3>
                     
@@ -847,7 +997,7 @@
     <!-- Modal Konfirmasi Hapus -->
     @if($showDeleteModal)
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeDeleteModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop wire:key="delete-modal-{{ $deleteId ?? 'none' }}">
                 <div class="mt-3 text-center">
                     <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                         <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
