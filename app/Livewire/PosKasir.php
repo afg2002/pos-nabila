@@ -12,8 +12,10 @@ use App\Warehouse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Validate;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 
+#[Layout('layouts.app')]
 class PosKasir extends Component
 {
     use WithAlerts;
@@ -21,6 +23,15 @@ class PosKasir extends Component
     public $barcode = '';
 
     public $productSearch = '';
+    public $mobileMenuOpen = false; // Kontrol tampilan bottom sheet mobile
+    public $transactionFullWidth = false; // Mode desktop: panel transaksi memenuhi lebar penuh
+
+    // Mobile UI state: show/hide floating bottom sheet menu
+
+    public function resetProductSearch()
+    {
+        $this->productSearch = '';
+    }
 
     public $cart = []; // Current active cart (reference to active tab's cart)
 
@@ -47,6 +58,7 @@ class PosKasir extends Component
     public $pricingTier = 'retail'; // retail, semi_grosir, grosir, custom
 
     public $amountPaid = 0;
+    public $paymentStatus = 'PAID';
 
     public $discount = 0;
 
@@ -114,6 +126,7 @@ class PosKasir extends Component
             'paymentMethod' => 'required|in:cash,transfer,edc,qr',
             'warehouseId' => 'required|exists:warehouses,id',
             'amountPaid' => 'required|numeric|min:0',
+            'paymentStatus' => 'required|in:PAID,PARTIAL,UNPAID',
             'notes' => 'nullable|string|max:500',
         ];
     }
@@ -124,17 +137,25 @@ class PosKasir extends Component
             abort(403, 'You do not have permission to access POS system.');
         }
 
-        // Only get store warehouse
-        $this->warehouses = Warehouse::where('type', 'store')->ordered()->get();
-        $storeWarehouse = $this->warehouses->first();
+        // Ambil semua gudang terurut (default terlebih dahulu)
+        $this->warehouses = Warehouse::ordered()->get();
+
+        // Tentukan gudang default (Toko Utama)
+        $defaultWarehouse = Warehouse::getDefault();
+        if (! $defaultWarehouse) {
+            // Fallback ke gudang bertipe store, jika tidak ada ambil gudang pertama
+            $defaultWarehouse = Warehouse::where('type', 'store')->ordered()->first()
+                ?? Warehouse::ordered()->first();
+        }
         
-        if (! $storeWarehouse) {
-            session()->flash('error', 'Gudang toko belum dikonfigurasi. Tambahkan gudang dengan tipe "store" terlebih dahulu.');
+        if (! $defaultWarehouse) {
+            // Tidak ada gudang sama sekali
+            session()->flash('error', 'Gudang belum dikonfigurasi. Tambahkan gudang terlebih dahulu.');
             $this->warehouseId = '';
             $this->selectedWarehouse = '';
         } else {
-            $this->warehouseId = $storeWarehouse->id;
-            $this->selectedWarehouse = $storeWarehouse->id;
+            $this->warehouseId = $defaultWarehouse->id;
+            $this->selectedWarehouse = $defaultWarehouse->id;
         }
 
         // Initialize first tab
@@ -167,6 +188,24 @@ class PosKasir extends Component
         $this->change = max(0, $this->amountPaid - $this->total);
     }
 
+    public function updatedPaymentStatus()
+    {
+        // Adjust amountPaid to align with selected status for better UX
+        if ($this->paymentStatus === 'UNPAID') {
+            $this->amountPaid = 0;
+        } elseif ($this->paymentStatus === 'PAID') {
+            $this->amountPaid = max($this->amountPaid, $this->total);
+        } elseif ($this->paymentStatus === 'PARTIAL') {
+            // Ensure amountPaid is between 0 and total
+            if ($this->total > 0 && ($this->amountPaid <= 0 || $this->amountPaid >= $this->total)) {
+                $this->amountPaid = max(0.01, $this->total - 0.01);
+            }
+        }
+
+        $this->change = max(0, $this->amountPaid - $this->total);
+        $this->updateActiveTabFromCurrentProperties();
+    }
+
     public function updatedSupplierName()
     {
         $this->updateActiveTabFromCurrentProperties();
@@ -192,16 +231,42 @@ class PosKasir extends Component
         $this->updateActiveTabFromCurrentProperties();
     }
 
+    private function enforceDefaultWarehouse(): void
+    {
+        $defaultWarehouse = Warehouse::getDefault();
+        if (! $defaultWarehouse) {
+            return;
+        }
+
+        $defaultId = $defaultWarehouse->id;
+        $changed = false;
+
+        if ($this->warehouseId !== $defaultId) {
+            $this->warehouseId = $defaultId;
+            $changed = true;
+        }
+
+        if ($this->selectedWarehouse !== $defaultId) {
+            $this->selectedWarehouse = $defaultId;
+            $changed = true;
+        }
+
+        if ($changed) {
+            // Pastikan keranjang disegarkan untuk gudang default
+            $this->refreshCartForWarehouse();
+        }
+    }
+
     public function updatedWarehouseId(): void
     {
-        $this->selectedWarehouse = $this->warehouseId;
-        $this->refreshCartForWarehouse();
+        // Selalu pakai gudang default (Toko Utama)
+        $this->enforceDefaultWarehouse();
     }
 
     public function updatedSelectedWarehouse(): void
     {
-        $this->warehouseId = $this->selectedWarehouse;
-        $this->refreshCartForWarehouse();
+        // Selalu pakai gudang default (Toko Utama)
+        $this->enforceDefaultWarehouse();
     }
 
     private function getAvailableStock(Product $product): int
@@ -456,6 +521,23 @@ class PosKasir extends Component
         }
     }
 
+    // Toggle desktop full-width mode for transaction panel
+    public function toggleTransactionFullWidth(): void
+    {
+        $this->transactionFullWidth = ! $this->transactionFullWidth;
+    }
+
+    // Wrapper untuk mengubah semua jenis harga dari dropdown Blade
+    public function updateAllItemsPriceType($priceType): void
+    {
+        $validTypes = array_keys(Product::getPriceTypes());
+        if (! in_array($priceType, $validTypes, true)) {
+            session()->flash('error', 'Jenis harga tidak valid.');
+            return;
+        }
+        $this->bulkSetCartPriceType($priceType);
+    }
+
     public function removeFromCart($cartKey)
     {
         if (isset($this->cart[$cartKey])) {
@@ -514,6 +596,7 @@ class PosKasir extends Component
 
         $this->updateActiveTabFromCurrentProperties();
         $this->amountPaid = $this->total;
+        $this->paymentStatus = 'PAID';
         $this->showCheckoutModal = true;
     }
 
@@ -534,26 +617,34 @@ class PosKasir extends Component
 
         $this->validate($this->getCheckoutRules());
 
-        if ($this->amountPaid < $this->total) {
-            session()->flash('error', 'Jumlah bayar tidak mencukupi!');
-
-            return;
-        }
+        // Allow partial/unpaid payments; status will be determined below
 
         try {
             DB::beginTransaction();
             \Log::info('POS Checkout: Transaction started');
+
+            // Use selected payment status from UI (validated via getCheckoutRules)
+            $status = $this->paymentStatus;
 
             // Create sale record
             $saleData = [
                 'sale_number' => 'POS-'.date('Ymd').'-'.str_pad(Sale::whereDate('created_at', today())->count() + 1, 4, '0', STR_PAD_LEFT),
                 'cashier_id' => Auth::id(),
                 'subtotal' => $this->subtotal,
+                // Newly added columns in migrations
+                'tax_amount' => 0,
+                'total_amount' => $this->total,
+                'payment_amount' => $this->amountPaid,
                 'discount_total' => 0,
                 'final_total' => $this->total,
                 'payment_method' => $this->paymentMethod,
                 'payment_notes' => $this->paymentNotes,
+                // Persist payment status to the dedicated column to avoid enum truncation on `status`
+                'payment_status' => $status,
+                // Keep transactional status as 'PAID' (completed) for now; cancellations use 'CANCELLED'
                 'status' => 'PAID',
+                // Optional notes if column exists
+                'notes' => $this->notes,
             ];
             
             \Log::info('POS Checkout: Creating sale with data', $saleData);
@@ -1178,8 +1269,26 @@ class PosKasir extends Component
                     case 'notes':
                         $this->notes = $value;
                         break;
+                    case 'customerName':
+                        $this->customerName = $value;
+                        break;
+                    case 'customerPhone':
+                        $this->customerPhone = $value;
+                        break;
                     case 'paymentNotes':
                         $this->paymentNotes = $value;
+                        break;
+                    case 'customItemName':
+                        $this->customItemName = $value;
+                        break;
+                    case 'customItemDescription':
+                        $this->customItemDescription = $value;
+                        break;
+                    case 'customItemPrice':
+                        $this->customItemPrice = $value;
+                        break;
+                    case 'customItemQuantity':
+                        $this->customItemQuantity = $value;
                         break;
                 }
             }
