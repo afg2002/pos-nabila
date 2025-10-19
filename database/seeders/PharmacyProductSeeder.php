@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Product;
-use App\ProductUnit;
+use App\Models\ProductUnit;
 use App\ProductWarehouseStock;
 use App\Warehouse;
 use Illuminate\Support\Str;

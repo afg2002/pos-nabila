@@ -22,6 +22,7 @@ class IncomingGoodsAgenda extends Model
         'description',
         'quantity',  // Added: Required for detailed input
         'unit',  // Added: Required for detailed input
+        'unit_id', // Added: Ensure unit relation can be saved
         'unit_price',  // Added: Required for detailed input
         'total_amount',
         'total_quantity',
@@ -165,6 +166,9 @@ class IncomingGoodsAgenda extends Model
 
     public function getIsSimplifiedAttribute()
     {
+        if (!is_null($this->input_mode)) {
+            return $this->input_mode === 'simplified';
+        }
         return !empty($this->total_purchase_amount) && !empty($this->total_quantity);
     }
 
@@ -476,6 +480,14 @@ class IncomingGoodsAgenda extends Model
         return $this->purchaseOrder?->po_number;
     }
 
+    /**
+     * Get the product unit associated with this agenda
+     */
+    public function productUnit()
+    {
+        return $this->belongsTo(ProductUnit::class, 'unit_id');
+    }
+
     protected static function boot()
     {
         parent::boot();
@@ -492,7 +504,7 @@ class IncomingGoodsAgenda extends Model
             
             // Auto-populate supplier_name from supplier_id if not provided
             if (empty($agenda->supplier_name) && $agenda->supplier_id) {
-                $supplier = \App\Supplier::find($agenda->supplier_id);
+                $supplier = Supplier::find($agenda->supplier_id);
                 if ($supplier) {
                     $agenda->supplier_name = $supplier->name;
                 }

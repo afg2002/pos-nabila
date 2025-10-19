@@ -7,7 +7,7 @@ use App\Domains\User\Models\User;
 use App\Sale;
 use App\SaleItem;
 use App\Product;
-use App\ProductUnit;
+use App\Models\ProductUnit;
 use App\Customer;
 use App\Warehouse;
 use App\ProductWarehouseStock;

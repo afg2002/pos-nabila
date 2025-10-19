@@ -12,7 +12,7 @@ use App\Product;
 use App\Sale;
 use App\StockMovement;
 use App\Customer;
-use App\Supplier;
+use App\Models\Supplier;
 use App\IncomingGoods;
 use App\PaymentSchedule;
 use App\CashBalance;

@@ -52,7 +52,7 @@ class ProductImport implements ToCollection, WithHeadingRow
                 // Find unit by name or create default
                 $unitId = 1; // Default to 'Pieces'
                 if (!empty($row['unit'])) {
-                    $unit = \App\ProductUnit::where('name', 'LIKE', '%' . trim($row['unit']) . '%')
+                    $unit = \App\Models\ProductUnit::where('name', 'LIKE', '%' . trim($row['unit']) . '%')
                                             ->orWhere('abbreviation', 'LIKE', '%' . trim($row['unit']) . '%')
                                             ->first();
                     if ($unit) {

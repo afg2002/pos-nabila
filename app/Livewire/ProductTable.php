@@ -4,7 +4,7 @@ namespace App\Livewire;
 
 use App\AuditLog;
 use App\Product;
-use App\ProductUnit;
+use App\Models\ProductUnit;
 use App\Shared\Traits\WithAlerts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;

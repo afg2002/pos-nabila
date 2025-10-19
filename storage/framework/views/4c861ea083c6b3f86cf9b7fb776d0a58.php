@@ -1,22 +1,25 @@
 <div class="space-y-6" x-data="{
-    currencyFormatter: {
-        displayValue: '',
-        init() {
-            this.displayValue = this.formatCurrency($wire.get(this.$el.getAttribute('wire:model')));
-        },
-        updateValue(value) {
-            const numericValue = this.parseNumeric(value);
-            $wire.set(this.$el.getAttribute('wire:model'), numericValue);
-            this.displayValue = this.formatCurrency(numericValue);
-        },
-        formatCurrency(value) {
-            if (!value || value === '') return '';
-            const num = parseFloat(value);
-            if (isNaN(num)) return '';
-            return 'Rp ' + num.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
-        },
-        parseNumeric(value) {
-            return value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+    currencyFormatter() {
+        return {
+            displayValue: '',
+            init() {
+                // Read the current input value directly to avoid Alpine parsing $wire during init
+                this.displayValue = this.formatCurrency(this.$el.value);
+            },
+            updateValue(value) {
+                const numericValue = this.parseNumeric(value);
+                $wire.set(this.$el.getAttribute('wire:model'), numericValue);
+                this.displayValue = this.formatCurrency(numericValue);
+            },
+            formatCurrency(value) {
+                if (!value || value === '') return '';
+                const num = parseFloat(value);
+                if (isNaN(num)) return '';
+                return 'Rp ' + num.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+            },
+            parseNumeric(value) {
+                return value.replace(/[^\d.,]/g, '').replace(/\./g, '').replace(',', '.');
+            }
         }
     }
 }">
@@ -327,6 +330,7 @@
                                         <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
                                     </div>
                                     <div class="text-sm text-gray-500"><?php echo e($agenda->description); ?></div>
+<div class="text-xs text-gray-500">Gudang: <?php echo e(optional($agenda->warehouse)->name ?? '-'); ?></div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="text-sm text-gray-900"><?php echo e($agenda->effective_quantity); ?> <?php echo e($agenda->effective_unit); ?></div>
@@ -448,11 +452,11 @@
     <!-- Modal Form -->
     <!--[if BLOCK]><![endif]--><?php if($showModal): ?>
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop wire:key="agenda-modal-<?php echo e($editingId ?? 'new'); ?>">
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4"><?php echo e($editingId ? 'Edit' : 'Tambah'); ?> Agenda</h3>
                     
-                    <form wire:submit="save">
+                    <form wire:submit.prevent="save">
                         <!-- Input Mode Toggle -->
                         <div class="mb-6">
                             <div class="flex bg-gray-100 rounded-lg p-1">
@@ -480,14 +484,91 @@
                             <!--[if BLOCK]><![endif]--><?php if($input_mode === 'simplified'): ?>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                            wire:model="supplier_id"
-                                            required>
-                                        <option value="">Pilih Supplier</option>
-                                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $suppliers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                            <option value="<?php echo e($supplier->id); ?>"><?php echo e($supplier->name); ?></option>
-                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
-                                    </select>
+                                    <div class="relative" x-data="{ showResults: <?php if ((object) ('showSupplierResults') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierResults'->value()); ?>')<?php echo e('showSupplierResults'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierResults'); ?>')<?php endif; ?>, showDropdown: <?php if ((object) ('showSupplierDropdown') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierDropdown'->value()); ?>')<?php echo e('showSupplierDropdown'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showSupplierDropdown'); ?>')<?php endif; ?> }">
+                                        <div class="relative">
+                                            <input type="text"
+                                                   wire:model.live.debounce.300ms="supplierSearch"
+                                                   placeholder="Cari nama supplier..."
+                                                   class="w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                   autocomplete="off"
+                                                   required>
+
+                                            <!-- Dropdown Arrow / Clear Button -->
+                                            <button type="button"
+                                                    wire:click="toggleSupplierDropdown"
+                                                    class="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
+                                                <!--[if BLOCK]><![endif]--><?php if(!empty($supplierSearch)): ?>
+                                                    <!-- Clear button when there's text -->
+                                                    <svg wire:click.stop="clearSupplierSearch" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                <?php else: ?>
+                                                    <!-- Dropdown arrow when no text -->
+                                                    <svg class="w-4 h-4 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            </button>
+                                        </div>
+
+                                        <!-- Search Results Dropdown -->
+                                        <!--[if BLOCK]><![endif]--><?php if($showSupplierResults && count($supplierSearchResults) > 0): ?>
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $supplierSearchResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                    <button type="button"
+                                                            wire:click="selectSupplier(<?php echo e($supplier->id); ?>, '<?php echo e(addslashes($supplier->name)); ?>')"
+                                                            class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                        <div class="flex justify-between items-center">
+                                                            <div>
+                                                                <div class="font-medium text-gray-900"><?php echo e($supplier->name); ?></div>
+                                                                <!--[if BLOCK]><![endif]--><?php if($supplier->email): ?>
+                                                                    <div class="text-sm text-gray-500"><?php echo e($supplier->email); ?></div>
+                                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                                <!--[if BLOCK]><![endif]--><?php if($supplier->phone): ?>
+                                                                    <div class="text-xs text-gray-400"><?php echo e($supplier->phone); ?></div>
+                                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                            </div>
+                                        <?php elseif($showSupplierResults && strlen($supplierSearch ?? '') >= 2): ?>
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                <div class="px-3 py-2 text-gray-500 text-sm">
+                                                    Tidak ada supplier ditemukan untuk "<?php echo e($supplierSearch); ?>"
+                                                </div>
+                                            </div>
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+                                        <!-- All Suppliers Dropdown (when no search) -->
+                                        <!--[if BLOCK]><![endif]--><?php if($showSupplierDropdown && empty($supplierSearch)): ?>
+                                            <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                <!--[if BLOCK]><![endif]--><?php if(count($suppliers) > 0): ?>
+                                                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $suppliers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $supplier): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                        <button type="button"
+                                                                wire:click="selectSupplier(<?php echo e($supplier->id); ?>, '<?php echo e(addslashes($supplier->name)); ?>')"
+                                                                class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                            <div class="flex justify-between items-center">
+                                                                <div>
+                                                                    <div class="font-medium text-gray-900"><?php echo e($supplier->name); ?></div>
+                                                                    <!--[if BLOCK]><![endif]--><?php if($supplier->email): ?>
+                                                                        <div class="text-sm text-gray-500"><?php echo e($supplier->email); ?></div>
+                                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                                    <!--[if BLOCK]><![endif]--><?php if($supplier->phone): ?>
+                                                                        <div class="text-xs text-gray-400"><?php echo e($supplier->phone); ?></div>
+                                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                                <?php else: ?>
+                                                    <div class="px-3 py-2 text-gray-500 text-sm">
+                                                        Tidak ada supplier tersedia
+                                                    </div>
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            </div>
+                                        <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                    </div>
                                     <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['supplier_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -518,11 +599,87 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Satuan</label>
-                                        <input type="text"
-                                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               wire:model="quantity_unit"
-                                               placeholder="misal: dus, karung, box"
-                                               required>
+                                        <div class="relative" x-data="{ showResults: <?php if ((object) ('showQuantityUnitResults') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showQuantityUnitResults'->value()); ?>')<?php echo e('showQuantityUnitResults'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showQuantityUnitResults'); ?>')<?php endif; ?>, showDropdown: <?php if ((object) ('showQuantityUnitDropdown') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showQuantityUnitDropdown'->value()); ?>')<?php echo e('showQuantityUnitDropdown'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('showQuantityUnitDropdown'); ?>')<?php endif; ?> }">
+                                            <input type="text"
+                                                   class="w-full px-3 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                                   wire:model.live.debounce.300ms="quantityUnitSearch"
+                                                   placeholder="misal: dus, karung, box"
+                                                   autocomplete="off"
+                                                   required>
+
+                                            <!-- Dropdown Arrow / Clear Button -->
+                                            <button type="button"
+                                                    wire:click="toggleQuantityUnitDropdown"
+                                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                                                <!--[if BLOCK]><![endif]--><?php if($quantityUnitSearch): ?>
+                                                    <!-- Clear when there is input -->
+                                                    <svg wire:click.stop="clearQuantityUnitSearch" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                <?php else: ?>
+                                                    <!-- Dropdown arrow when empty -->
+                                                    <svg class="w-5 h-5 transition-transform" :class="{ 'rotate-180': showDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                    </svg>
+                                                <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                            </button>
+
+                                            <!-- Search Results -->
+                                            <!--[if BLOCK]><![endif]--><?php if($showQuantityUnitResults && count($quantityUnitSearchResults) > 0): ?>
+                                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                    <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $quantityUnitSearchResults; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $unit): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                        <button type="button"
+                                                                wire:click="selectQuantityUnit(<?php echo e($unit->id); ?>, '<?php echo e(addslashes($unit->name)); ?>')"
+                                                                class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                            <div class="flex justify-between items-center">
+                                                                <div>
+                                                                    <div class="font-medium text-gray-900"><?php echo e($unit->name); ?></div>
+                                                                    <div class="text-sm text-gray-500">Singkatan: <?php echo e($unit->abbreviation); ?></div>
+                                                                </div>
+                                                                <span class="text-xs px-2 py-0.5 rounded-full <?php echo e($unit->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'); ?>">
+                                                                    <?php echo e($unit->is_active ? 'Aktif' : 'Nonaktif'); ?>
+
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                                </div>
+                                            <?php elseif($showQuantityUnitResults && strlen($quantityUnitSearch) >= 2): ?>
+                                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                                                    <div class="px-3 py-2 text-gray-500 text-sm">
+                                                        Tidak ada satuan ditemukan untuk "<?php echo e($quantityUnitSearch); ?>"
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+
+                                            <!-- All Units Dropdown (no search) -->
+                                            <!--[if BLOCK]><![endif]--><?php if($showQuantityUnitDropdown && empty($quantityUnitSearch)): ?>
+                                                <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                    <!--[if BLOCK]><![endif]--><?php if(isset($productUnits) && count($productUnits) > 0): ?>
+                                                        <!--[if BLOCK]><![endif]--><?php $__currentLoopData = $productUnits; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $unit): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                            <button type="button"
+                                                                    wire:click="selectQuantityUnit(<?php echo e($unit->id); ?>, '<?php echo e(addslashes($unit->name)); ?>')"
+                                                                    class="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0">
+                                                                <div class="flex justify-between items-center">
+                                                                    <div>
+                                                                        <div class="font-medium text-gray-900"><?php echo e($unit->name); ?></div>
+                                                                        <div class="text-sm text-gray-500">Singkatan: <?php echo e($unit->abbreviation); ?></div>
+                                                                    </div>
+                                                                    <span class="text-xs px-2 py-0.5 rounded-full <?php echo e($unit->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'); ?>">
+                                                                        <?php echo e($unit->is_active ? 'Aktif' : 'Nonaktif'); ?>
+
+                                                                    </span>
+                                                                </div>
+                                                            </button>
+                                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
+                                                    <?php else: ?>
+                                                        <div class="px-3 py-2 text-gray-500 text-sm">
+                                                            Tidak ada satuan tersedia
+                                                        </div>
+                                                    <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                                </div>
+                                            <?php endif; ?><!--[if ENDBLOCK]><![endif]-->
+                                        </div>
                                         <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['quantity_unit'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -536,9 +693,9 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Total Belanja (Rp)</label>
-                                    <input type="text"
+                                    <input wire:ignore type="text"
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                           x-data="currencyFormatter"
+                                           x-data="currencyFormatter()"
                                            x-model="displayValue"
                                            @input="updateValue($event.target.value)"
                                            wire:model="total_purchase_amount"
@@ -611,7 +768,7 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                             <button type="button" 
                                                     wire:click="toggleSupplierDropdown"
                                                     class="absolute right-2 top-2 text-gray-400 hover:text-gray-600">
-                                                <!--[if BLOCK]><![endif]--><?php if($supplierSearch): ?>
+                                                <!--[if BLOCK]><![endif]--><?php if(!empty($supplierSearch)): ?>
                                                     <!-- Clear button when there's text -->
                                                     <svg wire:click.stop="clearSupplierSearch" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -646,7 +803,7 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                                     </button>
                                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><!--[if ENDBLOCK]><![endif]-->
                                             </div>
-                                        <?php elseif($showSupplierResults && strlen($supplierSearch) >= 2): ?>
+                                        <?php elseif($showSupplierResults && strlen($supplierSearch ?? '') >= 2): ?>
                                             <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
                                                 <div class="px-3 py-2 text-gray-500 text-sm">
                                                     Tidak ada supplier ditemukan untuk "<?php echo e($supplierSearch); ?>"
@@ -750,9 +907,9 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Harga per Unit (Rp)</label>
-                                        <input type="text"
+                                        <input wire:ignore type="text"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               x-data="currencyFormatter"
+                                               x-data="currencyFormatter()"
                                                x-model="displayValue"
                                                @input="updateValue($event.target.value)"
                                                wire:model.live="unit_price"
@@ -771,13 +928,8 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
                                         <label class="block text-sm font-medium text-gray-700 mb-1">Total (Rp)</label>
                                         <input type="text"
                                                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                               x-data="{ 
-                                                   get formattedValue() { 
-                                                       const value = parseFloat($wire.total_amount || 0);
-                                                       return 'Rp ' + value.toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2});
-                                                   }
-                                               }"
-                                               x-bind:value="formattedValue"
+                                               x-data="{ total: <?php if ((object) ('total_amount') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('total_amount'->value()); ?>')<?php echo e('total_amount'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('total_amount'); ?>')<?php endif; ?> }"
+                                               x-bind:value="'Rp ' + parseFloat(total || 0).toLocaleString('id-ID', {minimumFractionDigits: 0, maximumFractionDigits: 2})"
                                                readonly>
                                         <!--[if BLOCK]><![endif]--><?php $__errorArgs = ['total_amount'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -931,7 +1083,7 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
     <!-- Modal Pembayaran -->
     <!--[if BLOCK]><![endif]--><?php if($showPaymentModal): ?>
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closePaymentModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop wire:key="payment-modal-<?php echo e($selectedAgenda?->id ?? 'none'); ?>">
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Proses Pembayaran</h3>
                     
@@ -1008,7 +1160,7 @@ unset($__errorArgs, $__bag); ?><!--[if ENDBLOCK]><![endif]-->
     <!-- Modal Konfirmasi Hapus -->
     <!--[if BLOCK]><![endif]--><?php if($showDeleteModal): ?>
         <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeDeleteModal">
-            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop>
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" wire:click.stop wire:key="delete-modal-<?php echo e($deleteId ?? 'none'); ?>">
                 <div class="mt-3 text-center">
                     <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
                         <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

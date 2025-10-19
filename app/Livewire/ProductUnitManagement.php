@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\ProductUnit;
+use App\Models\ProductUnit;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -26,6 +26,10 @@ class ProductUnitManagement extends Component
     // Search and filter
     public $search = '';
     public $filterStatus = '';
+    // New properties for autocomplete
+    public $showUnitResults = false;
+    public $showUnitDropdown = false;
+    public $unitSearchResults = [];
 
     protected $rules = [
         'name' => 'required|string|max:255',
@@ -72,8 +76,15 @@ class ProductUnitManagement extends Component
                       ->orderBy('name')
                       ->paginate(10);
 
+        // All units for dropdown suggestions (limit to 50 for performance)
+        $allUnits = ProductUnit::orderBy('sort_order')
+                               ->orderBy('name')
+                               ->limit(50)
+                               ->get();
+
         return view('livewire.product-unit-management', [
-            'units' => $units
+            'units' => $units,
+            'allUnits' => $allUnits,
         ]);
     }
 
@@ -181,11 +192,57 @@ class ProductUnitManagement extends Component
     public function updatedSearch()
     {
         $this->resetPage();
+
+        if (strlen($this->search) >= 2) {
+            $this->unitSearchResults = ProductUnit::query()
+                ->where(function($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('abbreviation', 'like', '%' . $this->search . '%');
+                })
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->limit(10)
+                ->get();
+
+            $this->showUnitResults = true;
+            $this->showUnitDropdown = false;
+        } else {
+            $this->unitSearchResults = [];
+            $this->showUnitResults = false;
+            $this->showUnitDropdown = false;
+        }
     }
 
-    public function updatedFilterStatus()
+    public function selectUnit($unitId, $unitName = null)
     {
+        if ($unitName === null) {
+            $unit = ProductUnit::find($unitId);
+            $unitName = $unit ? $unit->name : '';
+        }
+
+        $this->search = $unitName;
+
+        $this->showUnitDropdown = false;
+        $this->showUnitResults = false;
+        $this->unitSearchResults = [];
         $this->resetPage();
+    }
+
+    public function clearUnitSearch()
+    {
+        $this->search = '';
+        $this->showUnitDropdown = false;
+        $this->showUnitResults = false;
+        $this->unitSearchResults = [];
+        $this->resetPage();
+    }
+
+    public function toggleUnitDropdown()
+    {
+        $this->showUnitDropdown = !$this->showUnitDropdown;
+        if ($this->showUnitDropdown) {
+            $this->showUnitResults = false;
+        }
     }
 
     private function resetForm()

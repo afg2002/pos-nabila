@@ -5,7 +5,7 @@ namespace Tests\Unit;
 use Tests\TestCase;
 use App\Domains\User\Models\User;
 use App\Product;
-use App\ProductUnit;
+use App\Models\ProductUnit;
 use App\Warehouse;
 use App\ProductWarehouseStock;
 use App\Sale;

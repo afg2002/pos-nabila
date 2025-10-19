@@ -49,6 +49,13 @@ class PosKasir extends Component
 
     public $selectedWarehouse = '';
 
+    // Display properties for Gudang Aktif (Active Warehouse)
+    public $activeWarehouseName = '';
+    public $activeWarehouseCode = '';
+    public $activeWarehouseTypeLabel = '';
+    public $activeWarehouseAddress = '';
+
+
     public $supplierName = '';
 
     public $supplierPhone = '';
@@ -82,18 +89,11 @@ class PosKasir extends Component
 
     public $showReceiptModal = false;
 
-    public $showCustomItemModal = false;
+
 
     public $lastSale = null;
 
-    // Custom Item Properties
-    public $customItemName = '';
 
-    public $customItemDescription = '';
-
-    public $customItemPrice = 0;
-
-    public $customItemQuantity = 1;
 
     // Optional customer fields (used in checkout modal)
     public $customerName = '';
@@ -110,10 +110,8 @@ class PosKasir extends Component
         'paymentNotes' => 'nullable|string|max:255',
         'amountPaid' => 'required|numeric|min:0',
         'notes' => 'nullable|string|max:500',
-        'customItemName' => 'required|string|max:255',
-        'customItemDescription' => 'nullable|string|max:500',
-        'customItemPrice' => 'required|numeric|min:0.01',
-        'customItemQuantity' => 'required|integer|min:1',
+        
+        
     ];
 
     protected function getCheckoutRules()
@@ -153,9 +151,11 @@ class PosKasir extends Component
             session()->flash('error', 'Gudang belum dikonfigurasi. Tambahkan gudang terlebih dahulu.');
             $this->warehouseId = '';
             $this->selectedWarehouse = '';
+            $this->updateActiveWarehouseInfo();
         } else {
             $this->warehouseId = $defaultWarehouse->id;
             $this->selectedWarehouse = $defaultWarehouse->id;
+            $this->updateActiveWarehouseInfo();
         }
 
         // Initialize first tab
@@ -257,16 +257,46 @@ class PosKasir extends Component
         }
     }
 
+    private function updateActiveWarehouseInfo(): void
+    {
+        $warehouse = null;
+
+        if (! empty($this->selectedWarehouse)) {
+            $warehouse = Warehouse::find($this->selectedWarehouse);
+        }
+
+        if (! $warehouse) {
+            $warehouse = Warehouse::getDefault()
+                ?? Warehouse::where('type', 'store')->ordered()->first()
+                ?? Warehouse::ordered()->first();
+        }
+
+        if ($warehouse) {
+            $this->activeWarehouseName = $warehouse->name ?? 'Toko Utama';
+            $this->activeWarehouseCode = $warehouse->code ?? '';
+            $type = $warehouse->type ?? 'store';
+            $this->activeWarehouseTypeLabel = $type === 'store' ? 'Toko' : ucfirst($type);
+            $this->activeWarehouseAddress = $warehouse->address ?? '';
+        } else {
+            $this->activeWarehouseName = 'Toko Utama';
+            $this->activeWarehouseCode = '';
+            $this->activeWarehouseTypeLabel = 'Toko';
+            $this->activeWarehouseAddress = '';
+        }
+    }
+
     public function updatedWarehouseId(): void
     {
         // Selalu pakai gudang default (Toko Utama)
         $this->enforceDefaultWarehouse();
+        $this->updateActiveWarehouseInfo();
     }
 
     public function updatedSelectedWarehouse(): void
     {
         // Selalu pakai gudang default (Toko Utama)
         $this->enforceDefaultWarehouse();
+        $this->updateActiveWarehouseInfo();
     }
 
     private function getAvailableStock(Product $product): int
@@ -451,13 +481,10 @@ class PosKasir extends Component
         }
 
         if (isset($this->cart[$cartKey])) {
-            // Skip stock checks for custom items
-            if (!isset($this->cart[$cartKey]['is_custom']) || !$this->cart[$cartKey]['is_custom']) {
-                $availableStock = $this->cart[$cartKey]['available_stock'];
-                if ($quantity > $availableStock) {
-                    session()->flash('error', 'Stok tidak mencukupi! Stok tersedia: '.$availableStock);
-                    return;
-                }
+            $availableStock = $this->cart[$cartKey]['available_stock'];
+            if ($quantity > $availableStock) {
+                session()->flash('error', 'Stok tidak mencukupi! Stok tersedia: '.$availableStock);
+                return;
             }
 
             $this->cart[$cartKey]['quantity'] = $quantity;
@@ -664,40 +691,35 @@ class PosKasir extends Component
                 
                 $saleItemData = [
                     'sale_id' => $sale->id,
-                    'product_id' => $item['is_custom'] ?? false ? null : $item['product_id'],
+                    'product_id' => $item['product_id'],
                     'qty' => $item['quantity'],
                     'unit_price' => $item['price'],
-                    // Persist the item's pricing tier from the cart (custom items will carry 'custom')
                     'price_tier' => $item['pricing_tier'] ?? ($this->pricingTier ?? 'retail'),
                     'margin_pct_at_sale' => 0.00,
                     'below_margin_flag' => false,
-                    'is_custom' => $item['is_custom'] ?? false,
-                    'custom_item_name' => $item['is_custom'] ?? false ? $item['name'] : null,
-                    'custom_item_description' => $item['is_custom'] ?? false ? ($item['description'] ?? null) : null,
                 ];
                 
                 \Log::info('POS Checkout: Creating sale item with data', $saleItemData);
                 $saleItem = SaleItem::create($saleItemData);
                 \Log::info('POS Checkout: Sale item created with ID: ' . $saleItem->id);
 
-                if (! isset($item['is_custom']) || ! $item['is_custom']) {
-                    $product = Product::find($item['product_id']);
+                $product = Product::find($item['product_id']);
 
-                    if (! $product) {
-                        throw new \RuntimeException('Produk tidak ditemukan saat memproses penjualan.');
-                    }
+                if (! $product) {
+                    throw new \RuntimeException('Produk tidak ditemukan saat memproses penjualan.');
+                }
 
-                    $stockRow = ProductWarehouseStock::firstOrCreate(
-                        [
-                            'product_id' => $product->id,
-                            'warehouse_id' => $warehouse->id,
-                        ],
-                        [
-                            'stock_on_hand' => 0,
-                            'reserved_stock' => 0,
-                            'safety_stock' => 0,
-                        ]
-                    );
+                $stockRow = ProductWarehouseStock::firstOrCreate(
+                    [
+                        'product_id' => $product->id,
+                        'warehouse_id' => $warehouse->id,
+                    ],
+                    [
+                        'stock_on_hand' => 0,
+                        'reserved_stock' => 0,
+                        'safety_stock' => 0,
+                    ]
+                );
 
                     if ($stockRow->stock_on_hand < $item['quantity']) {
                         throw new \RuntimeException('Stok tidak mencukupi untuk produk "'.$product->name.'" di gudang '.$warehouse->name.'.');
@@ -725,7 +747,6 @@ class PosKasir extends Component
                     ]);
                     
                     \Log::info('POS Checkout: Stock movement created');
-                }
             }
 
             // Save payment breakdown to sale if columns exist
@@ -928,67 +949,7 @@ class PosKasir extends Component
         return Product::whereIn('id', $productIds)->get()->keyBy('id');
     }
 
-    /**
-     * Show custom item modal - DISABLED
-     */
-    public function showCustomItemModal()
-    {
-        $this->resetCustomItemForm();
-        $this->showCustomItemModal = true;
-    }
 
-    /**
-     * Hide custom item modal - DISABLED
-     */
-    public function hideCustomItemModal()
-    {
-        $this->showCustomItemModal = false;
-        $this->resetCustomItemForm();
-    }
-
-    /**
-     * Reset custom item form - DISABLED
-     */
-    public function resetCustomItemForm()
-    {
-        $this->customItemName = '';
-        $this->customItemDescription = '';
-        $this->customItemPrice = 0;
-        $this->customItemQuantity = 1;
-        $this->resetErrorBag(['customItemName', 'customItemDescription', 'customItemPrice', 'customItemQuantity']);
-    }
-
-    /**
-     * Add custom item to cart - DISABLED
-     */
-    public function addCustomItem()
-    {
-        $this->validate([
-            'customItemName' => 'required|string|max:255',
-            'customItemDescription' => 'nullable|string|max:500',
-            'customItemPrice' => 'required|numeric|min:0.01',
-            'customItemQuantity' => 'required|integer|min:1',
-        ]);
-
-        $cartKey = 'custom_' . uniqid();
-        $this->cart[$cartKey] = [
-            'is_custom' => true,
-            'name' => $this->customItemName,
-            'description' => $this->customItemDescription ?: null,
-            'price' => (float) $this->customItemPrice,
-            'base_cost' => 0,
-            'quantity' => (int) $this->customItemQuantity,
-            'available_stock' => PHP_INT_MAX, // not applicable
-            'pricing_tier' => 'custom',
-            'warehouse_id' => $this->warehouseId,
-        ];
-
-        $this->updateActiveTabFromCurrentProperties();
-        $this->calculateTotals();
-        $this->showCustomItemModal = false;
-        $this->resetCustomItemForm();
-        session()->flash('success', 'Item custom ditambahkan ke keranjang!');
-    }
 
     /**
      * Initialize tabs with first tab
@@ -1278,18 +1239,7 @@ class PosKasir extends Component
                     case 'paymentNotes':
                         $this->paymentNotes = $value;
                         break;
-                    case 'customItemName':
-                        $this->customItemName = $value;
-                        break;
-                    case 'customItemDescription':
-                        $this->customItemDescription = $value;
-                        break;
-                    case 'customItemPrice':
-                        $this->customItemPrice = $value;
-                        break;
-                    case 'customItemQuantity':
-                        $this->customItemQuantity = $value;
-                        break;
+
                 }
             }
         }

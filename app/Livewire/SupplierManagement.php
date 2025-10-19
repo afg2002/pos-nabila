@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Supplier;
+use App\Models\Supplier;
 use Livewire\Component;
 use Livewire\WithPagination;
 

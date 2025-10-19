@@ -1,5 +1,7 @@
+
+
 <?php $__env->startSection('content'); ?>
-<div class="h-screen">
+<div class="min-h-screen flex flex-col">
     <!-- Page Header -->
     <div class="bg-white border-b border-gray-200 px-6 py-4">
         <div class="flex items-center justify-between">
@@ -16,7 +18,7 @@
     </div>
 
     <!-- POS Interface -->
-    <div class="h-full">
+    <div class="flex-1 min-h-0 pb-24 md:pb-0">
         <?php
 $__split = function ($name, $params = []) {
     return [$name, $params];

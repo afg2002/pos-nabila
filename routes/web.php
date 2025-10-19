@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('welcome');
-})->name('home');
+})->name('welcome');
 
 // Test route for Alpine.js debugging
 Route::get('/test-alpine', App\Livewire\TestAlpine::class)->name('test.alpine');
@@ -66,6 +66,13 @@ Route::middleware(['auth', 'permission:pos.access'])->group(function () {
     Route::get('/pos', function () {
         return view('pos.index');
     })->name('pos.index');
+    
+    Route::get('/pos/kasir', App\Livewire\PosKasir::class)->name('pos.kasir');
+});
+
+// Kasir Management
+Route::middleware(['auth', 'permission:pos.access'])->group(function () {
+    Route::get('/kasir', App\Livewire\KasirManagement::class)->name('kasir.management');
 });
 
 // Capital Tracking Management

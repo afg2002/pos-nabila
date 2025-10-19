@@ -61,6 +61,8 @@
     .tab-button {
         color: #6b7280;
         background: transparent;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
     }
     
     .tab-button:hover {
@@ -73,6 +75,15 @@
         color: #2563eb;
         background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
         box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Mobile tap: prevent pure white flash when pressing tab buttons */
+    @media (hover: none) and (pointer: coarse) {
+        .tab-button:active {
+            color: #2563eb;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(147, 51, 234, 0.12)) !important;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.16) !important;
+        }
     }
     
     .tab-content {

@@ -1,0 +1,23 @@
+# Clear Laravel Cache Commands
+
+# Run these commands in your terminal to clear all caches:
+
+# 1. Clear application cache
+php artisan cache:clear
+
+# 2. Clear configuration cache
+php artisan config:clear
+
+# 3. Clear route cache
+php artisan route:clear
+
+# 4. Clear view cache
+php artisan view:clear
+
+# 5. Clear all caches at once
+php artisan optimize:clear
+
+# 6. Regenerate autoloader
+composer dump-autoload
+
+# After running these commands, the route should work properly.

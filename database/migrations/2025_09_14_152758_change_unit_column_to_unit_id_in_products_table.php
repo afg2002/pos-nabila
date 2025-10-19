@@ -17,7 +17,7 @@ return new class extends Migration
 
         if (! $runningTests) {
             // Create a default unit if it doesn't exist (non-testing environments)
-            $defaultUnit = \App\ProductUnit::firstOrCreate(
+            $defaultUnit = \App\Models\ProductUnit::firstOrCreate(
                 ['name' => 'Pieces'],
                 [
                     'abbreviation' => 'pcs',

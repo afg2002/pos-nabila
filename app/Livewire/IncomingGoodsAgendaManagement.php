@@ -2,11 +2,16 @@
 
 namespace App\Livewire;
 
-use App\IncomingGoodsAgenda;
-use App\ProductUnit;
+use App\Models\IncomingGoodsAgenda;
+use App\Models\ProductUnit;
 use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use App\Models\Supplier;
+use App\Models\Product;
+use App\Models\Warehouse;
 
 class IncomingGoodsAgendaManagement extends Component
 {
@@ -20,7 +25,7 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $description = '';
 
-    public $quantity = 1; // Set default value to 1
+    public $quantity = '';
     public $total_quantity = '';
 
     public $unit = '';
@@ -89,10 +94,17 @@ class IncomingGoodsAgendaManagement extends Component
 
     public $search = '';
 
-    // Supplier search properties
+    // Supplier search UI state
     public $supplierSearch = '';
+    public $showSupplierResults = false;
+    public $supplierSearchResults = [];
     public $showSupplierDropdown = false;
-    public $filteredSuppliers = [];
+
+    // Quantity unit search UI state (simplified mode)
+    public $quantityUnitSearch = '';
+    public $showQuantityUnitResults = false;
+    public $quantityUnitSearchResults = [];
+    public $showQuantityUnitDropdown = false;
 
     protected $rules = [
         // Simplified mode rules
@@ -120,6 +132,40 @@ class IncomingGoodsAgendaManagement extends Component
         'warehouse_id' => 'nullable|exists:warehouses,id',
         'product_id' => 'nullable|exists:products,id',
     ];
+
+    protected function rules()
+    {
+        $batchRule = $this->editingId
+            ? Rule::unique('incoming_goods_agenda', 'batch_number')->ignore($this->editingId)
+            : Rule::unique('incoming_goods_agenda', 'batch_number');
+
+        return [
+            // Simplified mode rules
+            'supplier_id' => 'required_if:input_mode,simplified|exists:suppliers,id',
+            'supplier_name' => 'required_if:input_mode,detailed|string|max:255',
+            'total_quantity' => 'required_if:input_mode,simplified|numeric|min:0.01',
+            'quantity_unit' => 'required_if:input_mode,simplified|string|max:50',
+            'total_purchase_amount' => 'required_if:input_mode,simplified|numeric|min:0.01',
+            
+            // Detailed mode rules
+            'goods_name' => 'required_if:input_mode,detailed|string|max:255',
+            'quantity' => 'required_if:input_mode,detailed|integer|min:1',
+            'unit_id' => 'required_if:input_mode,detailed|exists:product_units,id',
+            'unit_price' => 'required_if:input_mode,detailed|numeric|min:0',
+            
+            // Common rules
+            'description' => 'nullable|string|max:500',
+            'scheduled_date' => 'required|date|after_or_equal:today',
+            'payment_due_date' => 'required|date|after_or_equal:scheduled_date',
+            'batch_number' => ['nullable','string','max:50', $batchRule],
+            'expired_date' => 'nullable|date|after:scheduled_date',
+            'notes' => 'nullable|string|max:1000',
+            'contact_person' => 'nullable|string|max:255',
+            'phone_number' => 'nullable|string|max:20',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'product_id' => 'nullable|exists:products,id',
+        ];
+    }
 
     protected $messages = [
         // Simplified mode messages
@@ -222,9 +268,9 @@ class IncomingGoodsAgendaManagement extends Component
             ->paginate(10);
 
         $productUnits = ProductUnit::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get();
-        $warehouses = \App\Warehouse::orderBy('name')->get();
-        $products = \App\Product::where('is_active', true)->orderBy('name')->get();
-        $suppliers = \App\Supplier::where('is_active', true)->orderBy('name')->get();
+        $warehouses = Warehouse::orderBy('name')->get();
+        $products = Product::where('is_active', true)->orderBy('name')->get();
+        $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
 
         // Get statistics
         $this->totalAgendas = IncomingGoodsAgenda::count();
@@ -284,6 +330,15 @@ class IncomingGoodsAgendaManagement extends Component
             'overduePaymentCount' => $overduePaymentCount,
             'calendarData' => $calendarData,
             'editingId' => $this->editingId,
+            // Ensure these Livewire state variables are explicitly available in Blade to avoid undefined variable errors
+            'showSupplierResults' => $this->showSupplierResults,
+            'showSupplierDropdown' => $this->showSupplierDropdown,
+            'supplierSearchResults' => $this->supplierSearchResults,
+            'supplierSearch' => $this->supplierSearch,
+            'showQuantityUnitResults' => $this->showQuantityUnitResults,
+            'showQuantityUnitDropdown' => $this->showQuantityUnitDropdown,
+            'quantityUnitSearchResults' => $this->quantityUnitSearchResults,
+            'quantityUnitSearch' => $this->quantityUnitSearch,
         ]);
     }
 
@@ -329,7 +384,7 @@ class IncomingGoodsAgendaManagement extends Component
         $this->supplier_id = '';
         $this->goods_name = '';
         $this->description = '';
-        $this->quantity = 1; // Set default value to 1
+        $this->quantity = '';
         $this->total_quantity = '';
         $this->unit = '';
         $this->quantity_unit = '';
@@ -348,17 +403,43 @@ class IncomingGoodsAgendaManagement extends Component
         $this->product_id = '';
         $this->input_mode = 'simplified';
         $this->editingId = null;
-        
-        // Reset supplier search properties
+
+        // Clear supplier search UI
         $this->supplierSearch = '';
+        $this->supplierSearchResults = [];
         $this->showSupplierDropdown = false;
-        $this->filteredSuppliers = [];
-        
+        $this->showSupplierResults = false;
+
+        // Clear quantity unit search UI
+        $this->quantityUnitSearch = '';
+        $this->quantityUnitSearchResults = [];
+        $this->showQuantityUnitDropdown = false;
+        $this->showQuantityUnitResults = false;
+
         $this->resetErrorBag();
     }
 
     public function save()
     {
+        // Normalize empty string fields to null for correct 'nullable' behavior
+        if ($this->batch_number === '') {
+            $this->batch_number = null;
+        }
+
+        // Auto-detect input mode if user filled detailed fields without switching
+        $autoDetailed = (!empty($this->goods_name))
+            || (!empty($this->unit_id))
+            || ((string)$this->unit_price !== '' && (float)$this->unit_price > 0)
+            || ((string)$this->quantity !== '' && (float)$this->quantity > 0);
+        $autoSimplified = ((string)$this->total_purchase_amount !== '' && (float)$this->total_purchase_amount > 0)
+            || ((string)$this->total_quantity !== '' && (float)$this->total_quantity > 0)
+            || (!empty($this->quantity_unit));
+        if ($this->input_mode !== 'detailed' && $autoDetailed) {
+            $this->input_mode = 'detailed';
+        } elseif ($this->input_mode !== 'simplified' && $autoSimplified && !$autoDetailed) {
+            $this->input_mode = 'simplified';
+        }
+
         $this->validate();
 
         // For detailed mode, calculate total
@@ -375,7 +456,7 @@ class IncomingGoodsAgendaManagement extends Component
                 'notes' => $this->notes,
                 'warehouse_id' => $this->warehouse_id ?: null,
                 'product_id' => $this->product_id ?: null,
-                'input_mode' => $this->input_mode,  // Add input_mode to data
+                'input_mode' => $this->input_mode,
             ];
 
             if ($this->input_mode === 'simplified') {
@@ -387,8 +468,16 @@ class IncomingGoodsAgendaManagement extends Component
                 $data['total_purchase_amount'] = $this->total_purchase_amount;
                 $data['goods_name'] = 'Barang Various'; // Default for simplified mode
                 $data['description'] = 'Input sederhana - total barang';
+
+                // Clear detailed-only fields
+                $data['quantity'] = null;
+                $data['unit'] = null;
+                $data['unit_id'] = null;
+                $data['unit_price'] = null;
+                $data['total_amount'] = null;
             } else {
                 // Detailed mode data
+                $data['supplier_id'] = $this->supplier_id;
                 $data['supplier_name'] = $this->supplier_name;
                 $data['goods_name'] = $this->goods_name;
                 $data['description'] = $this->description;
@@ -399,6 +488,11 @@ class IncomingGoodsAgendaManagement extends Component
                 $data['total_amount'] = $this->total_amount;
                 $data['contact_person'] = $this->contact_person;
                 $data['phone_number'] = $this->phone_number;
+
+                // Clear simplified-only fields to prevent is_simplified from remaining true after switching modes
+                $data['total_purchase_amount'] = null;
+                $data['total_quantity'] = null;
+                $data['quantity_unit'] = null;
 
                 // Get unit name from selected ProductUnit
                 if ($this->unit_id) {
@@ -457,13 +551,61 @@ class IncomingGoodsAgendaManagement extends Component
             $this->phone_number = $agenda->phone_number;
         }
         
-        $this->scheduled_date = $agenda->scheduled_date->format('Y-m-d');
-        $this->payment_due_date = $agenda->payment_due_date->format('Y-m-d');
-        $this->batch_number = $agenda->batch_number;
-        $this->expired_date = $agenda->expired_date ? $agenda->expired_date->format('Y-m-d') : null;
+        // Prefill supplier & unit search UI
+        $this->supplierSearch = $this->input_mode === 'simplified'
+            ? ($agenda->effective_supplier_name ?? '')
+            : ($agenda->supplier_name ?? '');
+        $this->showSupplierDropdown = false;
+        $this->showSupplierResults = false;
+
+        $this->quantityUnitSearch = $this->input_mode === 'simplified'
+            ? ($agenda->quantity_unit ?? '')
+            : (($agenda->productUnit->name ?? ''));
+
+        $this->scheduled_date = $agenda->scheduled_date
+            ? (\is_object($agenda->scheduled_date) && method_exists($agenda->scheduled_date, 'format')
+                ? $agenda->scheduled_date->format('Y-m-d')
+                : \Carbon\Carbon::parse($agenda->scheduled_date)->format('Y-m-d'))
+            : '';
+
+        $this->payment_due_date = $agenda->payment_due_date
+            ? (\is_object($agenda->payment_due_date) && method_exists($agenda->payment_due_date, 'format')
+                ? $agenda->payment_due_date->format('Y-m-d')
+                : \Carbon\Carbon::parse($agenda->payment_due_date)->format('Y-m-d'))
+            : '';
+
+        $this->batch_number = $agenda->batch_number ?? '';
+
+        $this->expired_date = $agenda->expired_date
+            ? (\is_object($agenda->expired_date) && method_exists($agenda->expired_date, 'format')
+                ? $agenda->expired_date->format('Y-m-d')
+                : \Carbon\Carbon::parse($agenda->expired_date)->format('Y-m-d'))
+            : '';
+
         $this->notes = $agenda->notes;
         $this->warehouse_id = $agenda->warehouse_id;
         $this->product_id = $agenda->product_id;
+        
+        // Debug: log prefilled values to help diagnose UI not showing
+        logger()->info('[IncomingGoodsAgendaManagement@edit] Prefill values', [
+            'editingId' => $this->editingId,
+            'input_mode' => $this->input_mode,
+            'supplier_id' => $this->supplier_id,
+            'supplier_name' => $this->supplier_name,
+            'quantity' => $this->quantity,
+            'total_quantity' => $this->total_quantity,
+            'unit' => $this->unit,
+            'quantity_unit' => $this->quantity_unit,
+            'unit_id' => $this->unit_id,
+            'unit_price' => $this->unit_price,
+            'total_amount' => $this->total_amount,
+            'total_purchase_amount' => $this->total_purchase_amount,
+            'scheduled_date' => $this->scheduled_date,
+            'payment_due_date' => $this->payment_due_date,
+            'batch_number' => $this->batch_number,
+            'expired_date' => $this->expired_date,
+        ]);
+        
         $this->showModal = true;
     }
 
@@ -548,44 +690,113 @@ class IncomingGoodsAgendaManagement extends Component
         $this->resetPage();
     }
 
-    // Supplier search methods
-    public function updatedSupplierSearch()
+    // Supplier search handlers
+    public function updatedSupplierSearch($value)
     {
-        if (strlen($this->supplierSearch) >= 2) {
-            $this->filteredSuppliers = \App\Supplier::where('is_active', true)
-                ->where('name', 'like', '%' . $this->supplierSearch . '%')
-                ->orderBy('name')
-                ->limit(10)
-                ->get();
-            $this->showSupplierDropdown = true;
-        } else {
-            $this->filteredSuppliers = [];
-            $this->showSupplierDropdown = false;
+        $this->supplierSearch = $value;
+        $this->showSupplierDropdown = false;
+        $this->showSupplierResults = true;
+
+        $search = trim($value ?? '');
+        if ($search === '' || strlen($search) < 2) {
+            $this->supplierSearchResults = [];
+            return;
         }
+
+        $this->supplierSearchResults = Supplier::where('is_active', true)
+            ->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('email', 'like', "%$search%")
+                  ->orWhere('phone', 'like', "%$search%");
+            })
+            ->orderBy('name')
+            ->limit(10)
+            ->get()
+            ->all();
     }
 
-    public function selectSupplier($supplierId, $supplierName)
+    public function toggleSupplierDropdown()
     {
-        $this->supplier_name = $supplierName;
-        $this->supplierSearch = $supplierName;
-        $this->showSupplierDropdown = false;
-        $this->filteredSuppliers = [];
+        // Show dropdown listing all suppliers when no search text
+        $this->showSupplierDropdown = !$this->showSupplierDropdown;
+        if ($this->showSupplierDropdown) {
+            $this->showSupplierResults = false;
+        }
     }
 
     public function clearSupplierSearch()
     {
         $this->supplierSearch = '';
-        $this->supplier_name = '';
+        $this->supplierSearchResults = [];
         $this->showSupplierDropdown = false;
-        $this->filteredSuppliers = [];
+        $this->showSupplierResults = false;
     }
 
-    public function toggleSupplierDropdown()
+    public function selectSupplier($supplierId)
     {
-        if ($this->showSupplierDropdown) {
-            $this->showSupplierDropdown = false;
-        } else {
-            $this->updatedSupplierSearch();
+        $supplier = Supplier::find($supplierId);
+        if ($supplier) {
+            $this->supplier_id = $supplier->id;
+            $this->supplier_name = $supplier->name ?? '';
+            $this->supplierSearch = $supplier->name ?? '';
         }
+        $this->showSupplierDropdown = false;
+        $this->showSupplierResults = false;
+    }
+
+    // Quantity unit search handlers (simplified mode)
+    public function updatedQuantityUnitSearch($value)
+    {
+        $this->quantityUnitSearch = $value;
+        $this->showQuantityUnitDropdown = false;
+        $this->showQuantityUnitResults = true;
+
+        $search = trim($value ?? '');
+        if ($search === '' || strlen($search) < 1) {
+            $this->quantityUnitSearchResults = [];
+            return;
+        }
+
+        $this->quantityUnitSearchResults = ProductUnit::where('is_active', true)
+            ->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                  ->orWhere('abbreviation', 'like', "%$search%");
+            })
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->limit(10)
+            ->get()
+            ->all();
+    }
+
+    public function toggleQuantityUnitDropdown()
+    {
+        // Show dropdown listing all product units when no search text
+        $this->showQuantityUnitDropdown = !$this->showQuantityUnitDropdown;
+        if ($this->showQuantityUnitDropdown) {
+            $this->showQuantityUnitResults = false;
+        }
+    }
+
+    public function clearQuantityUnitSearch()
+    {
+        $this->quantityUnitSearch = '';
+        $this->quantityUnitSearchResults = [];
+        $this->showQuantityUnitDropdown = false;
+        $this->showQuantityUnitResults = false;
+    }
+
+    public function selectQuantityUnit($unitId)
+    {
+        $unit = ProductUnit::find($unitId);
+        if ($unit) {
+            // Simplified mode uses plain text unit name
+            $this->quantity_unit = $unit->name ?? '';
+            // Detailed mode also sets unit_id
+            $this->unit_id = $unit->id;
+            $this->quantityUnitSearch = $unit->name ?? '';
+        }
+        $this->showQuantityUnitDropdown = false;
+        $this->showQuantityUnitResults = false;
     }
 }

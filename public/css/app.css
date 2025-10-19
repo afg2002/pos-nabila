@@ -115,3 +115,38 @@ a, button, [role="button"] {
     color: inherit !important;
   }
 }
+
+/* Mobile tap highlight & hover neutralization already present above */
+
+/* Mobile active state: prevent pure white flash on elements with bg-white */
+@media (hover: none) and (pointer: coarse) {
+  .bg-white:active {
+    background-color: #f8fafc !important; /* Tailwind gray-50 */
+  }
+  /* Avoid bright white flash on links/buttons when pressed */
+  a:active,
+  button:active,
+  [role="button"]:active {
+    background-color: transparent; /* keep original gradient/parent bg */
+    filter: brightness(0.98);
+  }
+}
+
+/* Mobile coarse pointer: soften pure-white gradients to avoid flash */
+@media (hover: none) and (pointer: coarse) {
+  .to-white { --tw-gradient-to: rgb(248 250 252 / 1) !important; }
+  .from-white { --tw-gradient-from: rgb(248 250 252 / 1) !important; }
+  .via-white { --tw-gradient-via: rgb(248 250 252 / 1) !important; }
+  /* Also reduce hover effect on white backgrounds */
+  .bg-white:hover { background-color: #f8fafc !important; }
+}
+
+/* Match your observed breakpoint: under 1107px width, reduce white intensity */
+@media (max-width: 1107px) {
+  .bg-white { background-color: #f8fafc !important; }
+  .to-white { --tw-gradient-to: rgb(248 250 252 / 1) !important; }
+  .from-white { --tw-gradient-from: rgb(248 250 252 / 1) !important; }
+  .via-white { --tw-gradient-via: rgb(248 250 252 / 1) !important; }
+  /* Neutralize hover-based white on narrow screens */
+  .hover\:bg-white:hover { background-color: transparent !important; }
+}

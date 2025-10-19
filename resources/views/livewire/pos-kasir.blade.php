@@ -90,13 +90,41 @@
                 </div>
 
                 <!-- Warehouse Info -->
-                <div class="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <h3 class="text-sm font-medium text-blue-900">Gudang Aktif</h3>
-                            <p class="text-sm text-blue-700">{{ $selectedWarehouse ?: 'Pilih Gudang' }}</p>
+                <div class="mb-6">
+                    <div class="p-4 lg:p-5 rounded-xl border border-gray-200 bg-white">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-start space-x-3">
+                                <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                                    <i class="fas fa-warehouse"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h3 class="text-sm font-semibold text-gray-900">Gudang Aktif</h3>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700" title="POS terkunci ke stok Toko">
+                                            <i class="fas fa-lock"></i>
+                                            <span>Toko</span>
+                                        </span>
+                                    </div>
+                                    <p class="mt-1 text-sm text-gray-900 font-medium">{{ $activeWarehouseName ?? 'Toko Utama' }}</p>
+                                    <div class="mt-1 text-xs text-gray-600">
+                                        <span>{{ $activeWarehouseTypeLabel ?? 'Toko' }}</span>
+                                        @if(!empty($activeWarehouseCode))
+                                            <span class="mx-1">•</span>
+                                            <span>Kode: {{ $activeWarehouseCode }}</span>
+                                        @endif
+                                    </div>
+                                    @if(!empty($activeWarehouseAddress))
+                                        <div class="mt-1 text-xs text-gray-600">{{ $activeWarehouseAddress }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="px-3 py-1.5 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-700 inline-flex items-center gap-1">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>Stok POS: Toko saja</span>
+                                </span>
+                            </div>
                         </div>
-                        <i class="fas fa-warehouse text-blue-500"></i>
                     </div>
                 </div>
 
@@ -122,16 +150,7 @@
                     <p class="text-xs text-gray-500 mt-2">Ketik minimal 1 huruf untuk mulai mencari.</p>
                 </div>
                 
-                <!-- Custom Item Button -->
-                <div>
-                    <button type="button"
-                            wire:click="showCustomItemModal"
-                            class="w-full bg-green-600 text-white font-medium py-3 px-4 rounded-lg hover:bg-green-700 flex items-center justify-center transition-colors">
-                        <i class="fas fa-plus mr-2"></i>
-                        Tambah Item Custom
-                    </button>
-                    <p class="text-xs text-gray-500 mt-2">Gunakan untuk menjual jasa/produk tanpa SKU</p>
-                </div>
+
             </div>
 
             <!-- Product Grid -->
@@ -141,10 +160,10 @@
                 @endif
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     @foreach($products as $product)
-                        <div class="product-card relative bg-gray-50 rounded-lg p-4 hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200 hover:border-blue-300"
+                        <div class="product-card relative bg-white rounded-xl p-4 border border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all"
                              wire:click="addToCart({{ $product->id }})">
                             <!-- Product Image -->
-                            <div class="w-full h-28 mb-3 bg-gray-200 rounded-lg overflow-hidden">
+                            <div class="w-full h-28 mb-3 bg-gray-100 rounded-lg overflow-hidden">
                                 <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
                                      alt="{{ $product ? $product->name : 'No Product' }}"
                                      class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
@@ -153,8 +172,8 @@
                             </div>
                             
                             <div class="text-sm font-medium text-gray-900 truncate mb-1">{{ $product ? $product->name : 'No Product' }}</div>
-                            <div class="text-sm font-semibold text-blue-600 mt-2">
-                                <div class="font-bold text-base">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</div>
+                            <div class="mt-2">
+                                <div class="font-semibold text-gray-900 text-base">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</div>
                             </div>
                             <div class="text-xs text-gray-500 mt-2">
                                 @php
@@ -236,16 +255,7 @@
                     
                     <!-- Actions: Custom Item + Clear Cart -->
                     <div class="flex items-center space-x-2">
-                        <!-- Add Custom Item (accessible dari panel kanan) -->
-                        <button type="button"
-                                wire:click="showCustomItemModal"
-                                class="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
-                                title="Tambah Item Custom">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            <span class="ml-1 hidden sm:inline">Item Custom</span>
-                        </button>
+
                         
                         <!-- Clear Cart Button -->
                         @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
@@ -306,49 +316,36 @@
                 @else
                     <div class="p-4 lg:p-6 space-y-4">
                         @foreach(($carts[$activeTabId]['cart'] ?? []) as $key => $item)
-                            <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="bg-white border border-gray-200 rounded-xl p-4">
                                 <div class="flex items-start justify-between">
                                     <div class="flex items-start space-x-3 flex-1">
                                         <!-- Product Image -->
-                                        <div class="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                            @if(isset($item['is_custom']) && $item['is_custom'])
-                                                <!-- Custom item icon -->
-                                                <div class="w-full h-full flex items-center justify-center bg-green-100">
-                                                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                                    </svg>
-                                                </div>
-                                            @else
-                                                @php
-                                                    $product = $cartProducts->get($item['product_id']);
-                                                    $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
-                                                @endphp
-                                                <img src="{{ $photoUrl }}" 
-                                                     alt="{{ $item['name'] }}"
-                                                     class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                                     onclick="openImageModal('{{ $photoUrl }}', '{{ $item['name'] }}')"
-                                                     onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
-                                            @endif
+                                        <div class="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                            @php
+                                                $product = $cartProducts->get($item['product_id']);
+                                                $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
+                                            @endphp
+                                            <img src="{{ $photoUrl }}" 
+                                                 alt="{{ $item['name'] }}"
+                                                 class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                                                 onclick="openImageModal('{{ $photoUrl }}', '{{ $item['name'] }}')"
+                                                 onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
                                         </div>
                                         
                                         <div class="flex-1">
                                             <h4 class="font-medium text-gray-900">{{ $item['name'] }}</h4>
-                                            @if(isset($item['is_custom']) && $item['is_custom'])
-                                                <p class="text-sm text-green-600">Item Custom</p>
-                                            @else
-                                                <p class="text-sm text-gray-500">{{ $item['sku'] }}</p>
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    @php
-                                                        $selectedWarehouseStock = 0;
-                                                        if (! empty($warehouseId) && $product) {
-                                                            $selectedWarehouseStock = \App\ProductWarehouseStock::where('product_id', $product->id)
-                                                                ->where('warehouse_id', $warehouseId)
-                                                                ->value('stock_on_hand') ?? 0;
-                                                        }
-                                                    @endphp
-                                                    Stok gudang (Toko Utama): {{ number_format($selectedWarehouseStock) }}
-                                                </div>
-                                            @endif
+                                            <p class="text-sm text-gray-500">{{ $item['sku'] }}</p>
+                                            <div class="text-xs text-gray-500 mt-1">
+                                                @php
+                                                    $selectedWarehouseStock = 0;
+                                                    if (! empty($warehouseId) && $product) {
+                                                        $selectedWarehouseStock = \App\ProductWarehouseStock::where('product_id', $product->id)
+                                                            ->where('warehouse_id', $warehouseId)
+                                                            ->value('stock_on_hand') ?? 0;
+                                                    }
+                                                @endphp
+                                                Stok gudang (Toko Utama): {{ number_format($selectedWarehouseStock) }}
+                                            </div>
                                         </div>
                                     </div>
                                     <button wire:click="removeFromCart('{{ $key }}')"
@@ -368,16 +365,12 @@
                                             <input type="number" 
                                                    wire:change="updateQuantity('{{ $key }}', $event.target.value)"
                                                    value="{{ $item['quantity'] }}"
-                                                   min="1" 
-                                                   @if(!isset($item['is_custom']) || !$item['is_custom'])
-                                                       max="{{ $item['available_stock'] }}"
-                                                   @endif
+                                                   min="1"
+                                                   max="{{ $item['available_stock'] }}"
                                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         </div>
                                         
-                                        <!-- Price Type Selector (only for regular products, not custom items) -->
-                                        @if(!isset($item['is_custom']) || !$item['is_custom'])
-                                            <div>
+                                        <div>
                                                 <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
                                                 <select wire:change="updateItemPriceType('{{ $key }}', $event.target.value)"
                                                         class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -405,18 +398,9 @@
                                                     @endif
                                                 </div>
                                             </div>
-                                        @else
-                                            <!-- Custom Item Price Display -->
-                                            <div>
-                                                <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
-                                                <div class="px-3 py-2 text-sm bg-green-50 border border-green-200 rounded-lg">
-                                                    <span class="text-green-600 font-medium">Item Custom</span>
-                                                </div>
-                                            </div>
-                                        @endif
                                         
-                                        <!-- Custom Price Input (only show for custom price type on regular products) -->
-                                        @if((!isset($item['is_custom']) || !$item['is_custom']) && $item['pricing_tier'] === 'custom')
+                                        <!-- Custom Price Input -->
+                                        @if($item['pricing_tier'] === 'custom')
                                             <div class="col-span-2">
                                                 <label class="block text-xs font-medium text-gray-700 mb-1">Harga Custom</label>
                                                 <input type="number" 
@@ -430,21 +414,17 @@
                                 </details>
                                 
                                 <div class="flex justify-between items-center">
-                                    @if(isset($item['is_custom']) && $item['is_custom'])
-                                        <span class="text-xs text-green-600 font-medium">Item Custom</span>
-                                    @else
-                                        <div class="text-xs text-gray-500">
-                                            <div>Stok: {{ $item['available_stock'] }}</div>
-                                            @php
-                                                $product = \App\Product::find($item['product_id']);
-                                                $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
-                                                $profit = ($item['price'] - $costPrice) * $item['quantity'];
-                                                $margin = $costPrice > 0 ? (($item['price'] - $costPrice) / $item['price']) * 100 : 0;
-                                            @endphp
-                                            <div class="text-orange-600">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
-                                            <div class="text-green-600">Profit: Rp {{ number_format($profit, 0, ',', '.') }} ({{ number_format($margin, 1) }}%)</div>
-                                        </div>
-                                    @endif
+                                    <div class="text-xs text-gray-500">
+                                        <div>Stok: {{ $item['available_stock'] }}</div>
+                                        @php
+                                            $product = \App\Product::find($item['product_id']);
+                                            $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
+                                            $profit = ($item['price'] - $costPrice) * $item['quantity'];
+                                            $margin = $costPrice > 0 ? (($item['price'] - $costPrice) / $item['price']) * 100 : 0;
+                                        @endphp
+                                        <div class="text-orange-600">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
+                                        <div class="text-green-600">Profit: Rp {{ number_format($profit, 0, ',', '.') }} ({{ number_format($margin, 1) }}%)</div>
+                                    </div>
                                     <div class="text-right">
                                         <div class="text-xs text-gray-500">
                                             {{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
@@ -473,14 +453,12 @@
                             $totalCost = 0;
                             $totalProfit = 0;
                             foreach(($carts[$activeTabId]['cart'] ?? []) as $item) {
-                                if (!isset($item['is_custom']) || !$item['is_custom']) {
-                                    $product = \App\Product::find($item['product_id']);
-                                    $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
-                                    $itemCost = $costPrice * $item['quantity'];
-                                    $itemProfit = ($item['price'] - $costPrice) * $item['quantity'];
-                                    $totalCost += $itemCost;
-                                    $totalProfit += $itemProfit;
-                                }
+                                $product = \App\Product::find($item['product_id']);
+                                $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
+                                $itemCost = $costPrice * $item['quantity'];
+                                $itemProfit = ($item['price'] - $costPrice) * $item['quantity'];
+                                $totalCost += $itemCost;
+                                $totalProfit += $itemProfit;
                             }
                             $profitMargin = $subtotal > 0 ? ($totalProfit / $subtotal) * 100 : 0;
                         @endphp
@@ -567,7 +545,7 @@
                     </div>
                     
                     <!-- Summary -->
-                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
                         <div class="flex justify-between text-sm mb-2">
                             <span>Total:</span>
                             <span class="font-semibold">Rp {{ number_format($total, 0, ',', '.') }}</span>
@@ -637,7 +615,7 @@
                     @foreach($lastSale->saleItems as $item)
                         <div class="flex justify-between text-sm mb-1">
                             <div class="flex-1">
-                                <div>{{ $item->is_custom ? $item->custom_item_name : (optional($item->product)->name ?? '-') }}</div>
+                                <div>{{ optional($item->product)->name ?? ($item->custom_item_name ?? '-') }}</div>
                                 <div class="text-xs text-gray-500">
                                     {{ $item->qty }} x Rp {{ number_format($item->unit_price, 0, ',', '.') }}
                                 </div>
@@ -969,44 +947,6 @@
         }
     </script>
 
-    <!-- Custom Item Modal -->
-    @if($showCustomItemModal)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-                <h3 class="text-lg font-semibold mb-4">Tambah Item Custom</h3>
-                <form wire:submit.prevent="addCustomItem">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Item</label>
-                            <input type="text" wire:model="customItemName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            @error('customItemName') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Deskripsi (opsional)</label>
-                            <textarea wire:model="customItemDescription" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                            @error('customItemDescription') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Harga</label>
-                                <input type="number" wire:model="customItemPrice" min="0.01" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                @error('customItemPrice') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah</label>
-                                <input type="number" wire:model="customItemQuantity" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                @error('customItemQuantity') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex space-x-3 mt-6">
-                        <button type="button" wire:click="hideCustomItemModal" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">Batal</button>
-                        <button type="submit" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Tambah</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
 
     <script>
         function focusProductSearch() {

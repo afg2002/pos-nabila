@@ -49,7 +49,7 @@ class StockHistoryTest extends TestCase
         ]);
 
         // Create test product unit first
-        $productUnit = \App\ProductUnit::create([
+        $productUnit = \App\Models\ProductUnit::create([
             'name' => 'Pcs',
             'symbol' => 'pcs',
             'abbreviation' => 'pcs'

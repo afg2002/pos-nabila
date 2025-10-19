@@ -2,9 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\IncomingGoodsAgenda;
 use App\Sale;
 use App\CashLedger;
-use App\IncomingGoodsAgenda;
+use App\Models\IncomingGoodsAgenda;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 

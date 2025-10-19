@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Login - POS Nabila</title>
     <meta name="description" content="Masuk ke sistem Point of Sale POS Nabila">
-    <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <link href="<?php echo e(asset('css/app.css')); ?>" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -201,23 +201,23 @@
             
             <!-- Login Form Card -->
             <div class="glass-effect rounded-3xl shadow-2xl p-8 fade-in">
-                @if ($errors->any())
+                <?php if($errors->any()): ?>
                     <div class="rounded-xl bg-red-50 border border-red-200 p-4 mb-6 scale-in">
                         <div class="flex items-center">
                             <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <div class="text-sm text-red-700">
-                                @foreach ($errors->all() as $error)
-                                    <p>{{ $error }}</p>
-                                @endforeach
+                                <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <p><?php echo e($error); ?></p>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </div>
                         </div>
                     </div>
-                @endif
+                <?php endif; ?>
 
-                <form class="space-y-6" method="POST" action="{{ route('login') }}">
-                    @csrf
+                <form class="space-y-6" method="POST" action="<?php echo e(route('login')); ?>">
+                    <?php echo csrf_field(); ?>
                     
                     <!-- Email Field -->
                     <div>
@@ -232,7 +232,7 @@
                             </div>
                             <input id="email" name="email" type="email" autocomplete="email" required 
                                    class="input-field block w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                   placeholder="Masukkan email Anda" value="{{ old('email') }}">
+                                   placeholder="Masukkan email Anda" value="<?php echo e(old('email')); ?>">
                         </div>
                     </div>
 
@@ -264,19 +264,19 @@
                         <div class="flex items-center">
                             <input id="remember" name="remember" type="checkbox" 
                                    class="checkbox-custom h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                   {{ old('remember') ? 'checked' : '' }}>
+                                   <?php echo e(old('remember') ? 'checked' : ''); ?>>
                             <label for="remember" class="ml-2 block text-sm text-gray-700">
                                 Ingat saya
                             </label>
                         </div>
 
-                        @if (Route::has('password.request'))
+                        <?php if(Route::has('password.request')): ?>
                             <div class="text-sm">
-                                <a href="{{ route('password.request') }}" class="font-medium text-blue-600 hover:text-blue-500 transition duration-300 ease-in-out">
+                                <a href="<?php echo e(route('password.request')); ?>" class="font-medium text-blue-600 hover:text-blue-500 transition duration-300 ease-in-out">
                                     Lupa kata sandi?
                                 </a>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
 
                     <!-- Sign In Button -->
@@ -352,7 +352,7 @@
 
                 <!-- Back to Home -->
                 <div class="text-center mt-6">
-                    <a href="{{ route('welcome') }}" class="text-blue-200 hover:text-white text-sm transition duration-300 ease-in-out flex items-center justify-center">
+                    <a href="<?php echo e(route('welcome')); ?>" class="text-blue-200 hover:text-white text-sm transition duration-300 ease-in-out flex items-center justify-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-10M7 15h3a1 1 0 001-1h3a1 1 0 001-1h3"></path>
                         </svg>
@@ -366,7 +366,7 @@
     <!-- Footer -->
     <div class="absolute bottom-0 left-0 right-0 text-center p-6">
         <p class="text-blue-100 text-sm">
-            © {{ date('Y') }} POS Nabila. Semua hak cipta dilindungi.
+            © <?php echo e(date('Y')); ?> POS Nabila. Semua hak cipta dilindungi.
         </p>
     </div>
 
@@ -433,3 +433,4 @@
     </script>
 </body>
 </html>
+<?php /**PATH C:\laragon\www\laravel_livewire_RBAC_boilerplate\resources\views/auth/login.blade.php ENDPATH**/ ?>

@@ -4,84 +4,55 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
-use App\Domains\User\Models\User;
+use App\Models\User;
 
 class Sale extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'sale_number',
         'cashier_id',
+        'status',
         'subtotal',
+        'tax_amount',
+        'total_amount',
+        'payment_amount',
         'discount_total',
         'final_total',
         'payment_method',
         'payment_notes',
-        'status'
+        // Allow persisting of payment status (PAID, PARTIAL, UNPAID)
+        'payment_status',
+        // Optional notes column if present in schema
+        'notes',
+        // Payment breakdown fields may be set after creation
+        'cash_amount',
+        'qr_amount',
+        'edc_amount',
+        'change_amount',
     ];
 
     protected $casts = [
         'subtotal' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
+        'total_amount' => 'decimal:2',
+        'payment_amount' => 'decimal:2',
         'discount_total' => 'decimal:2',
-        'final_total' => 'decimal:2'
+        'final_total' => 'decimal:2',
+        'cash_amount' => 'decimal:2',
+        'qr_amount' => 'decimal:2',
+        'edc_amount' => 'decimal:2',
+        'change_amount' => 'decimal:2',
     ];
 
-    // Relasi ke cashier (user)
-    public function cashier(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'cashier_id');
-    }
-
-    // Relasi ke sale items
-    public function saleItems(): HasMany
+    public function saleItems()
     {
         return $this->hasMany(SaleItem::class);
     }
 
-    // Method untuk kalkulasi subtotal dari items
-    public function calculateSubtotal()
+    public function cashier()
     {
-        return $this->saleItems->sum(function($item) {
-            return $item->qty * $item->unit_price;
-        });
-    }
-
-    // Method untuk kalkulasi final total
-    public function calculateFinalTotal()
-    {
-        return $this->subtotal - $this->discount_total;
-    }
-
-    // Scope untuk filter berdasarkan status
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    // Scope untuk filter berdasarkan cashier
-    public function scopeByCashier($query, $cashierId)
-    {
-        return $query->where('cashier_id', $cashierId);
-    }
-
-    // Scope untuk filter berdasarkan tanggal
-    public function scopeByDateRange($query, $startDate, $endDate)
-    {
-        return $query->whereBetween('created_at', [$startDate, $endDate]);
-    }
-
-    // Method untuk mendapatkan penjualan hari ini
-    public static function todaySales()
-    {
-        return self::whereDate('created_at', today())->byStatus('PAID');
-    }
-
-    // Method untuk mendapatkan total penjualan hari ini
-    public static function todayTotal()
-    {
-        return self::todaySales()->sum('final_total');
+        return $this->belongsTo(User::class, 'cashier_id');
     }
 }
