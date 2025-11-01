@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Login - POS Nabila</title>
-    <meta name="description" content="Masuk ke sistem Point of Sale POS Nabila">
+    <title>Login - {{ config('app.name', 'Toko Segar') }}</title>
+    <meta name="description" content="Masuk ke sistem Point of Sale {{ config('app.name', 'Toko Segar') }}">
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,196 +15,117 @@
             font-family: 'Inter', sans-serif;
         }
         
-        body {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
-            min-height: 100vh;
+        .hero-gradient {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
         }
         
-        .gradient-bg {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
-            position: relative;
-            overflow-x: hidden; /* izinkan scroll vertikal */
-            overflow-y: auto;   /* perbaiki masalah scroll */
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
         
-        .glass-effect {
-            backdrop-filter: blur(20px);
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
-        .glass-dark {
-            backdrop-filter: blur(20px);
-            background: rgba(30, 58, 138, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .loading .loading-spinner {
+            display: inline-block;
         }
         
-        .floating-animation {
-            animation: float 6s ease-in-out infinite;
+        .loading .btn-text {
+            display: none;
         }
         
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            25% { transform: translateY(-10px) rotate(1deg); }
-            50% { transform: translateY(-20px) rotate(0deg); }
-            75% { transform: translateY(-10px) rotate(-1deg); }
-        }
-        
-        .slide-up {
-            animation: slideUp 0.8s ease-out;
-        }
-        
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .fade-in {
-            animation: fadeIn 1.2s ease-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        
-        .scale-in {
-            animation: scaleIn 0.6s ease-out;
-        }
-        
-        @keyframes scaleIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        
-        .hero-pattern {
-            pointer-events: none; /* jangan blok interaksi/scroll */
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.4) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(37, 99, 235, 0.4) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(29, 78, 216, 0.3) 0%, transparent 50%);
-        }
-        
-        .input-field {
-            transition: all 0.3s ease;
-        }
-        
-        .input-field:focus {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            transform: translateY(-2px);
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.4);
-        }
-        
-        .btn-primary::before {
-            content: '';
+        /* Accessibility */
+        .sr-only {
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-            transition: left 0.5s;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
         
-        .btn-primary:hover::before {
-            left: 100%;
-        }
-        
-        .checkbox-custom {
-            transition: all 0.3s ease;
-        }
-        
-        .checkbox-custom:checked {
-            background-color: #3b82f6;
-            border-color: #3b82f6;
-        }
-        
-        .demo-card {
-            transition: all 0.3s ease;
-        }
-        
-        .demo-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        }
-        
-        .logo-animation {
-            animation: logoFloat 3s ease-in-out infinite;
-        }
-        
-        @keyframes logoFloat {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .text-gradient {
-            background: linear-gradient(135deg, #60a5fa, #3b82f6, #2563eb);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            background-size: 200% 100%;
-            animation: shimmer 2s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
+        /* Focus visible for keyboard navigation */
+        *:focus-visible {
+            outline: 2px solid rgba(59, 130, 246, 0.8);
+            outline-offset: 2px;
         }
     </style>
 </head>
-<body class="font-sans antialiased gradient-bg">
-    <!-- Animated Background Elements -->
-    <div class="absolute inset-0 overflow-hidden hero-pattern">
-        <div class="absolute top-10 left-10 w-32 h-32 bg-white opacity-10 rounded-full floating-animation"></div>
-        <div class="absolute top-32 right-20 w-24 h-24 bg-blue-300 opacity-20 rounded-lg floating-animation" style="animation-delay: -2s;"></div>
-        <div class="absolute bottom-20 left-1/4 w-20 h-20 bg-white opacity-15 rounded-full floating-animation" style="animation-delay: -4s;"></div>
-        <div class="absolute bottom-32 right-1/3 w-36 h-36 bg-blue-200 opacity-10 rounded-lg floating-animation" style="animation-delay: -1s;"></div>
-        <div class="absolute top-1/2 left-1/3 w-16 h-16 bg-blue-300 opacity-15 rounded-full floating-animation" style="animation-delay: -3s;"></div>
-    </div>
-
-    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
-        <div class="max-w-md w-full space-y-8 scale-in">
-            <!-- Logo and Brand -->
-            <div class="text-center">
-                <div class="mx-auto w-20 h-20 bg-white rounded-full shadow-xl flex items-center justify-center mb-6 logo-animation">
-                    <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                    </svg>
+<body class="font-sans antialiased">
+    <main class="min-h-screen flex" role="main">
+        <!-- Left Side - Brand Section -->
+        <div class="hidden lg:flex lg:w-1/2 hero-gradient items-center justify-center">
+            <div class="text-center text-white max-w-md px-8">
+                <div class="mb-8">
+                    <div class="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-4xl font-bold mb-4">
+                        {{ config('app.name', 'Toko Segar') }}
+                    </h1>
+                    <p class="text-xl text-blue-100 mb-6">
+                        Selamat datang kembali!
+                    </p>
+                    <p class="text-blue-200 leading-relaxed">
+                        Sistem Point of Sale modern untuk mengelola bisnis Anda dengan mudah dan efisien. Nikmati pengalaman berbelanja yang lebih baik dengan teknologi terkini.
+                    </p>
                 </div>
-                <h1 class="text-4xl font-bold text-white mb-3">
-                    POS <span class="text-blue-200">Nabila</span>
-                </h1>
-                <p class="text-blue-100 text-lg">
-                    Selamat datang kembali!
-                </p>
-                <p class="text-blue-200 text-sm mt-2">
-                    Masuk ke sistem Point of Sale modern
-                </p>
+                
+                <div class="grid grid-cols-3 gap-6 mt-12">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold mb-2">500+</div>
+                        <div class="text-blue-200 text-sm">Produk</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold mb-2">1000+</div>
+                        <div class="text-blue-200 text-sm">Transaksi</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold mb-2">50+</div>
+                        <div class="text-blue-200 text-sm">Pelanggan</div>
+                    </div>
+                </div>
             </div>
-            
-            <!-- Login Form Card -->
-            <div class="glass-effect rounded-3xl shadow-2xl p-8 fade-in">
+        </div>
+        
+        <!-- Right Side - Login Form -->
+        <div class="w-full lg:w-1/2 bg-gray-50 flex items-center justify-center p-4 sm:p-6 lg:p-12">
+            <div class="w-full max-w-md">
+                <!-- Mobile & Tablet Brand Header -->
+                <div class="lg:hidden text-center mb-6 sm:mb-8">
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                        {{ config('app.name', 'Toko Segar') }}
+                    </h1>
+                    <p class="text-sm sm:text-base text-gray-600">
+                        Masuk ke sistem Point of Sale
+                    </p>
+                </div>
+                
+                <!-- Login Form -->
+                <div class="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+                <!-- Error Messages -->
                 @if ($errors->any())
-                    <div class="rounded-xl bg-red-50 border border-red-200 p-4 mb-6 scale-in">
-                        <div class="flex items-center">
-                            <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="rounded-lg bg-red-50 border border-red-200 p-3 sm:p-4 mb-4 sm:mb-6" role="alert">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <div class="text-sm text-red-700">
@@ -215,99 +136,127 @@
                         </div>
                     </div>
                 @endif
-
-                <form class="space-y-6" method="POST" action="{{ route('login') }}">
+ 
+                <form class="space-y-6" method="POST" action="{{ route('login') }}" id="loginForm" aria-label="Form Login">
                     @csrf
                     
                     <!-- Email Field -->
                     <div>
-                        <label for="email" class="block text-sm font-semibold text-gray-700 mb-3">
+                        <label for="email" class="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                             Alamat Email
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
                                 </svg>
                             </div>
-                            <input id="email" name="email" type="email" autocomplete="email" required 
-                                   class="input-field block w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                   placeholder="Masukkan email Anda" value="{{ old('email') }}">
+                            <input 
+                                id="email" 
+                                name="email" 
+                                type="email" 
+                                autocomplete="email" 
+                                required 
+                                aria-required="true"
+                                aria-describedby="email-error"
+                                class="block w-full pl-12 pr-4 py-3 sm:py-4 border border-gray-300 rounded-lg leading-5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                placeholder="Masukkan email Anda"
+                                value="{{ old('email') }}"
+                                tabindex="1">
                         </div>
+                        @if ($errors->has('email'))
+                            <p id="email-error" class="mt-2 text-sm text-red-600">{{ $errors->first('email') }}</p>
+                        @endif
                     </div>
-
+ 
                     <!-- Password Field -->
                     <div>
-                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-3">
+                        <label for="password" class="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                             Kata Sandi
                         </label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                                 </svg>
                             </div>
-                            <input id="password" name="password" type="password" autocomplete="current-password" required 
-                                   class="input-field block w-full pl-12 pr-12 py-4 border border-gray-200 rounded-2xl leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
-                                   placeholder="Masukkan kata sandi Anda">
-                            <button type="button" id="togglePassword" class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                                <svg id="eyeIcon" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <input 
+                                id="password" 
+                                name="password" 
+                                type="password" 
+                                autocomplete="current-password" 
+                                required 
+                                aria-required="true"
+                                aria-describedby="password-error"
+                                class="block w-full pl-12 pr-12 py-3 sm:py-4 border border-gray-300 rounded-lg leading-5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                                placeholder="Masukkan kata sandi Anda"
+                                tabindex="2">
+                            <button 
+                                type="button" 
+                                id="togglePassword" 
+                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                                aria-label="Toggle password visibility"
+                                tabindex="3">
+                                <svg id="eyeIcon" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 9.879a4 4 0 115.656 0H9a4 4 0 00-5.656 0l4-4z"></path>
                                 </svg>
                             </button>
                         </div>
-                    </div>
-
-                    <!-- Remember & Forgot -->
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <input id="remember" name="remember" type="checkbox" 
-                                   class="checkbox-custom h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                   {{ old('remember') ? 'checked' : '' }}>
-                            <label for="remember" class="ml-2 block text-sm text-gray-700">
-                                Ingat saya
-                            </label>
-                        </div>
-
-                        @if (Route::has('password.request'))
-                            <div class="text-sm">
-                                <a href="{{ route('password.request') }}" class="font-medium text-blue-600 hover:text-blue-500 transition duration-300 ease-in-out">
-                                    Lupa kata sandi?
-                                </a>
-                            </div>
+                        @if ($errors->has('password'))
+                            <p id="password-error" class="mt-2 text-sm text-red-600">{{ $errors->first('password') }}</p>
                         @endif
                     </div>
-
+ 
+                    <!-- Remember -->
+                    <div class="flex items-center">
+                        <input
+                            id="remember"
+                            name="remember"
+                            type="checkbox"
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            {{ old('remember') ? 'checked' : '' }}
+                            tabindex="4">
+                        <label for="remember" class="ml-2 block text-sm text-gray-700 cursor-pointer">
+                            Ingat saya
+                        </label>
+                    </div>
+ 
                     <!-- Sign In Button -->
                     <div>
-                        <button type="submit" 
-                                class="btn-primary group relative w-full flex justify-center py-4 px-6 border border-transparent text-base font-semibold rounded-2xl text-white transform transition duration-300 ease-in-out hover:scale-105 shadow-xl">
-                            <span class="absolute left-0 inset-y-0 flex items-center pl-3">
-                                <svg class="h-6 w-6 text-blue-200 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                        <button
+                            type="submit"
+                            class="w-full flex justify-center py-3 sm:py-3 px-4 bg-blue-600 hover:bg-blue-700 border border-transparent text-sm sm:text-base font-semibold rounded-lg text-white transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            tabindex="5"
+                            id="submitBtn">
+                            <span class="loading-spinner" aria-hidden="true"></span>
+                            <span class="btn-text flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5-4v14"></path>
                                 </svg>
+                                Masuk ke Sistem
                             </span>
-                            <span class="shimmer">Masuk ke Sistem</span>
                         </button>
                     </div>
                 </form>
-
+ 
+                </form>
+                
                 <!-- Demo Accounts Info -->
-                <div class="mt-8 p-6 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl demo-card">
-                    <h3 class="text-sm font-bold text-blue-800 mb-4 flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mt-6 sm:mt-8 p-4 sm:p-6 bg-white border border-gray-200 rounded-lg">
+                    <h3 class="text-sm font-bold text-gray-800 mb-3 sm:mb-4 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         Akun Demo
                     </h3>
-                    <div class="text-sm text-blue-700 space-y-3">
-                        <div class="bg-white p-3 rounded-xl border border-blue-200">
+                    <div class="text-sm text-gray-700 space-y-3">
+                        <div class="bg-gray-50 p-3 sm:p-3 rounded-lg border border-gray-200">
                             <div class="flex items-center mb-2">
-                                <span class="text-2xl mr-2">👑</span>
+                                <span class="text-2xl mr-2" role="img" aria-label="Administrator">👑</span>
                                 <div>
-                                    <p class="font-bold text-blue-800">Administrator</p>
-                                    <p class="text-xs text-gray-500">Akses penuh sistem</p>
+                                    <p class="font-bold text-gray-900">Administrator</p>
+                                    <p class="text-xs text-gray-600">Akses penuh sistem</p>
                                 </div>
                             </div>
                             <div class="text-xs text-gray-600">
@@ -316,12 +265,12 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white p-3 rounded-xl border border-blue-200">
+                        <div class="bg-gray-50 p-3 sm:p-3 rounded-lg border border-gray-200">
                             <div class="flex items-center mb-2">
-                                <span class="text-2xl mr-2">👨‍💼</span>
+                                <span class="text-2xl mr-2" role="img" aria-label="Manager">👨‍💼</span>
                                 <div>
-                                    <p class="font-bold text-blue-800">Manajer</p>
-                                    <p class="text-xs text-gray-500">Kelola produk & laporan</p>
+                                    <p class="font-bold text-gray-900">Manajer</p>
+                                    <p class="text-xs text-gray-600">Kelola produk & laporan</p>
                                 </div>
                             </div>
                             <div class="text-xs text-gray-600">
@@ -330,12 +279,12 @@
                             </div>
                         </div>
                         
-                        <div class="bg-white p-3 rounded-xl border border-blue-200">
+                        <div class="bg-gray-50 p-3 sm:p-3 rounded-lg border border-gray-200">
                             <div class="flex items-center mb-2">
-                                <span class="text-2xl mr-2">🛒️</span>
+                                <span class="text-2xl mr-2" role="img" aria-label="Cashier">🛒️</span>
                                 <div>
-                                    <p class="font-bold text-blue-800">Kasir</p>
-                                    <p class="text-xs text-gray-500">Operasional POS</p>
+                                    <p class="font-bold text-gray-900">Kasir</p>
+                                    <p class="text-xs text-gray-600">Operasional POS</p>
                                 </div>
                             </div>
                             <div class="text-xs text-gray-600">
@@ -344,16 +293,19 @@
                             </div>
                         </div>
                         
-                        <p class="text-blue-600 mt-4 text-center font-medium">
-                            Pilih akun mana untuk menjelajahi berbagai tingk akses!
+                        <p class="text-gray-700 mt-3 sm:mt-4 text-center font-medium text-sm sm:text-base">
+                            Pilih akun mana untuk menjelajahi berbagai tingkat akses!
                         </p>
                     </div>
                 </div>
-
+                
                 <!-- Back to Home -->
-                <div class="text-center mt-6">
-                    <a href="{{ route('welcome') }}" class="text-blue-200 hover:text-white text-sm transition duration-300 ease-in-out flex items-center justify-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="text-center mt-4 sm:mt-6">
+                    <a
+                        href="{{ route('welcome') }}"
+                        class="text-gray-500 hover:text-blue-600 text-sm transition-colors duration-300 flex items-center justify-center"
+                        tabindex="6">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-10M7 15h3a1 1 0 001-1h3a1 1 0 001-1h3"></path>
                         </svg>
                         Kembali ke Halaman Utama
@@ -361,15 +313,8 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="absolute bottom-0 left-0 right-0 text-center p-6">
-        <p class="text-blue-100 text-sm">
-            © {{ date('Y') }} POS Nabila. Semua hak cipta dilindungi.
-        </p>
-    </div>
-
+    </main>
+ 
     <!-- Scripts -->
     <script>
         // Password toggle functionality
@@ -381,6 +326,9 @@
             const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordInput.setAttribute('type', type);
             
+            // Update ARIA label
+            togglePassword.setAttribute('aria-label', type === 'text' ? 'Hide password' : 'Show password');
+            
             // Change eye icon
             if (type === 'text') {
                 eyeIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c2.769 0 5.202-1.105 6.875-2.875L15.125 15.875A10.05 10.05 0 0112 5c0-2.769-1.105-5.202-2.875-6.875L12 2.875A10.05 10.05 0 005.125 5.125L8.875 2.875A10.05 10.05 0 0012 5c0 2.769 1.105 5.202 2.875 6.875z"></path>';
@@ -389,9 +337,9 @@
             }
         });
         
-        // Form validation enhancement
-        const form = document.querySelector('form');
-        const submitBtn = form.querySelector('button[type="submit"]');
+        // Form validation and submission
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
         
         form.addEventListener('submit', function(e) {
             // Basic client-side validation
@@ -400,23 +348,44 @@
             
             if (!email || !password) {
                 e.preventDefault();
-                // Show a subtle validation message
+                
+                // Show validation feedback
                 if (!email) {
                     document.getElementById('email').classList.add('border-red-500');
+                    document.getElementById('email').setAttribute('aria-invalid', 'true');
                 }
                 if (!password) {
                     document.getElementById('password').classList.add('border-red-500');
+                    document.getElementById('password').setAttribute('aria-invalid', 'true');
                 }
+                
+                // Announce error to screen readers
+                const announcement = document.createElement('div');
+                announcement.setAttribute('role', 'alert');
+                announcement.setAttribute('aria-live', 'polite');
+                announcement.className = 'sr-only';
+                announcement.textContent = 'Mohon lengkapi semua field yang diperlukan';
+                document.body.appendChild(announcement);
+                
+                setTimeout(() => {
+                    document.body.removeChild(announcement);
+                }, 1000);
+            } else {
+                // Show loading state
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
             }
         });
         
         // Remove validation styles on input
         document.getElementById('email').addEventListener('input', function() {
             this.classList.remove('border-red-500');
+            this.setAttribute('aria-invalid', 'false');
         });
         
         document.getElementById('password').addEventListener('input', function() {
             this.classList.remove('border-red-500');
+            this.setAttribute('aria-invalid', 'false');
         });
         
         // Add focus animations
@@ -429,6 +398,39 @@
             input.addEventListener('blur', function() {
                 this.parentElement.classList.remove('scale-105');
             });
+        });
+        
+        // Keyboard navigation enhancement
+        document.addEventListener('keydown', function(e) {
+            // Escape key to close any modals or reset focus
+            if (e.key === 'Escape') {
+                document.activeElement.blur();
+            }
+            
+            // Enter key on form submission
+            if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'TEXTAREA') {
+                const form = e.target.closest('form');
+                if (form) {
+                    form.requestSubmit();
+                }
+            }
+        });
+        
+        // Auto-focus on email field for better UX
+        window.addEventListener('load', function() {
+            document.getElementById('email').focus();
+        });
+        
+        // Add smooth scroll behavior for better accessibility
+        document.documentElement.style.scrollBehavior = 'smooth';
+        
+        // Performance optimization: Debounce resize events
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                // Handle responsive adjustments if needed
+            }, 250);
         });
     </script>
 </body>

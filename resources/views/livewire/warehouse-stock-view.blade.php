@@ -1,19 +1,32 @@
 <div class="space-y-6">
     <!-- Header with Warehouse Selection -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold text-gray-900">📦 Stok per Gudang</h2>
-            <div class="text-sm text-gray-500">
-                Kelola dan pantau stok berdasarkan gudang
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                    <i class="fas fa-warehouse mr-3 text-blue-600"></i>
+                    Stok per Gudang
+                </h2>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Kelola dan pantau stok berdasarkan gudang</p>
             </div>
+            @if($selectedWarehouse)
+                <div class="mt-3 sm:mt-0">
+                    <span class="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        <i class="fas fa-filter mr-2"></i>
+                        {{ $warehouses->firstWhere('id', $selectedWarehouse)?->name }}
+                    </span>
+                </div>
+            @endif
         </div>
         
         <!-- Warehouse Selection -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-                <label for="warehouseSelect" class="block text-sm font-medium text-gray-700 mb-1">Pilih Gudang</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="relative">
+                <label for="warehouseSelect" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-warehouse mr-1 text-gray-400"></i>Pilih Gudang
+                </label>
                 <select wire:model.live="selectedWarehouse" id="warehouseSelect"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        class="w-full px-4 py-3 pr-10 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200 appearance-none">
                     <option value="">Semua Gudang</option>
                     @foreach($warehouses as $warehouse)
                         <option value="{{ $warehouse->id }}">
@@ -22,35 +35,53 @@
                         </option>
                     @endforeach
                 </select>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none mt-8">
+                    <i class="fas fa-chevron-down text-gray-400"></i>
+                </div>
             </div>
             
-            <div>
-                <label for="searchStock" class="block text-sm font-medium text-gray-700 mb-1">Cari Produk</label>
+            <div class="relative">
+                <label for="searchStock" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-search mr-1 text-gray-400"></i>Cari Produk
+                </label>
                 <input type="text" wire:model.live.debounce.300ms="search" id="searchStock"
                        placeholder="Nama, SKU, atau barcode..."
-                       class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                       class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none mt-8">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
             </div>
             
-            <div>
-                <label for="categoryFilter" class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+            <div class="relative">
+                <label for="categoryFilter" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-tags mr-1 text-gray-400"></i>Kategori
+                </label>
                 <select wire:model.live="categoryFilter" id="categoryFilter"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        class="w-full px-4 py-3 pr-10 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200 appearance-none">
                     <option value="">Semua Kategori</option>
                     @foreach($categories as $category)
                         <option value="{{ $category }}">{{ $category }}</option>
                     @endforeach
                 </select>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none mt-8">
+                    <i class="fas fa-chevron-down text-gray-400"></i>
+                </div>
             </div>
             
-            <div>
-                <label for="stockFilter" class="block text-sm font-medium text-gray-700 mb-1">Filter Stok</label>
+            <div class="relative">
+                <label for="stockFilter" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <i class="fas fa-filter mr-1 text-gray-400"></i>Filter Stok
+                </label>
                 <select wire:model.live="stockFilter" id="stockFilter"
-                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        class="w-full px-4 py-3 pr-10 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200 appearance-none">
                     <option value="all">Semua Stok</option>
                     <option value="in_stock">Ada Stok</option>
                     <option value="low_stock">Stok Menipis</option>
                     <option value="out_of_stock">Stok Habis</option>
                 </select>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none mt-8">
+                    <i class="fas fa-chevron-down text-gray-400"></i>
+                </div>
             </div>
         </div>
     </div>
@@ -58,72 +89,72 @@
     @if($selectedWarehouse)
         <!-- Stock Summary Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <div class="flex items-center">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-5 border border-blue-200 dark:border-blue-700/50 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg">
+                <div class="flex items-center justify-between">
                     <div class="flex-shrink-0">
-                        <svg class="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
+                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-box text-white text-lg"></i>
+                        </div>
                     </div>
-                    <div class="ml-4 min-w-0 flex-1">
-                        <p class="text-sm font-medium text-blue-600 truncate">Total Produk</p>
-                        <p class="text-xl lg:text-2xl font-semibold text-blue-900 truncate">{{ number_format($stockSummary['total_products']) }}</p>
+                    <div class="min-w-0 flex-1 text-right">
+                        <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total Produk</p>
+                        <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">{{ number_format($stockSummary['total_products']) }}</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-green-50 rounded-lg p-4 border border-green-200">
-                <div class="flex items-center">
+            <div class="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-5 border border-green-200 dark:border-green-700/50 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg">
+                <div class="flex items-center justify-between">
                     <div class="flex-shrink-0">
-                        <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
-                        </svg>
+                        <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-arrow-up text-white text-lg"></i>
+                        </div>
                     </div>
-                    <div class="ml-4 min-w-0 flex-1">
-                        <p class="text-sm font-medium text-green-600 truncate">Total Stok</p>
-                        <p class="text-xl lg:text-2xl font-semibold text-green-900 truncate">{{ number_format($stockSummary['total_stock']) }}</p>
+                    <div class="min-w-0 flex-1 text-right">
+                        <p class="text-sm font-medium text-green-600 dark:text-green-400">Total Stok</p>
+                        <p class="text-2xl font-bold text-green-900 dark:text-green-100">{{ number_format($stockSummary['total_stock']) }}</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                <div class="flex items-center">
+            <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl p-5 border border-yellow-200 dark:border-yellow-700/50 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg">
+                <div class="flex items-center justify-between">
                     <div class="flex-shrink-0">
-                        <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                        </svg>
+                        <div class="w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+                        </div>
                     </div>
-                    <div class="ml-4 min-w-0 flex-1">
-                        <p class="text-sm font-medium text-yellow-600 truncate">Stok Menipis</p>
-                        <p class="text-xl lg:text-2xl font-semibold text-yellow-900 truncate">{{ number_format($stockSummary['low_stock']) }}</p>
+                    <div class="min-w-0 flex-1 text-right">
+                        <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400">Stok Menipis</p>
+                        <p class="text-2xl font-bold text-yellow-900 dark:text-yellow-100">{{ number_format($stockSummary['low_stock']) }}</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-red-50 rounded-lg p-4 border border-red-200">
-                <div class="flex items-center">
+            <div class="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl p-5 border border-red-200 dark:border-red-700/50 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg">
+                <div class="flex items-center justify-between">
                     <div class="flex-shrink-0">
-                        <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
+                        <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-times-circle text-white text-lg"></i>
+                        </div>
                     </div>
-                    <div class="ml-4 min-w-0 flex-1">
-                        <p class="text-sm font-medium text-red-600 truncate">Stok Habis</p>
-                        <p class="text-xl lg:text-2xl font-semibold text-red-900 truncate">{{ number_format($stockSummary['out_of_stock']) }}</p>
+                    <div class="min-w-0 flex-1 text-right">
+                        <p class="text-sm font-medium text-red-600 dark:text-red-400">Stok Habis</p>
+                        <p class="text-2xl font-bold text-red-900 dark:text-red-100">{{ number_format($stockSummary['out_of_stock']) }}</p>
                     </div>
                 </div>
             </div>
             
-            <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                <div class="flex items-center">
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-5 border border-purple-200 dark:border-purple-700/50 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg">
+                <div class="flex items-center justify-between">
                     <div class="flex-shrink-0">
-                        <svg class="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                        </svg>
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fas fa-rupiah-sign text-white text-lg"></i>
+                        </div>
                     </div>
-                    <div class="ml-4 min-w-0 flex-1">
-                        <p class="text-sm font-medium text-purple-600 truncate">Nilai Stok</p>
-                        <p class="text-lg lg:text-xl font-semibold text-purple-900 break-words" title="Rp {{ number_format($stockSummary['total_value'], 0, ',', '.') }}">
+                    <div class="min-w-0 flex-1 text-right">
+                        <p class="text-sm font-medium text-purple-600 dark:text-purple-400">Nilai Stok</p>
+                        <p class="text-lg font-bold text-purple-900 dark:text-purple-100 break-words" title="Rp {{ number_format($stockSummary['total_value'], 0, ',', '.') }}">
                             Rp {{ number_format($stockSummary['total_value'], 0, ',', '.') }}
                         </p>
                     </div>

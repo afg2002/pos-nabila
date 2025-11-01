@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan view:clear:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan cache:clear:*)",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "Bash(ls -lh \"C:\\laragon\\www\\laravel_livewire_RBAC_boilerplate\\resources\\views\\livewire\"\" | grep -i \"pos \")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -20,7 +20,7 @@
             background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
         }
         .navbar-gradient {
-            background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
+            background: #ffffff;
         }
         .sidebar-toggle {
             transition: all 0.3s ease;
@@ -62,6 +62,39 @@
                 transform: translateX(0);
             }
         }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
         
         .animate-fadeInUp {
             animation: fadeInUp 0.6s ease-out;
@@ -69,6 +102,27 @@
         
         .animate-slideInRight {
             animation: slideInRight 0.4s ease-out;
+        }
+
+        .animate-slideInUp {
+            animation: slideInUp 0.3s ease-out;
+        }
+
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 0.7) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
         }
         
         /* Glassmorphism Effects */
@@ -186,6 +240,15 @@
                             </svg>
                             Products
                         </a>
+
+                        <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'products.view')): ?>
+                            <a href="<?php echo e(route('categories.index')); ?>" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg <?php echo e(request()->routeIs('categories.*') ? 'bg-blue-600 bg-opacity-20 text-white' : 'text-blue-100 hover:bg-blue-600 hover:bg-opacity-10 hover:text-white'); ?> transition-colors duration-200">
+                                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                Kategori
+                            </a>
+                        <?php endif; ?>
 
                         <!-- Product Unit Management -->
                         <?php if (\Illuminate\Support\Facades\Blade::check('permission', 'products.view')): ?>
@@ -534,8 +597,10 @@
         </div>
     <?php endif; ?>
 
+    <?php if (! $__env->hasRenderedOnce('4cacd806-b3df-43a5-b418-f6c36b9eceee')): $__env->markAsRenderedOnce('4cacd806-b3df-43a5-b418-f6c36b9eceee'); ?>
     <?php echo \Livewire\Mechanisms\FrontendAssets\FrontendAssets::scripts(); ?>
 
+    <?php endif; ?>
     
     <!-- SweetAlert2 for modern alerts -->
     <script src="<?php echo e(asset('js/sweetalert2.js')); ?>"></script>
@@ -608,25 +673,28 @@
 
         // Handle Laravel flash messages with modern alerts
         <?php if(session('message')): ?>
-            showToast('success', '<?php echo e(session('message')); ?>');
+            showToast('success', <?php echo json_encode(session('message'), 15, 512) ?>);
         <?php endif; ?>
 
         
 
         <?php if(session('error')): ?>
-            showToast('error', '<?php echo e(session('error')); ?>');
+            showToast('error', <?php echo json_encode(session('error'), 15, 512) ?>);
         <?php endif; ?>
 
         <?php if(session('warning')): ?>
-            showToast('warning', '<?php echo e(session('warning')); ?>');
+            showToast('warning', <?php echo json_encode(session('warning'), 15, 512) ?>);
         <?php endif; ?>
 
         <?php if(session('info')): ?>
-            showToast('info', '<?php echo e(session('info')); ?>');
+            showToast('info', <?php echo json_encode(session('info'), 15, 512) ?>);
         <?php endif; ?>
 
-        // Livewire integration
+        // Livewire integration (guarded to avoid double registration)
         document.addEventListener('livewire:init', () => {
+            if (window.__livewireAppEventsRegistered) return; // Prevent duplicate listener registration
+            window.__livewireAppEventsRegistered = true;
+
             Livewire.on('show-alert', (event) => {
                 const data = Array.isArray(event) ? event[0] : event;
                 showAlert(data.type, data.title, data.text, data.options || {});
@@ -651,6 +719,35 @@
                             }));
                         }
                     });
+            });
+
+            Livewire.on('show-timer-alert', (event) => {
+                const data = Array.isArray(event) ? event[0] : event;
+                const duration = data.duration || 3000;
+                
+                Swal.fire({
+                    title: data.title,
+                    text: data.message || '',
+                    icon: data.type || 'info',
+                    timer: duration,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    position: 'top-end',
+                    toast: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+            });
+
+            Livewire.on('redirect-after-delay', (event) => {
+                const data = Array.isArray(event) ? event[0] : event;
+                const delay = data.delay || 2000;
+                
+                setTimeout(() => {
+                    window.location.href = data.url;
+                }, delay);
             });
         });
 
@@ -778,7 +875,8 @@
     </script>
     
     <!-- Larapex Charts Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Removed manual ApexCharts include to avoid duplicate registrations; Larapex charts will inject it when needed -->
     <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
-</html><?php /**PATH C:\laragon\www\laravel_livewire_RBAC_boilerplate\resources\views/layouts/app.blade.php ENDPATH**/ ?>
+</html>
+<?php /**PATH C:\laragon\www\laravel_livewire_RBAC_boilerplate\resources\views/layouts/app.blade.php ENDPATH**/ ?>

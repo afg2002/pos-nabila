@@ -1,16 +1,45 @@
-<div class="p-6">
-    <!-- Header -->
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Manajemen Gudang</h2>
-        <p class="text-gray-600 dark:text-gray-400">Kelola data gudang, toko, dan kiosk</p>
-    </div>
-
+<div class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100">
     <!-- Flash Messages -->
     @if (session()->has('message'))
-        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
-            {{ session('message') }}
+        <div class="mb-6 p-4 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl shadow-xl border-l-4 border-emerald-400 flex items-center backdrop-blur-sm" 
+             x-data="{ show: true }" 
+             x-show="show" 
+             x-transition:enter="transition ease-out duration-500" 
+             x-transition:enter-start="opacity-0 transform translate-y-4 scale-95" 
+             x-transition:enter-end="opacity-100 transform translate-y-0 scale-100" 
+             x-transition:leave="transition ease-in duration-300" 
+             x-transition:leave-start="opacity-100 transform translate-y-0 scale-100" 
+             x-transition:leave-end="opacity-0 transform translate-y-4 scale-95" 
+             x-init="setTimeout(() => show = false, 4000)">
+            <div class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <span class="flex-1 font-medium">{{ session('message') }}</span>
+            <button @click="show = false" class="ml-3 text-white hover:text-emerald-200 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
     @endif
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-teal-500 to-cyan-600 rounded-xl shadow-lg p-6 mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-black">Manajemen Gudang</h1>
+                <p class="text-teal-100 mt-1">Kelola data gudang, toko, dan kiosk dengan mudah</p>
+            </div>
+            @can('create', App\Warehouse::class)
+                <button wire:click="openCreateModal" 
+                        class="mt-4 sm:mt-0 px-4 py-2 bg-white bg-opacity-20 backdrop-blur-sm text-white rounded-lg hover:bg-opacity-30 transition-all duration-200 border border-white border-opacity-30">
+                    <i class="fas fa-plus mr-2"></i>Tambah Gudang
+                </button>
+            @endcan
+        </div>
+    </div>
 
     <!-- Modal Detail Warehouse -->
     @if($showDetailModal && $selectedWarehouse)
@@ -175,42 +204,47 @@
     @endif
 
     <!-- Controls -->
-    <div class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <!-- Search and Filters -->
-        <div class="flex flex-col sm:flex-row gap-4 flex-1">
-            <!-- Search -->
-            <div class="flex-1">
-                <input type="text" wire:model.live.debounce.300ms="search" 
-                       placeholder="Cari gudang..." 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+    <div class="mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <!-- Search and Filters -->
+            <div class="flex flex-col sm:flex-row gap-4 flex-1">
+                <!-- Search -->
+                <div class="flex-1 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </div>
+                    <input type="text" wire:model.live.debounce.300ms="search" 
+                           placeholder="Cari gudang..." 
+                           class="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                </div>
+                
+                <!-- Type Filter -->
+                <div class="sm:w-48">
+                    <select wire:model.live="typeFilter" 
+                            class="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all duration-200">
+                        <option value="">Semua Tipe</option>
+                        @foreach($warehouseTypes as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
             </div>
-            
-            <!-- Type Filter -->
-            <div class="sm:w-48">
-                <select wire:model.live="typeFilter" 
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <option value="">Semua Tipe</option>
-                    @foreach($warehouseTypes as $value => $label)
-                        <option value="{{ $value }}">{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap gap-2">
-            @can('create', App\Warehouse::class)
-                <button wire:click="openCreateModal"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <i class="fas fa-plus mr-2"></i>Tambah Gudang
-                </button>
-            @endcan
-            @if(count($selectedWarehouses) > 0)
-                <button wire:click="confirmBulkDelete" 
-                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
-                    <i class="fas fa-trash mr-2"></i>Hapus Terpilih ({{ count($selectedWarehouses) }})
-                </button>
-            @endif
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap gap-3">
+                @can('create', App\Warehouse::class)
+                    <button wire:click="openCreateModal"
+                            class="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-md">
+                        <i class="fas fa-plus mr-2"></i>Tambah Gudang
+                    </button>
+                @endcan
+                @if(count($selectedWarehouses) > 0)
+                    <button wire:click="confirmBulkDelete" 
+                            class="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-red-500 transform hover:scale-105 transition-all duration-200 shadow-md">
+                        <i class="fas fa-trash mr-2"></i>Hapus Terpilih ({{ count($selectedWarehouses) }})
+                    </button>
+                @endif
+            </div>
         </div>
     </div>
 

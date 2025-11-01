@@ -121,10 +121,38 @@ class StockMovement extends Model
             $options['warehouse'] = $options['warehouse'] ?? $warehouse->code;
         }
 
+        // Normalize incoming type to match DB enum: IN, OUT, ADJ
+        $typeNormalized = strtoupper($type ?? '');
+        if (in_array($typeNormalized, ['ADJUSTMENT', 'ADJ'])) {
+            $dbType = 'ADJ';
+        } elseif (in_array($typeNormalized, ['IN', 'INBOUND', 'RECEIVE'])) {
+            $dbType = 'IN';
+        } elseif (in_array($typeNormalized, ['OUT', 'OUTBOUND', 'ISSUE'])) {
+            $dbType = 'OUT';
+        } else {
+            // Fallback to original normalized type if it already matches enum
+            $dbType = in_array($typeNormalized, ['IN','OUT','ADJ']) ? $typeNormalized : 'IN';
+        }
+
+        // Ensure stock_before and stock_after are set to non-null integers
+        $product = Product::find($productId);
+        if (is_null($options['stock_before'])) {
+            $options['stock_before'] = (int) ($product?->current_stock ?? 0);
+        }
+        if (is_null($options['stock_after'])) {
+            if ($dbType === 'IN') {
+                $options['stock_after'] = (int) ($options['stock_before'] + $qty);
+            } elseif ($dbType === 'OUT') {
+                $options['stock_after'] = (int) ($options['stock_before'] - $qty);
+            } else { // ADJ fallback
+                $options['stock_after'] = (int) ($options['stock_before'] + $qty);
+            }
+        }
+
         $movement = self::create([
             'product_id' => $productId,
             'qty' => $qty,
-            'type' => $type,
+            'type' => $dbType,
             ...$options,
         ]);
 
@@ -141,7 +169,7 @@ class StockMovement extends Model
                 ]
             );
 
-            if (strtoupper($type) === 'ADJUSTMENT' && ! is_null($movement->stock_after)) {
+            if ($movement->type === 'ADJ' && ! is_null($movement->stock_after)) {
                 $stockRow->stock_on_hand = (int) $movement->stock_after;
                 $stockRow->save();
             } else {

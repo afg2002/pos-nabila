@@ -3,254 +3,173 @@
 namespace App\Livewire;
 
 use App\Product;
-use App\ProductWarehouseStock;
-use App\StockMovement;
 use App\Warehouse;
+use App\StockMovement;
+use App\ProductWarehouseStock;
+use App\Shared\Traits\WithAlerts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\Validate;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class StockForm extends Component
 {
-    use AuthorizesRequests;
-
-    #[Validate('required|exists:products,id')]
-    public $product_id = '';
-
-    #[Validate('required|in:in,out,adjustment')]
-    public $movement_type = 'in';
-
-    #[Validate('required|numeric|min:1')]
-    public $quantity = '';
-
-    #[Validate('nullable|string|max:255')]
-    public $notes = '';
-
-    #[Validate('nullable|string|max:50')]
-    public $reason_code = '';
+    use AuthorizesRequests, WithAlerts;
 
     public $showModal = false;
+
+    public $productSearch = '';
+
+    public $selectedProductId = null;
+
+    public $selectedWarehouseId = null;
+
+    public $movementType = 'in'; // in, out, adjustment
+
+    public $quantity = 0;
+
+    public $notes = '';
+
+    public $reasonCode = '';
 
     public $products = [];
 
     public $warehouses = [];
 
-    #[Validate('required|exists:warehouses,id')]
-    public $warehouse_id = '';
-
-    public $selectedProduct = null;
-
-    public $currentWarehouseStock = 0;
-
-    public $productSearch = '';
-
     public $searchResults = [];
 
-    public $showSearchResults = false;
+    public $currentStock = 0;
 
-    public $showDropdown = false;
+    public $isLoading = false;
 
-    public $allProducts = [];
-
-    public function mount(): void
+    public function mount()
     {
-        $this->products = Product::where('status', 'active')
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get();
-
-        $this->allProducts = $this->products; // Copy for dropdown display
-
+        $this->products = Product::orderBy('name')->get();
         $this->warehouses = Warehouse::ordered()->get();
-        $defaultWarehouse = $this->warehouses->firstWhere('is_default', true) ?? $this->warehouses->first();
-        $this->warehouse_id = $defaultWarehouse?->id ?? '';
-
-        $this->updateSelectedContext();
     }
 
-    public function updatedProductSearch($value): void
+    public function updatedSelectedProductId()
     {
-        if (strlen($value) >= 2) {
-            $this->searchResults = Product::where('status', 'active')
-                ->whereNull('deleted_at')
-                ->where(function ($query) use ($value) {
-                    $query->where('name', 'like', '%' . $value . '%')
-                          ->orWhere('sku', 'like', '%' . $value . '%')
-                          ->orWhere('barcode', 'like', '%' . $value . '%');
-                })
-                ->orderBy('name')
-                ->limit(10)
-                ->get();
-            $this->showSearchResults = true;
-            $this->showDropdown = false; // Hide dropdown when searching
+        $this->updateCurrentStock();
+    }
+
+    public function updatedSelectedWarehouseId()
+    {
+        $this->updateCurrentStock();
+    }
+
+    public function updateCurrentStock()
+    {
+        if ($this->selectedProductId && $this->selectedWarehouseId) {
+            $this->currentStock = ProductWarehouseStock::where('product_id', $this->selectedProductId)
+                ->where('warehouse_id', $this->selectedWarehouseId)
+                ->value('stock_on_hand') ?? 0;
         } else {
-            $this->searchResults = [];
-            $this->showSearchResults = false;
-            $this->showDropdown = false;
+            $this->currentStock = 0;
         }
     }
 
-    public function selectProduct($productId): void
+    public function searchProducts()
     {
-        $this->product_id = $productId;
-        $this->selectedProduct = Product::find($productId);
-        $this->productSearch = $this->selectedProduct ? $this->selectedProduct->name . ' (' . $this->selectedProduct->sku . ')' : '';
-        $this->showSearchResults = false;
-        $this->showDropdown = false;
-        $this->updateSelectedContext();
-    }
-
-    public function clearProductSearch(): void
-    {
-        $this->productSearch = '';
-        $this->product_id = '';
-        $this->selectedProduct = null;
-        $this->searchResults = [];
-        $this->showSearchResults = false;
-        $this->showDropdown = false;
-        $this->currentWarehouseStock = 0;
-    }
-
-    public function updatedProductId($value): void
-    {
-        $this->selectedProduct = $value ? Product::find($value) : null;
-
-        $this->updateSelectedContext();
-    }
-
-    public function updatedWarehouseId($value): void
-    {
-        $this->updateSelectedContext();
-    }
-
-    private function updateSelectedContext(): void
-    {
-        if ($this->selectedProduct && $this->warehouse_id) {
-            $stockRow = $this->selectedProduct
-                ->warehouseStocks()
-                ->where('warehouse_id', $this->warehouse_id)
-                ->first();
-
-            $this->currentWarehouseStock = $stockRow?->stock_on_hand ?? 0;
-
+        if (strlen($this->productSearch) < 2) {
+            $this->searchResults = [];
             return;
         }
-
-        $this->currentWarehouseStock = 0;
+        $this->searchResults = Product::where('name', 'like', '%'.$this->productSearch.'%')
+            ->orWhere('sku', 'like', '%'.$this->productSearch.'%')
+            ->orWhere('barcode', 'like', '%'.$this->productSearch.'%')
+            ->orderBy('name')
+            ->limit(10)
+            ->get();
     }
 
-    public function openModal(): void
+    public function openModal()
     {
+        $this->resetForm();
         $this->showModal = true;
     }
 
-    public function closeModal(): void
+    public function closeModal()
     {
         $this->showModal = false;
-        $this->reset([
-            'product_id',
-            'movement_type',
-            'quantity',
-            'notes',
-            'reason_code',
-            'productSearch',
-        ]);
-        $this->selectedProduct = null;
-        $this->currentWarehouseStock = 0;
-        $this->searchResults = [];
-        $this->showSearchResults = false;
-        $this->showDropdown = false;
-        $this->updateSelectedContext();
     }
 
-    public function save(): void
+    public function resetForm()
     {
-        $this->validate();
+        $this->productSearch = '';
+        $this->selectedProductId = null;
+        $this->selectedWarehouseId = null;
+        $this->movementType = 'in';
+        $this->quantity = 0;
+        $this->notes = '';
+        $this->reasonCode = '';
+        $this->searchResults = [];
+        $this->currentStock = 0;
+        $this->resetValidation();
+    }
 
-        $this->authorize('manage', StockMovement::class);
-
+    #[On('openStockFormForProduct')]
+    public function openForProduct($productId)
+    {
         try {
-            DB::beginTransaction();
-
-            $product = Product::findOrFail($this->product_id);
-            $warehouse = Warehouse::findOrFail($this->warehouse_id);
-
-            $stockRow = ProductWarehouseStock::firstOrCreate(
-                [
-                    'product_id' => $product->id,
-                    'warehouse_id' => $warehouse->id,
-                ],
-                [
-                    'stock_on_hand' => 0,
-                    'reserved_stock' => 0,
-                    'safety_stock' => 0,
-                ]
-            );
-
-            $availableStock = $stockRow->stock_on_hand;
-
-            if ($this->movement_type === 'out' && $availableStock < $this->quantity) {
-                $this->addError('quantity', 'Stok tidak mencukupi. Stok tersedia: '.$availableStock);
-
-                return;
-            }
-
-            $stockChange = 0;
-
-            switch ($this->movement_type) {
-                case 'in':
-                    $stockChange = (int) $this->quantity;
-                    break;
-                case 'out':
-                    $stockChange = -1 * (int) $this->quantity;
-                    break;
-                case 'adjustment':
-                    $stockChange = (int) $this->quantity - $availableStock;
-                    break;
-            }
-
-            $stockBefore = $availableStock;
-            $stockAfter = $this->movement_type === 'adjustment'
-                ? (int) $this->quantity
-                : $stockBefore + $stockChange;
-
-            $movementType = match($this->movement_type) {
-                'in' => 'IN',
-                'out' => 'OUT', 
-                'adjustment' => 'ADJ',
-                default => 'IN'
-            };
-
-            StockMovement::createMovement($product->id, $stockChange, $movementType, [
-                'ref_type' => 'manual',
-                'ref_id' => null,
-                'note' => $this->notes,
-                'reason_code' => $this->reason_code,
-                'performed_by' => Auth::id() ?? 1, // Fallback to user ID 1 for tests
-                'stock_before' => $stockBefore,
-                'stock_after' => $stockAfter,
-                'warehouse_id' => $warehouse->id,
-                'warehouse' => $warehouse->code,
-            ]);
-
-            DB::commit();
-
-            session()->flash('message', 'Stok berhasil diperbarui!');
-            $this->closeModal();
-            $this->dispatch('stock-updated');
+            $product = Product::findOrFail($productId);
+            $this->resetForm();
+            $this->selectedProductId = $product->id;
+            $this->showModal = true;
         } catch (\Exception $e) {
-            DB::rollBack();
-            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
+            session()->flash('error', 'Produk tidak ditemukan atau tidak valid.');
         }
     }
 
-    public function toggleDropdown(): void
+    public function save()
     {
-        if (empty($this->productSearch)) {
-            $this->showDropdown = !$this->showDropdown;
-            $this->showSearchResults = false;
+        $this->validate([
+            'selectedProductId' => 'required|exists:products,id',
+            'selectedWarehouseId' => 'required|exists:warehouses,id',
+            'movementType' => 'required|in:in,out,adjustment',
+            'quantity' => 'required|numeric|min:0.0001',
+            'notes' => 'nullable|string|max:500',
+            'reasonCode' => 'nullable|string|max:100',
+        ]);
+
+        $this->authorize('manage', StockMovement::class);
+
+        DB::beginTransaction();
+        try {
+            $quantity = (float) $this->quantity;
+            if ($this->movementType === 'out') {
+                $quantity = -abs($quantity);
+            }
+
+            $movement = StockMovement::create([
+                'product_id' => $this->selectedProductId,
+                'warehouse_id' => $this->selectedWarehouseId,
+                'movement_type' => $this->movementType,
+                'quantity' => $quantity,
+                'notes' => $this->notes,
+                'reason_code' => $this->reasonCode,
+                'performed_by' => auth()->id(),
+            ]);
+
+            $pws = ProductWarehouseStock::firstOrCreate([
+                'product_id' => $this->selectedProductId,
+                'warehouse_id' => $this->selectedWarehouseId,
+            ], [
+                'stock_on_hand' => 0,
+            ]);
+
+            $pws->increment('stock_on_hand', $quantity);
+
+            DB::commit();
+
+            $this->dispatch('stock-updated');
+            $this->showModal = false;
+            session()->flash('success', 'Stok berhasil diperbarui.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Gagal update stok: '.$e->getMessage());
+            session()->flash('error', 'Gagal memperbarui stok: '.$e->getMessage());
         }
     }
 

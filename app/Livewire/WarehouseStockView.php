@@ -105,6 +105,10 @@ class WarehouseStockView extends Component
 
         $stocks = ProductWarehouseStock::with('product')
             ->where('warehouse_id', $this->selectedWarehouse)
+            ->whereHas('product', function ($q) {
+                // Exclude orphaned or soft-deleted products to avoid null relationship access
+                $q->whereNull('deleted_at');
+            })
             ->get();
 
         $totalProducts = $stocks->count();
@@ -116,7 +120,8 @@ class WarehouseStockView extends Component
         })->count();
         
         $totalValue = $stocks->sum(function ($stock) {
-            return $stock->stock_on_hand * $stock->product->base_cost;
+            $baseCost = $stock->product->base_cost ?? 0; // Guard against null product
+            return $stock->stock_on_hand * $baseCost;
         });
 
         return [

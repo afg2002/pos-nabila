@@ -1,437 +1,510 @@
 <div>
-    <div class="pos-kasir-container h-full bg-gray-50">
-    <!-- Flash Messages -->
-    @if (session()->has('success'))
-        <div id="success-alert" class="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
-            <span>{{ session('success') }}</span>
-            <button onclick="closeAlert('success-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    @endif
+    <div class="pos-kasir-container min-h-screen bg-gray-50">
+        {{-- Enhanced Mobile-First CSS --}}
+        <style>
+            /* Base Styles */
+            .pos-kasir-container {
+                background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+                min-height: 100vh;
+                position: relative;
+            }
 
-    @if (session()->has('error'))
-        <div id="error-alert" class="fixed top-4 right-4 z-50 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center justify-between transition-all duration-300 ease-in-out">
-            <span>{{ session('error') }}</span>
-            <button onclick="closeAlert('error-alert')" class="ml-4 text-white hover:text-gray-200 focus:outline-none">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-    @endif
+            /* Product Cards - Mobile Optimized */
+            .product-card {
+                background: white;
+                border-radius: 12px;
+                padding: 16px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                transition: all 0.2s ease;
+                cursor: pointer;
+                position: relative;
+                overflow: hidden;
+                min-height: 160px;
+                display: flex;
+                flex-direction: column;
+            }
 
-    <style>
-        /* Scroll containers for POS */
-        @media (max-width: 767px) {
-            .pos-products-scroll {
-                max-height: calc(100vh - 320px);
+            .product-card:active {
+                transform: scale(0.98);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            }
+
+            .product-card:hover {
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+
+            /* Stock Status Indicator */
+            .stock-indicator {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            .stock-high { background: #dcfce7; color: #166534; }
+            .stock-medium { background: #fef3c7; color: #92400e; }
+            .stock-low { background: #fee2e2; color: #991b1b; }
+
+            /* Mobile Cart Bottom Sheet - Enhanced */
+            .mobile-cart-bottom-sheet {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-radius: 24px 24px 0 0;
+                box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+                z-index: 50;
+                transform: translateY(100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                max-height: 85vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .mobile-cart-bottom-sheet.open {
+                transform: translateY(0);
+            }
+
+            .mobile-cart-handle {
+                width: 40px;
+                height: 4px;
+                background: #e5e7eb;
+                border-radius: 2px;
+                margin: 12px auto 8px;
+                flex-shrink: 0;
+            }
+
+            /* Floating Action Button */
+            .fab-cart {
+                position: fixed;
+                bottom: 80px;
+                right: 20px;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+                z-index: 40;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+                border: 3px solid white;
+            }
+
+            .fab-cart:active {
+                transform: scale(0.95);
+            }
+
+            .fab-cart.shake {
+                animation: shake 0.5s ease-in-out;
+            }
+
+            @keyframes shake {
+                0%, 100% { transform: translateX(0) rotate(0deg); }
+                25% { transform: translateX(-8px) rotate(-5deg); }
+                75% { transform: translateX(8px) rotate(5deg); }
+            }
+
+            /* Tab Navigation */
+            .tab-nav {
+                display: flex;
+                background: white;
+                border-radius: 12px;
+                padding: 4px;
+                gap: 4px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+
+            .tab-nav::-webkit-scrollbar {
+                display: none;
+            }
+
+            .tab-button {
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                white-space: nowrap;
+                transition: all 0.2s ease;
+                flex-shrink: 0;
+                min-width: 80px;
+                text-align: center;
+            }
+
+            .tab-button.active {
+                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                color: white;
+                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            }
+
+            /* Input Fields - Mobile Optimized */
+            .input-mobile {
+                width: 100%;
+                padding: 12px 16px;
+                border: 2px solid #e5e7eb;
+                border-radius: 12px;
+                font-size: 16px;
+                transition: all 0.2s ease;
+                background: white;
+            }
+
+            .input-mobile:focus {
+                outline: none;
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+
+            /* Button Styles */
+            .btn-primary {
+                background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 16px;
+                border: none;
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            }
+
+            .btn-primary:active {
+                transform: translateY(1px);
+                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+            }
+
+            .btn-primary:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                box-shadow: none;
+            }
+
+            .btn-secondary {
+                background: white;
+                color: #6b7280;
+                padding: 12px 24px;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 16px;
+                border: 2px solid #e5e7eb;
+                transition: all 0.2s ease;
+            }
+
+            .btn-secondary:active {
+                background: #f9fafb;
+            }
+
+            /* Bottom Navigation Bar */
+            .bottom-nav {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-top: 1px solid #e5e7eb;
+                z-index: 45;
+                padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+            }
+
+            /* Cart Item */
+            .cart-item {
+                background: white;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border: 1px solid #e5e7eb;
+            }
+
+            /* Quantity Controls */
+            .qty-control {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: #f3f4f6;
+                border-radius: 8px;
+                padding: 4px;
+            }
+
+            .qty-btn {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                border: none;
+                background: white;
+                color: #374151;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+
+            .qty-btn:active {
+                background: #e5e7eb;
+                transform: scale(0.95);
+            }
+
+            .qty-input {
+                width: 50px;
+                text-align: center;
+                border: none;
+                background: transparent;
+                font-weight: 600;
+                font-size: 16px;
+            }
+
+            /* Scroll Areas */
+            .scroll-area {
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
-                padding-bottom: max(1rem, env(safe-area-inset-bottom));
+                scrollbar-width: thin;
+                scrollbar-color: #e5e7eb transparent;
             }
-            .pos-cart-scroll {
-                max-height: calc(100vh - 280px);
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: max(1rem, env(safe-area-inset-bottom));
-            }
-        }
-        @media (min-width: 768px) {
-            .pos-products-scroll {
-                max-height: calc(100vh - 260px);
-                overflow-y: auto;
-            }
-            .pos-cart-scroll {
-                max-height: calc(100vh - 300px);
-                overflow-y: auto;
-            }
-            .desktop-sticky-summary {
-                position: sticky;
-                top: 0;
-                z-index: 30;
-            }
-        }
-    </style>
-    <div class="flex flex-col md:flex-row h-full md:min-h-0">
-        <!-- Left Panel - Product Selection -->
-        <div class="{{ $transactionFullWidth ? 'w-full md:hidden' : 'w-full md:w-1/2' }} bg-white md:border-r border-gray-200 flex flex-col min-h-0">
-            <!-- Header -->
-            <div class="p-4 lg:p-6 border-b border-gray-200">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-semibold text-gray-900">Pilih Produk</h2>
-                    <a href="{{ route('kasir.management') }}" 
-                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
-                       title="Lihat Riwayat Transaksi">
-                        <i class="fas fa-history mr-2"></i>
-                        Riwayat
-                    </a>
-                </div>
-                
-                <!-- Barcode Scanner -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-3">
-                        <i class="fas fa-barcode mr-2"></i>Scan Barcode
-                        <span class="text-xs text-gray-500 ml-2">(F3 untuk focus)</span>
-                    </label>
-                    <div class="relative">
-                        <input type="text" 
-                               id="barcode-input"
-                               wire:model.live="barcode" 
-                               placeholder="Scan atau ketik barcode..."
-                               class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                               autocomplete="off"
-                               maxlength="50">
-                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                            <i class="fas fa-qrcode text-gray-400"></i>
-                        </div>
-                    </div>
-                    <div class="mt-2 text-xs text-gray-500">
-                        Mendukung: EAN-13, UPC-A, Code 128, QR Code
-                    </div>
-                </div>
 
-                <!-- Warehouse Info -->
-                <div class="mb-6">
-                    <div class="p-4 lg:p-5 rounded-xl border border-gray-200 bg-white">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-start space-x-3">
-                                <div class="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                                    <i class="fas fa-warehouse"></i>
+            .scroll-area::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .scroll-area::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .scroll-area::-webkit-scrollbar-thumb {
+                background: #e5e7eb;
+                border-radius: 2px;
+            }
+
+            /* Responsive */
+            @media (max-width: 767px) {
+                .mobile-hidden { display: none !important; }
+                .mobile-only { display: block !important; }
+                .product-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+                .main-content { padding-bottom: 180px; }
+                .scroll-area-products {
+                    max-height: calc(100vh - 280px);
+                    padding-bottom: 80px;
+                }
+                .scroll-area-cart { max-height: calc(100vh - 200px); }
+                .product-image { display: none !important; }
+            }
+
+            @media (min-width: 768px) {
+                .mobile-only { display: none !important; }
+                .mobile-hidden { display: block !important; }
+                .product-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+                .main-content { padding-bottom: 0; }
+                .scroll-area-products { max-height: calc(100vh - 300px); }
+                .scroll-area-cart { max-height: calc(100vh - 400px); }
+                .product-image { display: block; }
+            }
+
+            /* Loading Skeleton */
+            .skeleton {
+                background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+                background-size: 200% 100%;
+                animation: loading 1.5s infinite;
+            }
+
+            @keyframes loading {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+
+            /* Badge */
+            .badge {
+                position: absolute;
+                top: -4px;
+                right: -4px;
+                min-width: 20px;
+                height: 20px;
+                background: #ef4444;
+                color: white;
+                border-radius: 10px;
+                font-size: 12px;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid white;
+            }
+        </style>
+
+        <!-- Main Container -->
+        <div class="main-content">
+            <!-- Header Section -->
+            <div class="bg-white shadow-sm sticky top-0 z-30">
+                <div class="p-4">
+                    <!-- Top Bar -->
+                    <div class="flex items-center justify-between mb-4">
+                        <h1 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <i class="fas fa-store text-blue-600"></i>
+                            Kasir
+                        </h1>
+                        <a href="{{ route('kasir.management') }}"
+                           class="text-gray-600 hover:text-gray-900 p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-history text-lg"></i>
+                        </a>
+                    </div>
+
+                    <!-- Warehouse Info Card -->
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3 mb-4 border border-blue-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-warehouse text-white"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-gray-900">{{ $activeWarehouseName ?? 'Toko Utama' }}</span>
+                                    <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">POS</span>
                                 </div>
-                                <div>
-                                    <div class="flex items-center gap-2">
-                                        <h3 class="text-sm font-semibold text-gray-900">Gudang Aktif</h3>
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700" title="POS terkunci ke stok Toko">
-                                            <i class="fas fa-lock"></i>
-                                            <span>Toko</span>
-                                        </span>
-                                    </div>
-                                    <p class="mt-1 text-sm text-gray-900 font-medium">{{ $activeWarehouseName ?? 'Toko Utama' }}</p>
-                                    <div class="mt-1 text-xs text-gray-600">
-                                        <span>{{ $activeWarehouseTypeLabel ?? 'Toko' }}</span>
-                                        @if(!empty($activeWarehouseCode))
-                                            <span class="mx-1">•</span>
-                                            <span>Kode: {{ $activeWarehouseCode }}</span>
-                                        @endif
-                                    </div>
-                                    @if(!empty($activeWarehouseAddress))
-                                        <div class="mt-1 text-xs text-gray-600">{{ $activeWarehouseAddress }}</div>
-                                    @endif
+                                <div class="text-xs text-gray-600">
+                                    Stok: {{ $activeWarehouseTypeLabel ?? 'Toko' }} @if(!empty($activeWarehouseCode))• {{ $activeWarehouseCode }} @endif
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <span class="px-3 py-1.5 text-xs rounded-lg bg-gray-50 border border-gray-200 text-gray-700 inline-flex items-center gap-1">
-                                    <i class="fas fa-info-circle"></i>
-                                    <span>Stok POS: Toko saja</span>
-                                </span>
+                        </div>
+                    </div>
+
+                    <!-- Barcode Scanner -->
+                    <div class="mb-4">
+                        <div class="relative">
+                            <input type="text"
+                                   id="barcode-input"
+                                   wire:model.live="barcode"
+                                   placeholder="Scan barcode..."
+                                   class="input-mobile pr-12">
+                            <div class="absolute right-4 top-1/2 transform -translate-y-1/2">
+                                <i class="fas fa-barcode text-gray-400 text-xl"></i>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Product Search -->
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-3">
-                        <i class="fas fa-search mr-2"></i>Cari Produk
-                    </label>
-                    <div class="flex gap-2">
-                        <input type="text" 
-                               id="product-search-input"
-                               wire:model.live="productSearch" 
-                               placeholder="Cari nama produk atau SKU..."
-                               class="flex-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <!-- Product Search with Autocomplete -->
+                    <div class="mb-4">
+                        <div class="relative">
+                            <input type="text"
+                                   id="product-search-input"
+                                   wire:model.live="productSearch"
+                                   wire:keydown.enter="selectFirstSearchResult"
+                                   placeholder="Cari produk (Enter untuk pilih pertama)..."
+                                   class="input-mobile pr-12">
+                            <div class="absolute right-4 top-1/2 transform -translate-y-1/2">
+                                <i class="fas fa-search text-gray-400 text-xl"></i>
+                            </div>
+                        </div>
+
+                        <!-- Search Results Dropdown -->
+                        @if(!empty($productSearch) && $products->count() > 0)
+                            <div class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                @foreach($products->take(5) as $product)
+                                    <div class="search-result-item px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                         wire:click="addToCart({{ $product->id }})"
+                                         wire:keydown.enter="addToCart({{ $product->id }})">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex-1">
+                                                <div class="font-medium text-gray-900">{{ $product->name }}</div>
+                                                <div class="text-sm text-gray-500">
+                                                    @if($product->sku) SKU: {{ $product->sku }} @endif
+                                                    <span class="ml-2">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="text-sm text-blue-600 font-medium">
+                                                <i class="fas fa-plus-circle"></i> Tambah
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                                @if($products->count() > 5)
+                                    <div class="px-4 py-2 text-center text-sm text-gray-500 bg-gray-50">
+                                        Dan {{ $products->count() - 5 }} produk lagi...
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
                         @if(!empty($productSearch))
                             <button type="button"
                                     wire:click="resetProductSearch"
-                                    class="px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
-                                Reset
+                                    class="mt-2 text-sm text-gray-600 hover:text-gray-900">
+                                <i class="fas fa-times mr-1"></i> Reset pencarian
                             </button>
                         @endif
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">Ketik minimal 1 huruf untuk mulai mencari.</p>
                 </div>
-                
-
             </div>
 
             <!-- Product Grid -->
-            <div class="flex-1 p-4 lg:p-6 pb-24 md:pb-6 pos-products-scroll overflow-y-auto">
+            <div class="p-4">
                 @if($products->isEmpty())
-                    <div class="text-center text-gray-500 py-10">Tidak ada produk ditemukan. Gunakan pencarian untuk menemukan produk.</div>
-                @endif
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    @foreach($products as $product)
-                        <div class="product-card relative bg-white rounded-xl p-4 border border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-pointer transition-all"
-                             wire:click="addToCart({{ $product->id }})">
-                            <!-- Product Image -->
-                            <div class="w-full h-28 mb-3 bg-gray-100 rounded-lg overflow-hidden">
-                                <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}" 
-                                     alt="{{ $product ? $product->name : 'No Product' }}"
-                                     class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                     onclick="openImageModal('{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}', '{{ $product ? addslashes($product->name) : 'No Product' }}')"
-                                     onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
-                            </div>
-                            
-                            <div class="text-sm font-medium text-gray-900 truncate mb-1">{{ $product ? $product->name : 'No Product' }}</div>
-                            <div class="mt-2">
-                                <div class="font-semibold text-gray-900 text-base">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</div>
-                            </div>
-                            <div class="text-xs text-gray-500 mt-2">
-                                @php
-                                    $warehouseStock = $warehouseId ? 
-                                        \App\ProductWarehouseStock::where('product_id', $product->id)
-                                            ->where('warehouse_id', $warehouseId)
-                                            ->value('stock_on_hand') ?? 0 : 0;
-                                @endphp
-                                <div>Stok: {{ number_format($warehouseStock) }} {{ $product->unit ? $product->unit->abbreviation : 'pcs' }}</div>
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Panel - Cart & Checkout -->
-        <div class="{{ $transactionFullWidth ? 'w-full' : 'w-full lg:w-2/5 xl:w-1/3' }} bg-white flex flex-col min-h-0">
-            <!-- Responsive Multi-Tab Navigation -->
-            <div class="border-b border-gray-200 bg-gray-50">
-                <div class="flex items-center justify-between p-3 lg:p-4">
-                    <!-- Tab Buttons - Responsive Scrolling -->
-                    <div class="flex-1 overflow-x-auto">
-                        <div class="flex space-x-2 min-w-max pb-1">
-                            @foreach($carts as $tabId => $tab)
-                                <button wire:click="switchToTab({{ $tabId }})"
-                                        class="px-3 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex items-center {{ $activeTabId === $tabId ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200' }}">
-                                    {{ $tab['name'] ?? 'Tab ' . $tabId }}
-                                    @if(isset($tab['cart']) && count($tab['cart']) > 0)
-                                        <span class="ml-2 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
-                                            {{ count($tab['cart']) }}
-                                        </span>
-                                    @endif
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-                    
-                    <!-- Tab Actions -->
-                    <div class="flex items-center space-x-2 ml-3">
-                        <button wire:click="createNewTab" 
-                                class="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Tab Baru (Ctrl+T)">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                        </button>
-                        @if(count($carts) > 1)
-                            <button wire:click="closeTab({{ $activeTabId }})" 
-                                    class="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Tutup Tab (Ctrl+W)">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        @endif
-                        <!-- Toggle Full Width Right Panel -->
-                        <button wire:click="toggleTransactionFullWidth"
-                                class="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                                title="{{ $transactionFullWidth ? 'Kembali ke tampilan dua kolom' : 'Lebarkan panel transaksi (full width)' }}">
-                            @if($transactionFullWidth)
-                                <i class="fas fa-compress"></i>
-                            @else
-                                <i class="fas fa-expand"></i>
-                            @endif
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Tab Actions Bar -->
-                <div class="px-3 lg:px-4 pb-3 flex items-center justify-between">
-                    <!-- Cart Name Input -->
-                    <div class="flex-1 mr-3">
-                        <input type="text" 
-                               wire:model.blur="carts.{{ $activeTabId }}.name"
-                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
-                               placeholder="Nama keranjang...">
-                    </div>
-                    
-                    <!-- Actions: Custom Item + Clear Cart -->
-                    <div class="flex items-center space-x-2">
-
-                        
-                        <!-- Clear Cart Button -->
-                        @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
-                            <button wire:click="confirmClearCart" 
-                                    class="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Kosongkan Keranjang (F2)">
-                                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                                Kosongkan
-                            </button>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Bulk Price Type Controls -->
-                @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
-                    <div class="px-3 lg:px-4 pb-3">
-                        <div class="pricing-tier-selector">
-                            <label class="block text-xs font-medium text-gray-700 mb-2">Ubah Semua Harga Ke:</label>
-                            <select wire:change="updateAllItemsPriceType($event.target.value)"
-                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                <option value="">-- Pilih Jenis Harga --</option>
-                                @foreach(\App\Product::getPriceTypes() as $value => $label)
-                                    <option value="{{ $value }}">{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                @endif
-                
-                <!-- Keyboard Shortcuts Info -->
-                <div class="px-3 lg:px-4 pb-3 text-xs text-gray-500 hidden lg:block">
-                    <div class="flex flex-wrap gap-x-4 gap-y-1">
-                        <span>F1: Checkout</span>
-                        <span>F2: Kosongkan</span>
-                        <span>F3: Focus Barcode</span>
-                        <span>F4: Cari Produk</span>
-                        <span>Ctrl+T: Tab Baru</span>
-                        <span>Ctrl+W: Tutup Tab</span>
-                        <span>ESC: Batal/Tutup</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Cart Items -->
-            <div class="flex-1 overflow-y-auto pb-24 md:pb-0 pos-cart-scroll">
-                @if(!isset($carts[$activeTabId]) || empty($carts[$activeTabId]['cart']))
-                    <div class="flex items-center justify-center h-full text-gray-500">
-                        <div class="text-center">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.1 5M7 13l-1.1 5m0 0h9.1M6 18a2 2 0 100 4 2 2 0 000-4zm12 0a2 2 0 100 4 2 2 0 000-4z"></path>
-                            </svg>
-                            <p class="mt-2">Keranjang masih kosong</p>
-                            <p class="text-sm">Scan barcode atau pilih produk</p>
-                        </div>
+                    <div class="text-center py-20">
+                        <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500 font-medium">Produk tidak ditemukan</p>
+                        <p class="text-gray-400 text-sm mt-1">Coba kata kunci lain atau scan barcode</p>
                     </div>
                 @else
-                    <div class="p-4 lg:p-6 space-y-4">
-                        @foreach(($carts[$activeTabId]['cart'] ?? []) as $key => $item)
-                            <div class="bg-white border border-gray-200 rounded-xl p-4">
-                                <div class="flex items-start justify-between">
-                                    <div class="flex items-start space-x-3 flex-1">
-                                        <!-- Product Image -->
-                                        <div class="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                            @php
-                                                $product = $cartProducts->get($item['product_id']);
-                                                $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
-                                            @endphp
-                                            <img src="{{ $photoUrl }}" 
-                                                 alt="{{ $item['name'] }}"
-                                                 class="w-full h-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                                                 onclick="openImageModal('{{ $photoUrl }}', '{{ $item['name'] }}')"
-                                                 onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
-                                        </div>
-                                        
-                                        <div class="flex-1">
-                                            <h4 class="font-medium text-gray-900">{{ $item['name'] }}</h4>
-                                            <p class="text-sm text-gray-500">{{ $item['sku'] }}</p>
-                                            <div class="text-xs text-gray-500 mt-1">
-                                                @php
-                                                    $selectedWarehouseStock = 0;
-                                                    if (! empty($warehouseId) && $product) {
-                                                        $selectedWarehouseStock = \App\ProductWarehouseStock::where('product_id', $product->id)
-                                                            ->where('warehouse_id', $warehouseId)
-                                                            ->value('stock_on_hand') ?? 0;
-                                                    }
-                                                @endphp
-                                                Stok gudang (Toko Utama): {{ number_format($selectedWarehouseStock) }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button wire:click="removeFromCart('{{ $key }}')"
-                                            class="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors">
-                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                    </button>
+                    <div class="product-grid scroll-area scroll-area-products">
+                        @foreach($products as $product)
+                            @php
+                                $warehouseStock = $warehouseId ?
+                                    \App\ProductWarehouseStock::where('product_id', $product->id)
+                                        ->where('warehouse_id', $warehouseId)
+                                        ->value('stock_on_hand') ?? 0 : 0;
+                                $stockClass = $warehouseStock > 10 ? 'stock-high' : ($warehouseStock > 5 ? 'stock-medium' : 'stock-low');
+                                $stockText = $warehouseStock > 10 ? 'Tersedia' : ($warehouseStock > 5 ? 'Terbatas' : 'Hampir Habis');
+                            @endphp
+
+                            <div class="product-card"
+                                 wire:click="addToCart({{ $product->id }})"
+                                 role="button"
+                                 tabindex="0">
+
+                                <!-- Stock Indicator -->
+                                <div class="stock-indicator {{ $stockClass }}">
+                                    {{ $stockText }}
                                 </div>
-                                
-                                <details class="md:open mb-3">
-                                    <summary class="text-xs text-gray-600 cursor-pointer select-none py-1">Atur jumlah & harga</summary>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <!-- Quantity -->
-                                        <div>
-                                            <label class="block text-xs font-medium text-gray-700 mb-1">Jumlah</label>
-                                            <input type="number" 
-                                                   wire:change="updateQuantity('{{ $key }}', $event.target.value)"
-                                                   value="{{ $item['quantity'] }}"
-                                                   min="1"
-                                                   max="{{ $item['available_stock'] }}"
-                                                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        </div>
-                                        
-                                        <div>
-                                                <label class="block text-xs font-medium text-gray-700 mb-1">Jenis Harga</label>
-                                                <select wire:change="updateItemPriceType('{{ $key }}', $event.target.value)"
-                                                        class="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                                    @foreach(\App\Product::getPriceTypes() as $value => $label)
-                                                        <option value="{{ $value }}" {{ $item['pricing_tier'] === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <div class="text-xs text-gray-500 mt-1">
-                                                    @php
-                                                        $product = \App\Product::find($item['product_id']);
-                                                        $currentPriceType = $item['pricing_tier'];
-                                                    @endphp
-                                                    @if($product)
-                                                        @if($currentPriceType === 'retail')
-                                                            <span class="text-blue-600">Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}</span>
-                                                        @elseif($currentPriceType === 'semi_grosir')
-                                                            <span class="text-yellow-600">Rp {{ number_format($product->price_semi_grosir ?? 0, 0, ',', '.') }}</span>
-                                                        @elseif($currentPriceType === 'grosir')
-                                                            <span class="text-green-600">Rp {{ number_format($product->price_grosir ?? 0, 0, '.') }}</span>
-                                                        @else
-                                                            <span class="text-purple-600">Custom</span>
-                                                        @endif
-                                                    @else
-                                                        <span class="text-gray-500">Product not found</span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                        
-                                        <!-- Custom Price Input -->
-                                        @if($item['pricing_tier'] === 'custom')
-                                            <div class="col-span-2">
-                                                <label class="block text-xs font-medium text-gray-700 mb-1">Harga Custom</label>
-                                                <input type="number" 
-                                                       wire:change="updatePrice('{{ $key }}', $event.target.value)"
-                                                       value="{{ $item['price'] }}"
-                                                       min="{{ $item['base_cost'] * 1.1 }}"
-                                                       class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                            </div>
-                                        @endif
-                                    </div>
-                                </details>
-                                
-                                <div class="flex justify-between items-center">
-                                    <div class="text-xs text-gray-500">
-                                        <div>Stok: {{ $item['available_stock'] }}</div>
-                                        @php
-                                            $product = \App\Product::find($item['product_id']);
-                                            $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
-                                            $profit = ($item['price'] - $costPrice) * $item['quantity'];
-                                            $margin = $costPrice > 0 ? (($item['price'] - $costPrice) / $item['price']) * 100 : 0;
-                                        @endphp
-                                        <div class="text-orange-600">Modal: Rp {{ number_format($costPrice, 0, ',', '.') }}</div>
-                                        <div class="text-green-600">Profit: Rp {{ number_format($profit, 0, ',', '.') }} ({{ number_format($margin, 1) }}%)</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-xs text-gray-500">
-                                            {{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
-                                        </div>
-                                        <span class="font-semibold text-blue-600 text-lg">
-                                            Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
+
+                                <!-- Product Image (Hidden on Mobile) -->
+                                <div class="product-image w-full h-24 bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                                    <img src="{{ $product ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg') }}"
+                                         alt="{{ $product ? $product->name : 'No Product' }}"
+                                         class="w-full h-full object-cover"
+                                         onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
+                                </div>
+
+                                <!-- Product Info -->
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">
+                                        {{ $product ? $product->name : 'No Product' }}
+                                    </h3>
+
+                                    <div class="flex items-baseline justify-between mb-2">
+                                        <span class="text-lg font-bold text-blue-600">
+                                            Rp {{ number_format($product->price_retail ?? 0, 0, ',', '.') }}
                                         </span>
+                                        <span class="text-xs text-gray-500">
+                                            {{ $product->unit ? $product->unit->abbreviation : 'pcs' }}
+                                        </span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between text-xs text-gray-600">
+                                        <span>
+                                            <i class="fas fa-box mr-1"></i>
+                                            {{ number_format($warehouseStock) }}
+                                        </span>
+                                        @if($product->sku)
+                                            <span class="text-gray-400">
+                                                {{ $product->sku }}
+                                            </span>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -439,550 +512,853 @@
                     </div>
                 @endif
             </div>
+        </div>
 
-            <!-- Cart Summary & Checkout - Now Sticky on Desktop -->
-            @if(isset($carts[$activeTabId]) && !empty($carts[$activeTabId]['cart']))
-                <div class="border-t border-gray-200 bg-white p-4 lg:p-6 desktop-sticky-summary">
-                    <!-- Summary -->
-                    <div class="space-y-3 mb-6">
+        <!-- Floating Action Button for Cart -->
+        <button class="fab-cart mobile-only"
+                wire:click="toggleMobileCart"
+                title="Buka keranjang">
+            <i class="fas fa-shopping-cart text-white text-xl"></i>
+            @php
+                $fabCartItems = [];
+                if (isset($activeTabId) && isset($carts[$activeTabId]) && isset($carts[$activeTabId]['cart'])) {
+                    $fabCartItems = $carts[$activeTabId]['cart'];
+                }
+            @endphp
+            @if(!empty($fabCartItems))
+                <span class="badge">{{ count($fabCartItems) }}</span>
+            @endif
+        </button>
+
+        <!-- Mobile Cart Bottom Sheet -->
+        <div class="mobile-cart-bottom-sheet {{ $mobileCartOpen ? 'open' : '' }}">
+            <div class="mobile-cart-handle"></div>
+
+            <!-- Cart Header -->
+            <div class="p-4 border-b border-gray-200">
+                <!-- Tab Navigation -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex-1 mr-2">
+                        <div class="tab-nav">
+                            @foreach($carts as $tabId => $tab)
+                                <button wire:click="switchToTab({{ $tabId }})"
+                                        class="tab-button {{ $activeTabId === $tabId ? 'active' : '' }}">
+                                    {{ $tab['name'] ?? 'Tab ' . $tabId }}
+                                    @if(isset($tab['cart']) && count($tab['cart']) > 0)
+                                        <span class="ml-1 text-xs bg-white bg-opacity-20 px-1.5 py-0.5 rounded-full">
+                                            {{ count($tab['cart']) }}
+                                        </span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button wire:click="createNewTab"
+                                class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        @if(count($carts) > 1)
+                            <button wire:click="closeTab({{ $activeTabId }})"
+                                    class="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Cart Name -->
+                <input type="text"
+                       wire:model.blur="carts.{{ $activeTabId }}.name"
+                       class="input-mobile text-sm"
+                       placeholder="Nama keranjang...">
+
+                <!-- Quick Actions -->
+                <div class="flex gap-2 mt-3 overflow-x-auto">
+                    <!-- Quick Actions -->
+                    <div class="flex gap-2 mb-3 overflow-x-auto">
+                        <button wire:click="confirmClearCart"
+                                class="btn-secondary text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                                title="Kosongkan keranjang">
+                            <i class="fas fa-trash mr-1"></i> Kosongkan
+                        </button>
+                        <button wire:click="openCheckout"
+                                class="btn-primary text-sm px-3 py-2 whitespace-nowrap flex-shrink-0"
+                                title="Checkout">
+                            <i class="fas fa-credit-card mr-1"></i> Bayar
+                        </button>
+                    </div>
+
+
+            </div>
+
+            <!-- Cart Items -->
+            <div class="flex-1 p-4 scroll-area scroll-area-cart">
+                @php
+                    $sheetCartItems = [];
+                    if (isset($activeTabId) && isset($carts[$activeTabId]) && isset($carts[$activeTabId]['cart'])) {
+                        $sheetCartItems = $carts[$activeTabId]['cart'];
+                    }
+                @endphp
+                @if(empty($sheetCartItems))
+                    <div class="text-center py-12">
+                        <i class="fas fa-shopping-cart text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500 font-medium">Keranjang kosong</p>
+                        <p class="text-gray-400 text-sm mt-1">Tambahkan produk untuk memulai</p>
+                    <div class="text-sm text-gray-500 mt-1">
+                        Tambahkan produk untuk memulai
+                    </div>
+                </div>
+            @else
+                <!-- Custom Item Form (Mobile) -->
+                <div class="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <h5 class="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                        <i class="fas fa-plus-circle text-blue-600 mr-2"></i>
+                        Tambah Item/Jasa Custom
+                    </h5>
+                    <div class="space-y-2">
+                        <input type="text"
+                               wire:model.defer="customItemName"
+                               placeholder="Nama item/jasa"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number"
+                               wire:model.defer="customItemPrice"
+                               placeholder="Harga"
+                               min="0"
+                               step="1"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number"
+                               wire:model.defer="customItemQuantity"
+                               placeholder="Quantity"
+                               min="1"
+                               step="1"
+                               value="1"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button wire:click="addCustomItem"
+                                class="w-full btn-primary text-sm py-2">
+                            <i class="fas fa-plus mr-1"></i> Tambah Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bulk Price Type Controls (Mobile) -->
+                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <label class="block text-xs font-medium text-blue-900 mb-2">
+                        <i class="fas fa-tags mr-1"></i> Ubah Semua Harga Ke:
+                    </label>
+                    <select wire:change="bulkSetCartPriceType($event.target.value)"
+                            class="w-full px-3 py-2 text-sm border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">-- Pilih Jenis Harga --</option>
+                        @foreach(\App\Product::getPriceTypes() as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="space-y-3">
+                    @foreach($sheetCartItems as $key => $item)
+                        @php
+                            $product = $cartProducts->get($item['product_id']);
+                            $photoUrl = $product && method_exists($product, 'getPhotoUrl') ? $product->getPhotoUrl() : asset('storage/placeholders/no-image.svg');
+                        @endphp
+
+                        <div class="cart-item relative">
+                            <div class="flex gap-3">
+                                <!-- Product Image -->
+                                <div class="w-16 h-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                    <img src="{{ $photoUrl }}"
+                                         alt="{{ $item['name'] }}"
+                                         class="w-full h-full object-cover"
+                                         onerror="this.src='{{ asset('storage/placeholders/no-image.svg') }}'">
+                                </div>
+
+                                <!-- Product Details -->
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-gray-900 mb-2 pr-8">{{ $item['name'] }}</h4>
+
+                                    <!-- Price Type Selector (Mobile) -->
+                                    <div class="mb-2">
+                                        <select wire:change="updateItemPriceType('{{ $key }}', $event.target.value)"
+                                                class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            @foreach(\App\Product::getPriceTypes() as $value => $label)
+                                                <option value="{{ $value }}" {{ $item['pricing_tier'] === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+
+                                    <!-- Mobile Item Details -->
+                                    <div class="space-y-2">
+                                        <!-- Quantity Controls -->
+                                        <div class="flex items-center gap-2">
+                                            <label class="text-xs text-gray-600 font-medium w-12">Qty:</label>
+                                            <div class="flex-1 qty-control">
+                                                <button type="button"
+                                                        wire:click="updateQuantity('{{ $key }}', {{ $item['quantity'] - 1 }})"
+                                                        class="qty-btn">−</button>
+                                                <input type="number"
+                                                       wire:model.live="carts.{{ $activeTabId }}.cart.{{ $key }}.quantity"
+                                                       class="qty-input"
+                                                       min="1"
+                                                       max="{{ $item['available_stock'] }}">
+                                                <button type="button"
+                                                        wire:click="updateQuantity('{{ $key }}', {{ $item['quantity'] + 1 }})"
+                                                        class="qty-btn">+</button>
+                                            </div>
+                                            <span class="text-blue-600 font-bold text-sm">Rp {{ number_format($item['price'], 0, ',', '.') }}</span>
+                                        </div>
+
+                                        <!-- Unit Selector (Mobile) -->
+                                        @php
+                                            $product = $cartProducts->get($item['product_id']);
+                                        @endphp
+                                        @if($product)
+                                            <div class="flex items-center gap-2">
+                                                <label class="text-xs text-gray-600 font-medium w-12">Unit:</label>
+                                                <select wire:change="updateCartItemUnit('{{ $key }}', $event.target.value)"
+                                                        class="flex-1 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                                    @if($product && $product->unit)
+                                                        <option value="{{ $product->unit_id }}" {{ ($item['selected_unit_id'] ?? $product->unit_id) == $product->unit_id ? 'selected' : '' }}>
+                                                            {{ $product->unit->name ?? $product->unit->abbreviation ?? 'Base' }}
+                                                        </option>
+                                                    @endif
+                                                    @if($product)
+                                                        @foreach($product->unitScales as $scale)
+                                                            <option value="{{ $scale->unit_id }}" {{ ($item['selected_unit_id'] ?? $product->unit_id) == $scale->unit_id ? 'selected' : '' }}>
+                                                                {{ $scale->unit ? ($scale->unit->name ?? $scale->unit->abbreviation) : 'Unit' }} (×{{ $scale->to_base_qty }})
+                                                            </option>
+                                                        @endforeach
+                                                    @endif
+                                                </select>
+                                            </div>
+                                        @endif
+
+                                        <!-- Custom Price Input (Mobile) -->
+                                        @if($item['pricing_tier'] === 'custom')
+                                            <div class="flex items-center gap-2">
+                                                <label class="text-xs text-gray-600 font-medium w-12">Harga:</label>
+                                                <input type="number"
+                                                       wire:change="updatePrice('{{ $key }}', $event.target.value)"
+                                                       value="{{ $item['price'] }}"
+                                                       min="{{ $item['base_cost'] * 1.1 }}"
+                                                       inputmode="decimal"
+                                                       class="flex-1 px-2 py-1 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50">
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    <!-- Subtotal and Stock -->
+                                    <div class="flex items-center justify-between text-sm mt-2 pt-2 border-t border-gray-100">
+                                        <div class="text-xs text-gray-500">
+                                            <div>Stok: {{ $item['available_stock'] }}</div>
+                                            @php
+                                                $product = \App\Product::find($item['product_id']);
+                                                $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
+                                                $margin = $costPrice > 0 ? (($item['price'] - $costPrice) / $item['price']) * 100 : 0;
+                                            @endphp
+                                            @if($margin > 0)
+                                                <div class="text-green-600 font-medium">{{ number_format($margin, 1) }}% margin</div>
+                                            @endif
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-lg font-bold text-blue-600">
+                                                Rp {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}
+                                            </div>
+                                            <div class="text-xs text-gray-500">
+                                                {{ number_format($item['quantity']) }} × Rp {{ number_format($item['price'], 0, ',', '.') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Remove Button -->
+                            <button type="button"
+                                    wire:click="removeFromCart('{{ $key }}')"
+                                    class="absolute top-2 right-2 w-8 h-8 bg-red-50 text-red-600 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors z-10">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+            </div>
+
+            <!-- Cart Summary -->
+            @php
+                $summaryCartItems = [];
+                if (isset($activeTabId) && isset($carts[$activeTabId]) && isset($carts[$activeTabId]['cart'])) {
+                    $summaryCartItems = $carts[$activeTabId]['cart'];
+                }
+            @endphp
+            @if(!empty($summaryCartItems))
+                <div class="p-4 border-t border-gray-200 bg-gray-50">
+                    <div class="space-y-2 mb-4">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Subtotal:</span>
                             <span class="font-medium">Rp {{ number_format($subtotal, 0, ',', '.') }}</span>
                         </div>
-                        @php
-                            $totalCost = 0;
-                            $totalProfit = 0;
-                            foreach(($carts[$activeTabId]['cart'] ?? []) as $item) {
-                                $product = \App\Product::find($item['product_id']);
-                                $costPrice = $product ? $product->getEffectiveCostPrice() : 0;
-                                $itemCost = $costPrice * $item['quantity'];
-                                $itemProfit = ($item['price'] - $costPrice) * $item['quantity'];
-                                $totalCost += $itemCost;
-                                $totalProfit += $itemProfit;
-                            }
-                            $profitMargin = $subtotal > 0 ? ($totalProfit / $subtotal) * 100 : 0;
-                        @endphp
-                        <div class="flex justify-between text-sm">
-                            <span class="text-orange-600">Total Modal:</span>
-                            <span class="font-medium text-orange-600">Rp {{ number_format($totalCost, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-green-600">Total Profit:</span>
-                            <span class="font-medium text-green-600">Rp {{ number_format($totalProfit, 0, ',', '.') }} ({{ number_format($profitMargin, 1) }}%)</span>
-                        </div>
-                        <div class="flex justify-between text-lg font-bold border-t pt-3 border-gray-200">
-                            <span class="text-gray-900">Total:</span>
+                        <div class="flex justify-between text-lg font-bold pt-2 border-t border-gray-200">
+                            <span>Total:</span>
                             <span class="text-blue-600">Rp {{ number_format($total, 0, ',', '.') }}</span>
                         </div>
                     </div>
 
-                    <!-- Checkout Button -->
-                    <div class="space-y-3">
-                        <button wire:click="openCheckout" 
-                                class="w-full bg-blue-600 text-white py-4 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
-                                title="Shortcut: F1">
-                            <i class="fas fa-cash-register mr-2"></i>
-                            Checkout (F1)
-                        </button>
-                        
-                        <a href="{{ route('kasir.management') }}" 
-                           class="w-full bg-gray-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors shadow-lg hover:shadow-xl flex items-center justify-center">
-                            <i class="fas fa-history mr-2"></i>
-                            Riwayat Transaksi
-                        </a>
-                    </div>
+                    <button wire:click="openCheckout"
+                            class="btn-primary w-full text-center">
+                        <i class="fas fa-shopping-cart mr-2"></i>
+                        Checkout ({{ count($summaryCartItems) }} item)
+                    </button>
                 </div>
             @endif
         </div>
+
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav mobile-only">
+            <div class="flex items-center justify-around px-4">
+                <button type="button"
+                        onclick="document.getElementById('barcode-input').focus()"
+                        class="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-blue-600 transition-colors">
+                    <i class="fas fa-barcode text-xl mb-1"></i>
+                    <span class="text-xs">Scan</span>
+                </button>
+                <button type="button"
+                        onclick="document.getElementById('product-search-input').focus()"
+                        class="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-blue-600 transition-colors">
+                    <i class="fas fa-search text-xl mb-1"></i>
+                    <span class="text-xs">Cari</span>
+                </button>
+                <button type="button"
+                        wire:click="toggleMobileCart"
+                        class="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-blue-600 transition-colors relative">
+                    <i class="fas fa-shopping-cart text-xl mb-1"></i>
+                    <span class="text-xs">Keranjang</span>
+                    @php
+                        $navCartItems = [];
+                        if (isset($activeTabId) && isset($carts[$activeTabId]) && isset($carts[$activeTabId]['cart'])) {
+                            $navCartItems = $carts[$activeTabId]['cart'];
+                        }
+                    @endphp
+                    @if(!empty($navCartItems))
+                        <span class="absolute -top-1 right-2 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                            {{ count($navCartItems) }}
+                        </span>
+                    @endif
+                </button>
+                <button type="button"
+                        wire:click="goToSalesHistory"
+                        class="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-blue-600 transition-colors">
+                    <i class="fas fa-history text-xl mb-1"></i>
+                    <span class="text-xs">Riwayat</span>
+                </button>
+                <button type="button"
+                        wire:click="openCheckout"
+                        class="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-blue-600 transition-colors">
+                    <i class="fas fa-credit-card text-xl mb-1"></i>
+                    <span class="text-xs">Bayar</span>
+                </button>
+            </div>
+        </div>
     </div>
-
-    <!-- Floating menu dihapus sesuai permintaan -->
-
 
     <!-- Checkout Modal -->
     @if($showCheckoutModal)
-        <div class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" wire:click="closeCheckout">
-            <div class="bg-white rounded-t-2xl sm:rounded-lg p-4 sm:p-6 w-full sm:max-w-md mx-0 sm:mx-4 h-[90vh] sm:h-auto overflow-y-auto" onclick="event.stopPropagation()">
-                <h3 class="text-lg font-semibold mb-4">Checkout</h3>
-                
-                <form wire:submit="processCheckout">
-                    <!-- Customer Info -->
-                    <div class="space-y-4 mb-6">
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
+            <div class="bg-white rounded-t-2xl w-full max-h-[85vh] overflow-hidden animate-slide-up">
+                <!-- Modal Header -->
+                <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Checkout</h3>
+                    <button wire:click="closeCheckout" class="p-2 hover:bg-gray-100 rounded-lg">
+                        <i class="fas fa-times text-gray-600"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="p-4 scroll-area" style="max-height: calc(85vh - 120px);">
+                    <form wire:submit.prevent="processCheckout" class="space-y-4">
+                        <!-- Customer Info -->
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Nama Pelanggan</label>
-                            <input type="text" wire:model="customerName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Pelanggan</label>
+                            <input type="text"
+                                   wire:model="customerName"
+                                   placeholder="Nama pelanggan"
+                                   class="input-mobile">
                         </div>
-                        
+
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">No. Telepon</label>
-                            <input type="text" wire:model="customerPhone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Telepon</label>
+                            <input type="text"
+                                   wire:model="customerPhone"
+                                   placeholder="No. telepon"
+                                   class="input-mobile">
                         </div>
-                        
+
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Metode Pembayaran</label>
-                            <select wire:model="paymentMethod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Metode Pembayaran</label>
+                            <select wire:model="paymentMethod" class="input-mobile">
                                 <option value="cash">Tunai</option>
                                 <option value="transfer">Transfer</option>
                                 <option value="edc">EDC/Kartu</option>
                                 <option value="qr">QR Code</option>
                             </select>
                         </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Pembayaran</label>
-                            <input type="text" wire:model="paymentNotes" placeholder="Opsional..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Jumlah Bayar</label>
-                            <input type="number" wire:model.live.debounce.300ms="amountPaid" min="0" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Catatan</label>
-                            <textarea wire:model="notes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                        </div>
-                    </div>
-                    
-                    <!-- Summary -->
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-                        <div class="flex justify-between text-sm mb-2">
-                            <span>Total:</span>
-                            <span class="font-semibold">Rp {{ number_format($total, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm mb-2">
-                            <span>Bayar:</span>
-                            <span>Rp {{ number_format($amountPaid, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between text-lg font-semibold border-t pt-2">
-                            <span>Kembalian:</span>
-                            <span class="{{ $change >= 0 ? 'text-green-600' : 'text-red-600' }}">
-                                Rp {{ number_format($change, 0, ',', '.') }}
-                            </span>
-                        </div>
-                        <div class="flex justify-between items-center text-sm mt-2">
-                            <span>Status Pembayaran:</span>
-                            <div class="flex gap-2">
-                                <button type="button" wire:click="$set('paymentStatus', 'UNPAID')" class="px-2 py-1 text-xs rounded-md border {{ $paymentStatus === 'UNPAID' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100' }}">
-                                    Belum dibayar
-                                </button>
-                                <button type="button" wire:click="$set('paymentStatus', 'PARTIAL')" class="px-2 py-1 text-xs rounded-md border {{ $paymentStatus === 'PARTIAL' ? 'bg-yellow-500 text-white border-yellow-500' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100' }}">
-                                    Sebagian
-                                </button>
-                                <button type="button" wire:click="$set('paymentStatus', 'PAID')" class="px-2 py-1 text-xs rounded-md border {{ $paymentStatus === 'PAID' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100' }}">
-                                    Lunas
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Buttons -->
-                    <div class="flex space-x-3">
-                        <button type="button" wire:click="closeCheckout" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
-                            Batal
-                        </button>
-                        <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                            Proses
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    @endif
 
-    <!-- Receipt Modal -->
-    @if($showReceiptModal && $lastSale)
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4" id="receipt">
-                <div class="text-center mb-6">
-                    <h3 class="text-lg font-bold">STRUK PENJUALAN</h3>
-                    <p class="text-sm text-gray-600">{{ $lastSale->sale_number }}</p>
-                    <p class="text-xs text-gray-500">{{ $lastSale->created_at->format('d/m/Y H:i:s') }}</p>
-                </div>
-                
-                <!-- Customer Info -->
-                @if($lastSale->customer_name)
-                    <div class="mb-4 text-sm">
-                        <p><strong>Pelanggan:</strong> {{ $lastSale->customer_name }}</p>
-                        @if($lastSale->customer_phone)
-                            <p><strong>Telepon:</strong> {{ $lastSale->customer_phone }}</p>
-                        @endif
-                    </div>
-                @endif
-                
-                <!-- Items -->
-                <div class="border-t border-b border-gray-300 py-3 mb-4">
-                    @foreach($lastSale->saleItems as $item)
-                        <div class="flex justify-between text-sm mb-1">
-                            <div class="flex-1">
-                                <div>{{ optional($item->product)->name ?? ($item->custom_item_name ?? '-') }}</div>
-                                <div class="text-xs text-gray-500">
-                                    {{ $item->qty }} x Rp {{ number_format($item->unit_price, 0, ',', '.') }}
+                        <!-- Payment Rounding for Cash -->
+                        @if($paymentMethod === 'cash')
+                            <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <label class="text-sm font-medium text-gray-700">Pembulatan Tunai</label>
+                                    <input type="checkbox"
+                                           id="roundingEnabled"
+                                           wire:model="roundingEnabled"
+                                           class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
                                 </div>
+
+                                @if($roundingEnabled)
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 mb-1">Langkah</label>
+                                            <select wire:model="roundingStep" class="input-mobile text-sm">
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                                <option value="500">500</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-600 mb-1">Mode</label>
+                                            <select wire:model="roundingMode" class="input-mobile text-sm">
+                                                <option value="nearest">Terdekat</option>
+                                                <option value="up">Ke atas</option>
+                                                <option value="down">Ke bawah</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-sm space-y-1">
+                                        <div class="flex justify-between">
+                                            <span>Sebelum pembulatan:</span>
+                                            <span>Rp {{ number_format($roundedTotal - $roundingAdjustment, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="flex justify-between font-semibold text-lg">
+                                            <span>Total akhir:</span>
+                                            <span class="text-blue-600">Rp {{ number_format($roundedTotal, 0, ',', '.') }}</span>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
-                            <div class="text-right">
-                                Rp {{ number_format($item->subtotal, 0, ',', '.') }}
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-                
-                <!-- Summary -->
-                <div class="text-sm space-y-1 mb-4">
-                    <div class="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>Rp {{ number_format($lastSale->subtotal, 0, ',', '.') }}</span>
-                    </div>
-                    
-                    <div class="flex justify-between font-semibold border-t pt-1">
-                        <span>Total:</span>
-                        <span>Rp {{ number_format($lastSale->final_total, 0, ',', '.') }}</span>
-                    </div>
-                    @php
-                        $paid = ($lastSale->cash_amount ?? 0) + ($lastSale->qr_amount ?? 0) + ($lastSale->edc_amount ?? 0);
-                    @endphp
-                    <div class="flex justify-between">
-                        <span>Bayar ({{ ucfirst($lastSale->payment_method) }}):</span>
-                        <span>Rp {{ number_format($paid, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between font-semibold">
-                        <span>Kembalian:</span>
-                        <span>Rp {{ number_format($lastSale->change_amount, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span>Status Pembayaran:</span>
+                        @endif
+
+                        <!-- Submit Button -->
                         @php
-                            $statusLabel = match($lastSale->status) {
-                                'PAID' => 'Lunas',
-                                'PARTIAL' => 'Sebagian',
-                                'UNPAID' => 'Belum dibayar',
-                                default => ucfirst(strtolower($lastSale->status ?? ''))
-                            };
-                            $statusClass = match($lastSale->status) {
-                                'PAID' => 'text-green-600',
-                                'PARTIAL' => 'text-yellow-600',
-                                'UNPAID' => 'text-red-600',
-                                default => 'text-gray-600'
-                            };
+                            $checkoutDisabled = empty($carts[$activeTabId]['cart'] ?? [])
+                                || empty($paymentMethod)
+                                || empty($warehouseId)
+                                || (($amountPaid ?? 0) < 0);
                         @endphp
-                        <span class="{{ $statusClass }} font-medium">{{ $statusLabel }}</span>
-                    </div>
-                </div>
-                
-                @if($lastSale->notes)
-                    <div class="text-xs text-gray-600 mb-4">
-                        <strong>Catatan:</strong> {{ $lastSale->notes }}
-                    </div>
-                @endif
-                
-                <div class="text-center text-xs text-gray-500 mb-6">
-                    <p>Terima kasih atas kunjungan Anda!</p>
-                    <p>Kasir: {{ $lastSale->cashier->name ?? 'System' }}</p>
-                </div>
-                
-                <!-- Buttons -->
-                <div class="flex space-x-3">
-                    <button wire:click="closeReceipt" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
-                        Tutup
-                    </button>
-                    <button wire:click="printReceipt" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                        Print
-                    </button>
+                        <button type="submit"
+                                class="btn-primary w-full py-4 text-lg"
+                                wire:loading.attr="disabled" wire:target="processCheckout"
+                                @disabled($checkoutDisabled)
+                                aria-disabled="{{ $checkoutDisabled ? 'true' : 'false' }}">
+                            <i class="fas fa-check mr-2"></i>
+                            <span wire:loading.remove wire:target="processCheckout">Proses Pembayaran</span>
+                            <span wire:loading wire:target="processCheckout"><i class="fas fa-spinner fa-spin mr-2"></i>Memproses...</span>
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     @endif
-    <!-- Image Preview Modal -->
-    <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden" onclick="closeImageModal()">
-        <div class="relative max-w-4xl max-h-full p-4" onclick="event.stopPropagation()">
-            <button onclick="closeImageModal()" class="absolute top-2 right-2 text-white bg-black bg-opacity-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-75">
-                <i class="fas fa-times"></i>
-            </button>
-            <img id="modalImage" src="" alt="" class="max-w-full max-h-full object-contain rounded-lg">
-            <div id="modalImageName" class="text-white text-center mt-2 font-medium"></div>
-        </div>
-    </div>
 
     <script>
-    document.addEventListener('livewire:init', () => {
-        // Track user interaction to prevent unwanted auto-focus
-        let userInteractingWithForm = false;
-        let pricingTierUpdating = false;
-        
-        // Listen for pricing tier update events
-        Livewire.on('pricing-tier-updating', () => {
-            pricingTierUpdating = true;
-            userInteractingWithForm = true;
-        });
-        
-        Livewire.on('pricing-tier-updated', () => {
-            setTimeout(() => {
-                pricingTierUpdating = false;
-                userInteractingWithForm = false;
-            }, 300); // Give some time for the DOM to update
-        });
-        
-        // Add event listeners to track form interactions
-        document.addEventListener('mousedown', function(e) {
-            if (e.target.closest('.pricing-tier-selector') || 
-                e.target.tagName === 'SELECT' || 
-                e.target.tagName === 'INPUT' || 
-                e.target.tagName === 'TEXTAREA') {
-                userInteractingWithForm = true;
-                setTimeout(() => {
-                    if (!pricingTierUpdating) {
-                        userInteractingWithForm = false;
-                    }
-                }, 1000); // Reset after 1 second
-            }
-        });
-        
-        document.addEventListener('focusin', function(e) {
-            if (e.target.closest('.pricing-tier-selector') || 
-                e.target.tagName === 'SELECT') {
-                userInteractingWithForm = true;
-                setTimeout(() => {
-                    if (!pricingTierUpdating) {
-                        userInteractingWithForm = false;
-                    }
-                }, 500);
-            }
-        });
-        
-        Livewire.on('print-receipt', () => {
-            window.print();
-        });
-        
-        // Auto-focus disabled - user can manually focus barcode input when needed
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Don't trigger shortcuts if user is typing in input fields, select, or textarea
-            // Exception: Allow shortcuts when barcode input is focused
-            if ((e.target.tagName === 'INPUT' && e.target.id !== 'barcode-input' && !e.ctrlKey && !e.altKey) ||
-                (e.target.tagName === 'SELECT' && !e.ctrlKey && !e.altKey) ||
-                (e.target.tagName === 'TEXTAREA' && !e.ctrlKey && !e.altKey)) {
-                return;
-            }
-            
-            // Don't trigger shortcuts if modal is open (except ESC)
-            if (document.querySelector('.modal') && e.key !== 'Escape') {
-                return;
-            }
-            
-            // Ctrl+T - Create new tab
-            if (e.ctrlKey && e.key === 't') {
-                e.preventDefault();
-                @this.call('createNewTab');
-            }
-            
-            // Ctrl+W - Close current tab
-            if (e.ctrlKey && e.key === 'w') {
-                e.preventDefault();
-                @this.call('closeTab', {{ $activeTabId }});
-            }
-            
-            // Ctrl+Tab - Switch to next tab
-            if (e.ctrlKey && e.key === 'Tab') {
-                e.preventDefault();
-                // Get current tab IDs dynamically
-                const tabButtons = document.querySelectorAll('[wire\\:click*="switchToTab"]');
-                if (tabButtons.length > 0) {
-                    const tabIds = Array.from(tabButtons).map(btn => {
-                        const match = btn.getAttribute('wire:click').match(/switchToTab\((\d+)\)/);
-                        return match ? parseInt(match[1]) : null;
-                    }).filter(id => id !== null);
-                    
-                    const currentTabId = {{ $activeTabId }};
-                    const currentIndex = tabIds.indexOf(currentTabId);
-                    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % tabIds.length : 0;
-                    
-                    if (tabIds[nextIndex]) {
-                        @this.call('switchToTab', tabIds[nextIndex]);
-                    }
-                }
-            }
-            
-            // F1 - Open Checkout (if cart not empty)
-            if (e.key === 'F1') {
-                e.preventDefault();
-                @this.call('openCheckout');
-            }
-            
-            // F2 - Clear Cart
-            if (e.key === 'F2') {
-                e.preventDefault();
-                @this.call('confirmClearCart');
-            }
-            
-            // F3 - Focus barcode input
-            if (e.key === 'F3') {
-                e.preventDefault();
-                const barcodeInput = document.getElementById('barcode-input');
-                if (barcodeInput) {
-                    barcodeInput.focus();
-                    barcodeInput.select();
-                }
-            }
-            
-            // F4 - Focus product search
-            if (e.key === 'F4') {
-                e.preventDefault();
-                const searchInput = document.getElementById('product-search-input') || document.querySelector('input[wire\\:model\\.live="productSearch"]');
-                if (searchInput) {
-                    searchInput.focus();
-                }
-            }
-            
-            // ESC - Close modals or clear search
-            if (e.key === 'Escape') {
-                if (document.querySelector('.modal')) {
-                    @this.call('closeCheckout');
-                    @this.call('closeReceipt');
-                } else {
-                    // Clear search and focus barcode only if not interacting with form elements
-                    const activeElement = document.activeElement;
-                    const isFormInteraction = activeElement && (
-                        activeElement.tagName === 'SELECT' ||
-                        activeElement.closest('.pricing-tier-selector')
-                    );
-                    
-                    if (!isFormInteraction) {
-                        @this.set('productSearch', '');
-                        setTimeout(() => {
-                            const barcodeInput = document.getElementById('barcode-input');
-                            if (barcodeInput) {
-                                barcodeInput.focus();
-                            }
-                        }, 50);
-                    }
-                }
-            }
-            
-            // Enter - Quick add first product from search results
-            if (e.key === 'Enter' && e.target.id !== 'barcode-input') {
-                const firstProduct = document.querySelector('.product-card');
-                if (firstProduct) {
-                    firstProduct.click();
-                }
-            }
-        });
-        
-        // Barcode validation and formatting
-        const barcodeInput = document.getElementById('barcode-input');
-        if (barcodeInput) {
-            barcodeInput.addEventListener('input', function(e) {
-                // Remove non-alphanumeric characters
-                let value = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
-                
-                // Auto-submit when barcode length is typical (8, 12, 13 digits)
-                if (value.length >= 8 && /^\d+$/.test(value)) {
-                    // Typical barcode lengths: EAN-8 (8), UPC-A (12), EAN-13 (13)
-                    if ([8, 12, 13].includes(value.length)) {
-                        setTimeout(() => {
-                            @this.call('addProductByBarcode');
-                        }, 100);
-                    }
-                }
-            });
-            
-            // Clear barcode input after successful scan
-            barcodeInput.addEventListener('blur', function(e) {
-                // If any modal is open, do not refocus barcode input
-                if (document.querySelector('.modal')) {
-                    return;
-                }
-                // Don't auto-focus if user is interacting with other form elements or pricing tier is updating
-                const activeElement = document.activeElement;
-                const isFormInteraction = activeElement && (
-                    activeElement.tagName === 'SELECT' ||
-                    activeElement.tagName === 'INPUT' ||
-                    activeElement.tagName === 'TEXTAREA' ||
-                    activeElement.closest('.pricing-tier-selector')
-                );
-                
-                // Check if auto-focus is specifically prevented
-                const preventFocus = this.hasAttribute('data-prevent-focus');
-                
-                if (this.value.trim() === '' && !isFormInteraction && !userInteractingWithForm && !pricingTierUpdating && !preventFocus) {
-                    setTimeout(() => {
-                        // Double check that user isn't interacting with form elements and pricing tier isn't updating
-                        const currentActive = document.activeElement;
-                        const stillPreventFocus = this.hasAttribute('data-prevent-focus');
-                        if (!userInteractingWithForm && !pricingTierUpdating && !stillPreventFocus &&
-                            (!currentActive || (!currentActive.closest('.pricing-tier-selector') && 
-                            currentActive.tagName !== 'SELECT' && 
-                            currentActive.tagName !== 'INPUT' && 
-                            currentActive.tagName !== 'TEXTAREA'))) {
-                            this.focus();
-                        }
-                    }, 150);
-                }
-            });
-        }
-    });
-    
-    // User interaction tracking removed - no longer needed without auto-focus
-        
-        // Flash message auto-hide
+        // Enhanced mobile interactions
         document.addEventListener('DOMContentLoaded', function() {
-            const flashMessages = document.querySelectorAll('#success-alert, #error-alert');
-            flashMessages.forEach(message => {
-                setTimeout(() => {
-                    closeAlert(message.id);
-                }, 5000); // Auto close after 5 seconds
+            // Focus management
+            const barcodeInput = document.getElementById('barcode-input');
+            const searchInput = document.getElementById('product-search-input');
+
+            // Auto focus barcode input on load
+            if (barcodeInput) {
+                setTimeout(() => barcodeInput.focus(), 500);
+            }
+
+            // Touch feedback for product cards
+            document.querySelectorAll('.product-card').forEach(card => {
+                card.addEventListener('touchstart', function() {
+                    this.style.transform = 'scale(0.98)';
+                });
+
+                card.addEventListener('touchend', function() {
+                    this.style.transform = 'scale(1)';
+                });
             });
-        });
-        
-        // Function to close alert manually
-        function closeAlert(alertId) {
-            const alert = document.getElementById(alertId);
-            if (alert) {
-                alert.style.opacity = '0';
-                alert.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    alert.remove();
-                }, 300);
+
+            // Swipe gestures for mobile cart
+            let startY = 0;
+            let cartSheet = document.querySelector('.mobile-cart-bottom-sheet');
+
+            if (cartSheet) {
+                cartSheet.addEventListener('touchstart', function(e) {
+                    startY = e.touches[0].clientY;
+                });
+
+                cartSheet.addEventListener('touchmove', function(e) {
+                    let currentY = e.touches[0].clientY;
+                    let deltaY = currentY - startY;
+
+                    // Only allow swipe down gesture
+                    if (deltaY > 0 && deltaY < 200) {
+                        this.style.transform = `translateY(${deltaY}px)`;
+                    }
+                });
+
+                cartSheet.addEventListener('touchend', function(e) {
+                    let currentY = e.changedTouches[0].clientY;
+                    let deltaY = currentY - startY;
+
+                    if (deltaY > 100) {
+                        // Close cart if swiped down enough
+                        @this.call('toggleMobileCart');
+                    }
+                    this.style.transform = '';
+                });
             }
-        }
+
+            // Keyboard shortcuts for mobile
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    // Close mobile cart or modal
+                    @this.call('toggleMobileCart');
+                    @this.call('closeCheckout');
+                }
+
+                // F3 for barcode focus
+                if (e.key === 'F3') {
+                    e.preventDefault();
+                    if (barcodeInput) {
+                        barcodeInput.focus();
+                        barcodeInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+
+                // F4 for search focus
+                if (e.key === 'F4') {
+                    e.preventDefault();
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            });
+
+            // Smooth scroll behavior
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            });
+
+            // Prevent double-tap zoom on inputs
+            document.querySelectorAll('input, select, textarea').forEach(element => {
+                let lastTouchEnd = 0;
+                element.addEventListener('touchend', function (event) {
+                    const now = (new Date()).getTime();
+                    if (now - lastTouchEnd <= 300) {
+                        event.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, false);
+            });
+
+            // Haptic feedback simulation (visual feedback)
+            document.querySelectorAll('button, .product-card, .qty-btn').forEach(element => {
+                element.addEventListener('click', function() {
+                    this.classList.add('clicked');
+                    setTimeout(() => this.classList.remove('clicked'), 200);
+                });
+            });
+
+            // Auto-hide/show bottom nav on scroll
+            let lastScrollY = 0;
+            let bottomNav = document.querySelector('.bottom-nav');
+
+            if (bottomNav) {
+                window.addEventListener('scroll', function() {
+                    let currentScrollY = window.scrollY;
+
+                    if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                        // Scrolling down - hide nav
+                        bottomNav.style.transform = 'translateY(100%)';
+                    } else {
+                        // Scrolling up - show nav
+                        bottomNav.style.transform = 'translateY(0)';
+                    }
+
+                    lastScrollY = currentScrollY;
+                });
+            }
+
+            // Quantity input improvements
+            document.querySelectorAll('.qty-input').forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.select();
+                });
+
+                input.addEventListener('wheel', function(e) {
+                    e.preventDefault();
+                    let delta = e.deltaY > 0 ? -1 : 1;
+                    let newValue = parseInt(this.value) + delta;
+                    let min = parseInt(this.min) || 1;
+                    let max = parseInt(this.max) || 999999;
+
+                    if (newValue >= min && newValue <= max) {
+                        this.value = newValue;
+                        // Trigger Livewire update
+                        this.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                });
+            });
+
+            // Barcode scanner sound feedback (optional)
+            if (barcodeInput) {
+                barcodeInput.addEventListener('input', function(e) {
+                    if (this.value.length >= 8) { // Typical barcode length
+                        // Play subtle sound feedback if supported
+                        try {
+                            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZURE');
+                            audio.volume = 0.1;
+                            audio.play().catch(() => {}); // Ignore errors
+                        } catch (e) {}
+                    }
+                });
+
+                // Auto add to cart on Enter key
+                barcodeInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        // Trigger Livewire method to search and add first result
+                        @this.call('searchAndAddFirstBarcode');
+                    }
+                });
+            }
+
+            // Enhanced search input interactions
+            if (searchInput) {
+                searchInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        // Select first search result and add to cart
+                        const firstResult = document.querySelector('.search-result-item');
+                        if (firstResult) {
+                            firstResult.click();
+                        }
+                    }
+                });
+
+                // Auto-focus and select text on focus
+                searchInput.addEventListener('focus', function() {
+                    this.select();
+                });
+            }
+        });
     </script>
 
+    <style>
+        /* Additional styles for mobile interactions */
+        .clicked {
+            transform: scale(0.95) !important;
+            opacity: 0.8 !important;
+        }
 
-    <script>
-        function focusProductSearch() {
-             const searchInput = document.getElementById('product-search-input') || document.querySelector('input[wire\:model\.live="productSearch"]');
-             if (searchInput) {
-                 searchInput.focus();
-                 searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-             }
-         }
-        function openImageModal(imageUrl, imageName) {
-            const modal = document.getElementById('imageModal');
-            const modalImage = document.getElementById('modalImage');
-            const modalImageName = document.getElementById('modalImageName');
-            
-            modalImage.src = imageUrl;
-            modalImage.alt = imageName;
-            modalImageName.textContent = imageName;
-            modal.classList.remove('hidden');
-            
-            // Prevent body scroll
-            document.body.style.overflow = 'hidden';
+        /* Haptic feedback animation */
+        @keyframes tap {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+            100% { transform: scale(1); }
         }
-        
-        function closeImageModal() {
-            const modal = document.getElementById('imageModal');
-            modal.classList.add('hidden');
-            
-            // Restore body scroll
-            document.body.style.overflow = 'auto';
+
+        /* Smooth transitions for bottom nav */
+        .bottom-nav {
+            transition: transform 0.3s ease-out;
         }
-        
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeImageModal();
+
+        /* Mobile cart sheet transition */
+        .mobile-cart-bottom-sheet {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Improved mobile modal */
+        @media (max-width: 767px) {
+            .modal-enhanced {
+                align-items: flex-end;
+                padding: 0;
             }
-        });
-    </script>
+
+            .modal-content-enhanced {
+                border-radius: 24px 24px 0 0;
+                max-height: 90vh;
+                width: 100%;
+                animation: slideUp 0.3s ease-out;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+            }
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        /* Quantity input styling */
+        .qty-input::-webkit-inner-spin-button,
+        .qty-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Focus states */
+        .qty-btn:focus,
+        button:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        /* Loading states */
+        .loading {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Better mobile checkout modal */
+        @media (max-width: 767px) {
+            .checkout-modal {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                max-height: 85vh;
+                border-radius: 24px 24px 0 0;
+            }
+        }
+
+        /* Enhanced mobile cart styling */
+        .cart-item {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .cart-item:hover {
+            border-color: #d1d5db;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .search-result-item {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .search-result-item:hover {
+            background-color: #f9fafb;
+            border-left: 3px solid #3b82f6;
+            padding-left: 13px;
+        }
+
+        /* Mobile form improvements */
+        @media (max-width: 767px) {
+            .input-mobile {
+                font-size: 16px; /* Prevent zoom on iOS */
+                -webkit-appearance: none;
+                -webkit-border-radius: 0;
+            }
+
+            select.input-mobile {
+                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right 12px center;
+                background-size: 16px;
+                padding-right: 40px;
+            }
+
+            .qty-control {
+                background: #f3f4f6;
+                border-radius: 8px;
+                padding: 4px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .qty-btn {
+                width: 32px;
+                height: 32px;
+                border-radius: 6px;
+                border: none;
+                background: white;
+                color: #374151;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+
+            .qty-btn:active {
+                background: #e5e7eb;
+                transform: scale(0.95);
+            }
+
+            .qty-input {
+                width: 50px;
+                text-align: center;
+                border: none;
+                background: transparent;
+                font-weight: 600;
+                font-size: 16px;
+            }
+
+            /* Custom scrollbars for mobile */
+            .scroll-area::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .scroll-area::-webkit-scrollbar-track {
+                background: transparent;
+            }
+
+            .scroll-area::-webkit-scrollbar-thumb {
+                background: #e5e7eb;
+                border-radius: 2px;
+            }
+        }
+
+        /* Price type selector styling */
+        .price-type-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .price-retail { background: #dbeafe; color: #1e40af; }
+        .price-semi-grosir { background: #fef3c7; color: #92400e; }
+        .price-grosir { background: #dcfce7; color: #166534; }
+        .price-custom { background: #fce7f3; color: #9f1239; }
+    </style>
 </div>

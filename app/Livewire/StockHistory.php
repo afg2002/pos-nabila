@@ -235,7 +235,7 @@ class StockHistory extends Component
             $newQtyChange = $movement->type === 'IN' ? $this->editQty : -$this->editQty;
 
             // For adjustment type, calculate differently
-            if ($movement->type === 'ADJUSTMENT') {
+            if ($movement->type === 'ADJ') {
                 // For adjustment, we need to reverse the old adjustment and apply new one
                 $currentStock = $product->current_stock;
                 $stockBeforeOldAdjustment = $currentStock - $oldQtyChange;
@@ -501,7 +501,7 @@ class StockHistory extends Component
         return [
             'IN' => 'Stock In',
             'OUT' => 'Stock Out',
-            'ADJUSTMENT' => 'Adjustment',
+            'ADJ' => 'Adjustment',
         ];
     }
 

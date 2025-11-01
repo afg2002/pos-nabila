@@ -19,6 +19,8 @@ class KasirManagement extends Component
     public $paymentMethod = '';
     public $selectedSale = null;
     public $showDetailModal = false;
+    public $showDeleteConfirmModal = false;
+    public $confirmDeleteId = null;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -81,10 +83,44 @@ class KasirManagement extends Component
         $this->showDetailModal = false;
     }
 
-    public function printReceipt($saleId)
+    public function printReceiptThermal($saleId)
     {
         $this->selectedSale = Sale::with(['saleItems.product', 'cashier'])->find($saleId);
-        $this->dispatch('print-receipt');
+        $this->dispatch('print-receipt-thermal');
+    }
+
+    public function exportReceiptPNG($saleId)
+    {
+        $this->selectedSale = Sale::with(['saleItems.product', 'cashier'])->find($saleId);
+        $this->dispatch('export-receipt-png');
+    }
+
+    public function exportReceiptPDFThermal($saleId)
+    {
+        $this->selectedSale = Sale::with(['saleItems.product', 'cashier'])->find($saleId);
+        $this->dispatch('export-receipt-pdf-thermal');
+    }
+
+    public function exportInvoiceA4($saleId)
+    {
+        $this->selectedSale = Sale::with(['saleItems.product', 'cashier'])->find($saleId);
+        $this->dispatch('export-invoice-a4');
+    }
+
+    // Backward compatibility methods
+    public function printReceipt($saleId)
+    {
+        $this->printReceiptThermal($saleId);
+    }
+
+    public function exportReceiptImage($saleId)
+    {
+        $this->exportReceiptPNG($saleId);
+    }
+
+    public function exportReceiptPDF($saleId)
+    {
+        $this->exportReceiptPDFThermal($saleId);
     }
 
     public function resetFilters()
@@ -100,6 +136,7 @@ class KasirManagement extends Component
     public function getSalesProperty()
     {
         $query = Sale::with(['cashier', 'saleItems'])
+            ->withCount('saleItems') // Add item count for sorting
             ->when($this->search, function ($q) {
                 $q->where(function ($query) {
                     $query->where('sale_number', 'like', '%' . $this->search . '%')
@@ -118,8 +155,16 @@ class KasirManagement extends Component
             })
             ->when($this->paymentMethod, function ($q) {
                 $q->where('payment_method', $this->paymentMethod);
-            })
-            ->orderBy('created_at', 'desc');
+            });
+
+        // When searching, prioritize by transaction size and amount
+        if ($this->search) {
+            $query->orderBy('final_total', 'desc')  // Highest amount first
+                  ->orderBy('sale_items_count', 'desc'); // Most items first
+        }
+
+        // Default order by date
+        $query->orderBy('created_at', 'desc');
 
         return $query->paginate(15);
     }
@@ -139,6 +184,42 @@ class KasirManagement extends Component
     public function getTotalTransactionsProperty()
     {
         return $this->sales->count();
+    }
+
+    // Delete Transaction Flow
+    public function confirmDelete($saleId)
+    {
+        $this->confirmDeleteId = $saleId;
+        $this->showDeleteConfirmModal = true;
+    }
+
+    public function cancelDelete()
+    {
+        $this->showDeleteConfirmModal = false;
+        $this->confirmDeleteId = null;
+    }
+
+    public function deleteSale()
+    {
+        if (!$this->confirmDeleteId) {
+            return;
+        }
+        $sale = Sale::find($this->confirmDeleteId);
+        if (!$sale) {
+            $this->dispatch('notify', type: 'error', message: 'Transaksi tidak ditemukan');
+            return;
+        }
+        // Mark as cancelled instead of DELETED since DELETED is not in the enum
+        $sale->status = 'CANCELLED';
+        $sale->save();
+
+        // Reset state and refresh list
+        $this->showDeleteConfirmModal = false;
+        $this->confirmDeleteId = null;
+        $this->selectedSale = null;
+        $this->resetPage();
+
+        $this->dispatch('notify', type: 'success', message: 'Transaksi berhasil dihapus');
     }
 
     public function render()

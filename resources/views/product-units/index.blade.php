@@ -4,6 +4,6 @@
 
 @section('content')
 <div class="container-fluid">
-    @livewire('product-unit-management')
+    @livewire('product-unit-management', [], key('product-unit-management'))
 </div>
 @endsection

@@ -19,7 +19,7 @@
             background: linear-gradient(180deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
         }
         .navbar-gradient {
-            background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
+            background: #ffffff;
         }
         .sidebar-toggle {
             transition: all 0.3s ease;
@@ -61,6 +61,39 @@
                 transform: translateX(0);
             }
         }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
         
         .animate-fadeInUp {
             animation: fadeInUp 0.6s ease-out;
@@ -68,6 +101,27 @@
         
         .animate-slideInRight {
             animation: slideInRight 0.4s ease-out;
+        }
+
+        .animate-slideInUp {
+            animation: slideInUp 0.3s ease-out;
+        }
+
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 0.7) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
         }
         
         /* Glassmorphism Effects */
@@ -185,6 +239,15 @@
                             </svg>
                             Products
                         </a>
+
+                        @permission('products.view')
+                            <a href="{{ route('categories.index') }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ request()->routeIs('categories.*') ? 'bg-blue-600 bg-opacity-20 text-white' : 'text-blue-100 hover:bg-blue-600 hover:bg-opacity-10 hover:text-white' }} transition-colors duration-200">
+                                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
+                                </svg>
+                                Kategori
+                            </a>
+                        @endpermission
 
                         <!-- Product Unit Management -->
                         @permission('products.view')
@@ -531,7 +594,9 @@
         </div>
     @endauth
 
+    @once
     @livewireScripts
+    @endonce
     
     <!-- SweetAlert2 for modern alerts -->
     <script src="{{ asset('js/sweetalert2.js') }}"></script>
@@ -604,25 +669,28 @@
 
         // Handle Laravel flash messages with modern alerts
         @if (session('message'))
-            showToast('success', '{{ session('message') }}');
+            showToast('success', @json(session('message')));
         @endif
 
         
 
         @if (session('error'))
-            showToast('error', '{{ session('error') }}');
+            showToast('error', @json(session('error')));
         @endif
 
         @if (session('warning'))
-            showToast('warning', '{{ session('warning') }}');
+            showToast('warning', @json(session('warning')));
         @endif
 
         @if (session('info'))
-            showToast('info', '{{ session('info') }}');
+            showToast('info', @json(session('info')));
         @endif
 
-        // Livewire integration
+        // Livewire integration (guarded to avoid double registration)
         document.addEventListener('livewire:init', () => {
+            if (window.__livewireAppEventsRegistered) return; // Prevent duplicate listener registration
+            window.__livewireAppEventsRegistered = true;
+
             Livewire.on('show-alert', (event) => {
                 const data = Array.isArray(event) ? event[0] : event;
                 showAlert(data.type, data.title, data.text, data.options || {});
@@ -647,6 +715,35 @@
                             }));
                         }
                     });
+            });
+
+            Livewire.on('show-timer-alert', (event) => {
+                const data = Array.isArray(event) ? event[0] : event;
+                const duration = data.duration || 3000;
+                
+                Swal.fire({
+                    title: data.title,
+                    text: data.message || '',
+                    icon: data.type || 'info',
+                    timer: duration,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    position: 'top-end',
+                    toast: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                    }
+                });
+            });
+
+            Livewire.on('redirect-after-delay', (event) => {
+                const data = Array.isArray(event) ? event[0] : event;
+                const delay = data.delay || 2000;
+                
+                setTimeout(() => {
+                    window.location.href = data.url;
+                }, delay);
             });
         });
 
@@ -774,7 +871,7 @@
     </script>
     
     <!-- Larapex Charts Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <!-- Removed manual ApexCharts include to avoid duplicate registrations; Larapex charts will inject it when needed -->
     @stack('scripts')
 </body>
 </html>

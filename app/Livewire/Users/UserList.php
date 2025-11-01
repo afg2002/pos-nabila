@@ -94,6 +94,11 @@ class UserList extends Component
         );
     }
 
+    public function openUserForm($userId = null)
+    {
+        $this->dispatch('openUserForm', ['userId' => $userId]);
+    }
+
     public function deleteUser($params)
     {
         try {

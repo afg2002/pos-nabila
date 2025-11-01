@@ -10,6 +10,10 @@ class Sale extends Model
 {
     use HasFactory;
 
+    public const PAYMENT_STATUS_UNPAID = 'UNPAID';
+    public const PAYMENT_STATUS_PARTIAL = 'PARTIAL';
+    public const PAYMENT_STATUS_PAID = 'PAID';
+
     protected $fillable = [
         'sale_number',
         'cashier_id',

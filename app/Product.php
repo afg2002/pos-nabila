@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -68,6 +69,43 @@ class Product extends Model
     public function warehouseStocks(): HasMany
     {
         return $this->hasMany(ProductWarehouseStock::class);
+    }
+
+    /**
+     * New: per-product unit scales (conversion factors to base unit)
+     */
+    public function unitScales(): HasMany
+    {
+        return $this->hasMany(ProductUnitScale::class);
+    }
+
+    /**
+     * Helper: list all units available for this product including base unit
+     * Returns array of [unit_id => ['name' => ..., 'abbr' => ..., 'to_base_qty' => ...]]
+     */
+    public function listAllUnits(): array
+    {
+        $base = $this->unit; // ProductUnit model
+        $scales = $this->relationLoaded('unitScales') ? $this->unitScales : $this->unitScales()->get();
+
+        $result = [];
+        if ($base) {
+            $result[$base->id] = [
+                'name' => $base->name,
+                'abbr' => $base->abbreviation,
+                'to_base_qty' => 1,
+            ];
+        }
+        foreach ($scales as $scale) {
+            if ($scale->unit) {
+                $result[$scale->unit->id] = [
+                    'name' => $scale->unit->name,
+                    'abbr' => $scale->unit->abbreviation,
+                    'to_base_qty' => (float) $scale->to_base_qty,
+                ];
+            }
+        }
+        return $result;
     }
 
     /**
@@ -224,6 +262,82 @@ class Product extends Model
     }
 
     /**
+     * Generate an SKU based on category/name with an incremental numeric suffix.
+     * Example: for category "Minuman Ringan" -> prefix "MR" -> "MR-0001".
+     */
+    public static function generateSku(?string $category = null, ?string $name = null, int $width = 4): string
+    {
+        // Derive prefix from category or name
+        $source = trim((string) ($category ?: $name ?: 'PRD'));
+        $words = preg_split('/[\s\-_,]+/', $source, -1, PREG_SPLIT_NO_EMPTY);
+        $letters = collect($words)->map(function ($w) {
+            return strtoupper(substr(Str::slug($w, ''), 0, 1));
+        })->implode('');
+        $prefix = $letters !== '' ? $letters : strtoupper(substr(Str::slug($source, ''), 0, 3));
+        if ($prefix === '') {
+            $prefix = 'PRD';
+        }
+
+        $next = static::nextSkuSequence($prefix, $width);
+        $sku = sprintf('%s-%s', $prefix, str_pad((string) $next, $width, '0', STR_PAD_LEFT));
+
+        // Guard uniqueness by retrying if collision occurs
+        $attempts = 0;
+        while (static::where('sku', $sku)->exists() && $attempts < 5) {
+            $next++;
+            $sku = sprintf('%s-%s', $prefix, str_pad((string) $next, $width, '0', STR_PAD_LEFT));
+            $attempts++;
+        }
+
+        return $sku;
+    }
+
+    /**
+     * Alternative: Generate short unique SKU using random bytes (hex), keeping it compact.
+     * Example: for category "Obat" -> prefix "O" -> "O-3F1A9B".
+     */
+    public static function generateSkuShort(?string $category = null, ?string $name = null, int $length = 6): string
+    {
+        // Derive prefix from category or name
+        $source = trim((string) ($category ?: $name ?: 'PRD'));
+        $words = preg_split('/[\s\-_,]+/', $source, -1, PREG_SPLIT_NO_EMPTY);
+        $letters = collect($words)->map(function ($w) {
+            return strtoupper(substr(Str::slug($w, ''), 0, 1));
+        })->implode('');
+        $prefix = $letters !== '' ? $letters : strtoupper(substr(Str::slug($source, ''), 0, 3));
+        if ($prefix === '') {
+            $prefix = 'PRD';
+        }
+
+        $length = max(4, $length); // keep it at least 4 chars
+
+        // Generate a short, random, uppercase hex suffix and ensure uniqueness
+        $attempts = 0;
+        do {
+            $suffix = strtoupper(bin2hex(random_bytes((int) ceil($length / 2))));
+            $short = substr($suffix, 0, $length);
+            $sku = $prefix.'-'.$short;
+            $attempts++;
+        } while (static::where('sku', $sku)->exists() && $attempts < 20);
+
+        return $sku;
+    }
+
+    protected static function nextSkuSequence(string $prefix, int $width = 4): int
+    {
+        $existing = static::where('sku', 'LIKE', $prefix.'-%')->pluck('sku');
+        $max = 0;
+        foreach ($existing as $sku) {
+            $parts = explode('-', $sku);
+            $num = (int) (end($parts));
+            if ($num > $max) {
+                $max = $num;
+            }
+        }
+        return $max + 1;
+    }
+
+    /**
      * Accessor: unified 'price' attribute returning effective price per default_price_type
      */
     public function getPriceAttribute()
@@ -358,5 +472,17 @@ class Product extends Model
         }
         
         return (($sellingPrice - $costPrice) / $sellingPrice) * 100;
+    }
+
+
+    protected static function booted()
+    {
+        static::creating(function (Product $product) {
+            // Auto-generate SKU if missing to safeguard programmatic creates
+            if (empty($product->sku)) {
+                // Default to short unique generator to avoid collisions
+                $product->sku = static::generateSkuShort($product->category ?? null, $product->name ?? null);
+            }
+        });
     }
 }

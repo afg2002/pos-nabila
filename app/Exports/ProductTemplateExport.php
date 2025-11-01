@@ -13,29 +13,27 @@ class ProductTemplateExport implements FromArray, WithHeadings, WithStyles
     {
         return [
             [
-                'PROD001',
-                '1234567890123',
+                '', // SKU optional (auto-generate when empty)
                 'Contoh Produk 1',
                 'Elektronik',
-                'Pcs',
-                100,
-                50000,
-                75000,
-                65000,
-                10,
+                100, // Stok awal di gudang toko
+                60000, // Harga Pokok
+                75000, // Harga Retail
+                70000, // Harga Semi Grosir
+                65000, // Harga Grosir
+                'Retail', // Jenis Harga default
                 'Aktif'
             ],
             [
                 'PROD002',
-                '1234567890124',
                 'Contoh Produk 2',
                 'Fashion',
-                'Pcs',
                 50,
-                25000,
+                32000, // Harga Pokok
                 40000,
+                38000,
                 35000,
-                15,
+                'Grosir',
                 'Aktif'
             ]
         ];
@@ -44,16 +42,15 @@ class ProductTemplateExport implements FromArray, WithHeadings, WithStyles
     public function headings(): array
     {
         return [
-            'SKU*',
-            'Barcode',
+            'SKU', // optional
             'Nama Produk*',
             'Kategori',
-            'Unit*',
             'Stok Awal',
-            'Harga Beli*',
-            'Harga Jual*',
+            'Harga Pokok',
+            'Harga Retail*',
+            'Harga Semi Grosir',
             'Harga Grosir',
-            'Margin Min (%)',
+            'Jenis Harga*',
             'Status*'
         ];
     }
@@ -68,7 +65,7 @@ class ProductTemplateExport implements FromArray, WithHeadings, WithStyles
                     'startColor' => ['rgb' => 'E3F2FD']
                 ]
             ],
-            'A:K' => ['alignment' => ['horizontal' => 'left']],
+            'A:J' => ['alignment' => ['horizontal' => 'left']],
         ];
     }
 }

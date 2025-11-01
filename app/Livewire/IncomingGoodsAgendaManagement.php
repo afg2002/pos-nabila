@@ -6,6 +6,7 @@ use App\Models\IncomingGoodsAgenda;
 use App\Models\ProductUnit;
 use Carbon\Carbon;
 use Livewire\Component;
+use Livewire\Attributes\Layout;
 use Livewire\WithPagination;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -13,6 +14,7 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\Warehouse;
 
+#[Layout('components.layouts.app')]
 class IncomingGoodsAgendaManagement extends Component
 {
     use WithPagination;

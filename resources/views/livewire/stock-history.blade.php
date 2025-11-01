@@ -535,6 +535,7 @@
         </div>
     </div>
 
+    @once
     <script>
         function openImageModal(imageUrl, imageName) {
             const modal = document.getElementById('imageModal');
@@ -565,6 +566,7 @@
             }
         });
     </script>
+    @endonce
     
     <!-- Delete Confirmation Modal -->
     @if($showDeleteModal)
@@ -606,6 +608,7 @@
     </div>
     @endif
 
+    @once
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Stock History page loaded');
@@ -616,4 +619,5 @@
             }
         });
     </script>
+    @endonce
 </div>

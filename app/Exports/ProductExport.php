@@ -2,6 +2,8 @@
 
 namespace App\Exports;
 
+use App\Warehouse;
+use App\ProductWarehouseStock;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -27,42 +29,44 @@ class ProductExport implements FromCollection, WithHeadings, WithMapping, WithSt
     {
         return [
             'SKU',
-            'Barcode',
             'Nama Produk',
             'Kategori',
-            'Unit',
-            'Harga Pokok',
+            'Stok',
             'Harga Retail',
+            'Harga Semi Grosir',
             'Harga Grosir',
-            'Min Margin (%)',
+            'Jenis Harga',
             'Status',
-            'Stok Saat Ini',
-            'Tanggal Dibuat',
-            'Terakhir Diupdate'
         ];
     }
     
     public function map($product): array
     {
-        // Hitung stok saat ini
-        $currentStock = $product->stockMovements()
-            ->selectRaw('SUM(CASE WHEN type = "in" THEN qty ELSE -qty END) as current_stock')
-            ->value('current_stock') ?? 0;
-            
+        // Ambil stok untuk gudang default (stok toko)
+        $defaultWarehouse = Warehouse::getDefault();
+        $storeStock = 0;
+        if ($defaultWarehouse) {
+            $pws = ProductWarehouseStock::query()
+                ->where('product_id', $product->id)
+                ->where('warehouse_id', $defaultWarehouse->id)
+                ->first();
+            $storeStock = (int)($pws->stock_on_hand ?? 0);
+        }
+        
+        // Jenis harga human readable
+        $priceTypes = \App\Product::getPriceTypes();
+        $jenisHarga = $priceTypes[$product->default_price_type] ?? 'Retail';
+        
         return [
             $product->sku,
-            $product->barcode,
             $product->name,
             $product->category,
-            is_array($product->unit) ? $product->unit['name'] : $product->unit,
-            number_format((float)$product->base_cost, 0, ',', '.'),
-            number_format((float)$product->price_retail, 0, ',', '.'),
-            number_format((float)$product->price_grosir, 0, ',', '.'),
-            $product->min_margin_pct . '%',
-            $product->is_active ? 'Aktif' : 'Tidak Aktif',
-            number_format($currentStock, 0, ',', '.'),
-            $product->created_at->format('d/m/Y H:i'),
-            $product->updated_at->format('d/m/Y H:i')
+            $storeStock,
+            (float)($product->price_retail ?? 0),
+            (float)($product->price_semi_grosir ?? 0),
+            (float)($product->price_grosir ?? 0),
+            $jenisHarga,
+            method_exists($product, 'getStatusDisplayName') ? $product->getStatusDisplayName() : ($product->status === 'active' ? 'Aktif' : 'Tidak Aktif'),
         ];
     }
     

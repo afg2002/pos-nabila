@@ -2,19 +2,24 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp"
-      ],
+      "args": ["-y", "@upstash/context7-mcp"],
       "env": {
         "DEFAULT_MINIMUM_TOKENS": ""
       }
     },
     "sequentialthinking": {
       "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "laravel-boost": {
+      "command": "php",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
+        "C:\\laragon\\www\\laravel_livewire_RBAC_boilerplate\\artisan",
+        "boost:mcp"
       ]
     }
   }

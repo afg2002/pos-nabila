@@ -77,12 +77,13 @@
         $totalSuppliers = \App\Supplier::count();
         $totalWarehouses = \App\Warehouse::count();
         
-        $recentTransactions = \App\Sale::with('user')
+        // Use 'cashier' relation defined in Sale model
+        $recentTransactions = \App\Sale::with('cashier')
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
             
-        $upcomingAgendas = \App\IncomingGoodsAgenda::with('supplier')
+        $upcomingAgendas = \App\Models\IncomingGoodsAgenda::with('supplier')
             ->where('status', 'scheduled')
             ->where('scheduled_date', '>=', now())
             ->orderBy('scheduled_date', 'asc')
@@ -442,7 +443,7 @@
                                         </div>
                                         <div>
                                             <p class="text-sm font-medium text-gray-900">#{{ str_pad($sale->id, 6, '0', STR_PAD_LEFT) }}</p>
-                                            <p class="text-xs text-gray-500">{{ optional($sale->user)->name }} • {{ $sale->created_at->diffForHumans() }}</p>
+                                            <p class="text-xs text-gray-500">{{ optional($sale->cashier)->name }} • {{ $sale->created_at->diffForHumans() }}</p>
                                         </div>
                                     </div>
                                     <div class="text-right">

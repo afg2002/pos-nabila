@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\AuditLog;
 use App\Product;
 use App\Models\ProductUnit;
+use App\Models\Category;
 use App\Shared\Traits\WithAlerts;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
@@ -44,11 +45,27 @@ class ProductTable extends Component
 
     public $showDetailModal = false;
 
+    public $showDeleteModal = false;
+
+    public $showBulkDeleteModal = false;
+
+    public $showRestoreModal = false;
+
+    public $showBulkRestoreModal = false;
+
     public $editMode = false;
 
     public $productId = null;
 
     public $selectedProduct = null;
+
+    public $deleteProductId = null;
+
+    public $deleteProductName = null;
+
+    public $restoreProductId = null;
+
+    public $restoreProductName = null;
 
     // Properties untuk form
     public $sku = '';
@@ -73,11 +90,14 @@ class ProductTable extends Component
 
     public $price_grosir = 0;
 
-    public $min_margin_pct = 0;
 
     public $default_price_type = 'retail';
 
     public $productStatus = 'active';
+
+    // ===== Stok awal saat tambah produk =====
+    public $initial_stock = 0;
+    public $initial_warehouse_id = '';
 
     // Properties untuk unit management
     public $showUnitModal = false;
@@ -137,13 +157,15 @@ class ProductTable extends Component
     protected $listeners = [
         'productSaved' => 'refreshProducts',
         'productDeleted' => 'refreshProducts',
+        // Refresh stok setelah komponen StockForm melakukan update
+        'stock-updated' => 'refreshProducts',
     ];
 
     public function rules()
     {
         return [
             'sku' => [
-                'required',
+                'nullable',
                 'string',
                 'max:50',
                 Rule::unique('products', 'sku')->ignore($this->productId),
@@ -163,9 +185,11 @@ class ProductTable extends Component
             'price_retail' => 'required|numeric|min:0',
             'price_semi_grosir' => 'nullable|numeric|min:0',
             'price_grosir' => 'required|numeric|min:0',
-            'min_margin_pct' => 'required|numeric|min:0|max:100',
-            'default_price_type' => 'required|in:retail,semi_grosir,grosir,custom',
+                        'default_price_type' => 'required|in:retail,semi_grosir,grosir,custom',
             'productStatus' => 'required|in:active,inactive,discontinued',
+            // stok awal opsional; validasi tambahan akan dijalankan saat create
+            'initial_stock' => 'nullable|numeric|min:0',
+            'initial_warehouse_id' => 'nullable|exists:warehouses,id',
         ];
     }
 
@@ -265,26 +289,21 @@ class ProductTable extends Component
         $this->price_retail = $product->price_retail;
         $this->price_semi_grosir = $product->price_semi_grosir;
         $this->price_grosir = $product->price_grosir;
-        $this->min_margin_pct = $product->min_margin_pct;
         $this->default_price_type = $product->default_price_type;
         $this->productStatus = $product->status;
-
+        // stok awal tidak relevan saat edit
+        $this->initial_stock = 0;
+        $this->initial_warehouse_id = '';
         $this->editMode = true;
         $this->showModal = true;
     }
 
-    public function closeModal()
-    {
-        $this->showModal = false;
-        $this->resetForm();
-        $this->resetValidation();
-    }
-
     public function openDetailModal($productId)
     {
-        $this->selectedProduct = Product::with(['stockMovements' => function ($query) {
-            $query->orderBy('created_at', 'desc')->limit(10);
-        }, 'saleItems.sale'])->findOrFail($productId);
+        $product = Product::with(['unit', 'stockMovements' => function($q) {
+            $q->latest()->limit(10);
+        }])->findOrFail($productId);
+        $this->selectedProduct = $product;
         $this->showDetailModal = true;
     }
 
@@ -292,132 +311,35 @@ class ProductTable extends Component
     {
         $this->showDetailModal = false;
         $this->selectedProduct = null;
-        $this->showPhotoEditMode = false;
-        $this->newPhoto = null;
-        $this->tempPhoto = null;
-        $this->isUpdatingPhoto = false;
-        $this->isUploadingPhoto = false;
-        $this->isRemovingPhoto = false;
     }
 
-    public function togglePhotoEditMode()
+    public function resetForm()
     {
-        $this->showPhotoEditMode = ! $this->showPhotoEditMode;
-        if (! $this->showPhotoEditMode) {
-            $this->newPhoto = null;
-            $this->tempPhoto = null;
-            $this->isUpdatingPhoto = false;
-            $this->isUploadingPhoto = false;
-        }
+        $this->productId = null;
+        $this->sku = '';
+        $this->barcode = '';
+        $this->name = '';
+        $this->categoryInput = '';
+        $this->photo = null;
+        $this->currentPhoto = null;
+        $this->unit_id = '';
+        $this->base_cost = '';
+        $this->price_retail = '';
+        $this->price_semi_grosir = '';
+        $this->price_grosir = '';
+        $this->default_price_type = 'retail';
+        $this->productStatus = 'active';
+        // reset stok awal
+        $this->initial_stock = 0;
+        $this->initial_warehouse_id = '';
+        $this->resetValidation();
     }
 
-    public function updatedNewPhoto()
+    public function closeModal()
     {
-        $this->isUploadingPhoto = true;
-
-        $this->validate([
-            'newPhoto' => 'image|max:2048',
-        ]);
-
-        $this->tempPhoto = $this->newPhoto->temporaryUrl();
-        $this->isUploadingPhoto = false;
-    }
-
-    public function updateProductPhoto()
-    {
-        $this->isUpdatingPhoto = true;
-
-        $this->validate([
-            'newPhoto' => 'required|image|max:2048',
-        ]);
-
-        try {
-            $this->authorize('update', $this->selectedProduct);
-
-            // Create products directory if it doesn't exist
-            if (! Storage::disk('public')->exists('products')) {
-                Storage::disk('public')->makeDirectory('products');
-            }
-
-            // Delete old photo if exists
-            if ($this->selectedProduct->photo) {
-                Storage::disk('public')->delete('products/'.$this->selectedProduct->photo);
-            }
-
-            // Store new photo
-            $filename = time().'_'.$this->newPhoto->getClientOriginalName();
-            $this->newPhoto->storeAs('products', $filename, 'public');
-
-            // Update product
-            $oldPhoto = $this->selectedProduct->photo;
-            $this->selectedProduct->update(['photo' => $filename]);
-
-            // Log audit
-            AuditLog::logUpdate('products', $this->selectedProduct->id,
-                ['photo' => $oldPhoto],
-                ['photo' => $filename]
-            );
-
-            // Reset form
-            $this->showPhotoEditMode = false;
-            $this->newPhoto = null;
-            $this->tempPhoto = null;
-            $this->isUpdatingPhoto = false;
-
-            session()->flash('message', 'Foto produk berhasil diperbarui!');
-
-        } catch (\Exception $e) {
-            $this->isUpdatingPhoto = false;
-            session()->flash('error', 'Gagal memperbarui foto: '.$e->getMessage());
-        }
-    }
-
-    public $isRemovingPhoto = false;
-
-    /**
-     * Confirm remove product photo
-     */
-    public function confirmRemoveProductPhoto()
-    {
-        $this->showConfirm(
-            'Hapus Foto Produk',
-            'Yakin ingin menghapus foto ini?',
-            'removeProductPhoto',
-            [],
-            'Ya, hapus!',
-            'Batal'
-        );
-    }
-
-    public function removeProductPhoto()
-    {
-        $this->isRemovingPhoto = true;
-
-        try {
-            $this->authorize('update', $this->selectedProduct);
-
-            // Delete photo file if exists
-            if ($this->selectedProduct->photo) {
-                Storage::disk('public')->delete('products/'.$this->selectedProduct->photo);
-            }
-
-            // Update product
-            $oldPhoto = $this->selectedProduct->photo;
-            $this->selectedProduct->update(['photo' => null]);
-
-            // Log audit
-            AuditLog::logUpdate('products', $this->selectedProduct->id,
-                ['photo' => $oldPhoto],
-                ['photo' => null]
-            );
-
-            $this->isRemovingPhoto = false;
-            session()->flash('message', 'Foto produk berhasil dihapus!');
-
-        } catch (\Exception $e) {
-            $this->isRemovingPhoto = false;
-            session()->flash('error', 'Gagal menghapus foto: '.$e->getMessage());
-        }
+        $this->showModal = false;
+        $this->resetForm();
+        $this->resetValidation();
     }
 
     public function save()
@@ -443,10 +365,21 @@ class ProductTable extends Component
                 'price_retail' => $this->price_retail,
                 'price_semi_grosir' => $this->price_semi_grosir,
                 'price_grosir' => $this->price_grosir,
-                'min_margin_pct' => $this->min_margin_pct,
-                'default_price_type' => $this->default_price_type,
+                                'default_price_type' => $this->default_price_type,
                 'status' => $this->productStatus,
             ];
+
+            // Auto-generate SKU when empty for create, keep original on edit
+            if (! $this->editMode) {
+                if (!isset($data['sku']) || trim((string) $data['sku']) === '') {
+                    $data['sku'] = Product::generateSku($this->categoryInput, $this->name);
+                }
+            } else {
+                if (!isset($data['sku']) || trim((string) $data['sku']) === '') {
+                    // Preserve existing SKU when editing if left blank
+                    $data['sku'] = $product->sku;
+                }
+            }
 
             // Handle photo upload
             if ($this->photo) {
@@ -481,6 +414,33 @@ class ProductTable extends Component
                 // Log audit
                 AuditLog::logCreate('products', $product->id, $product->toArray());
 
+                // Jika stok awal diisi (>0), wajib pilih gudang dan catat movement IN
+                if ((float) $this->initial_stock > 0) {
+                    $this->validate([
+                        'initial_warehouse_id' => 'required|exists:warehouses,id',
+                    ]);
+
+                    // Hitung stok sebelum dan sesudah untuk gudang terpilih
+                    $stockBefore = \App\ProductWarehouseStock::where('product_id', $product->id)
+                        ->where('warehouse_id', (int) $this->initial_warehouse_id)
+                        ->value('stock_on_hand') ?? 0;
+                    $stockAfter = $stockBefore + (int) $this->initial_stock;
+
+                    // Buat movement stok masuk (IN) sebagai stok awal dengan stock_before/after
+                    \App\StockMovement::createMovement(
+                        $product->id,
+                        (int) $this->initial_stock,
+                        'IN',
+                        [
+                            'note' => 'Stok awal saat tambah produk',
+                            'reason_code' => 'INIT',
+                            'warehouse_id' => (int) $this->initial_warehouse_id,
+                            'stock_before' => (int) $stockBefore,
+                            'stock_after' => (int) $stockAfter,
+                        ]
+                    );
+                }
+
                 session()->flash('message', 'Produk berhasil ditambahkan!');
             }
 
@@ -501,14 +461,48 @@ class ProductTable extends Component
     public function confirmSoftDelete($productId)
     {
         $product = Product::findOrFail($productId);
-        $this->showConfirm(
-            'Hapus Produk',
-            "Yakin ingin menghapus produk '{$product->name}'? (Dapat dikembalikan)",
-            'softDelete',
-            ['productId' => $productId],
-            'Ya, hapus!',
-            'Batal'
-        );
+        $this->deleteProductId = $productId;
+        $this->deleteProductName = $product->name;
+        $this->showDeleteModal = true;
+    }
+
+    /**
+     * Close delete modal
+     */
+    public function closeDeleteModal()
+    {
+        $this->showDeleteModal = false;
+        $this->deleteProductId = null;
+        $this->deleteProductName = null;
+    }
+
+    /**
+     * Delete product
+     */
+    public function deleteProduct()
+    {
+        if (!$this->deleteProductId) {
+            return;
+        }
+
+        try {
+            $product = Product::findOrFail($this->deleteProductId);
+            $this->authorize('delete', $product);
+
+            $oldData = $product->toArray();
+            $product->softDeleteWithStatus();
+
+            // Log audit
+            AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+
+            session()->flash('message', 'Produk berhasil dihapus!');
+            $this->closeDeleteModal();
+            $this->dispatch('productDeleted');
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
+            $this->closeDeleteModal();
+        }
     }
 
     /**
@@ -589,14 +583,48 @@ class ProductTable extends Component
     public function confirmRestore($productId)
     {
         $product = Product::withTrashed()->findOrFail($productId);
-        $this->showConfirm(
-            'Pulihkan Produk',
-            "Yakin ingin memulihkan produk '{$product->name}'?",
-            'restore',
-            ['productId' => $productId],
-            'Ya, pulihkan!',
-            'Batal'
-        );
+        $this->restoreProductId = $productId;
+        $this->restoreProductName = $product->name;
+        $this->showRestoreModal = true;
+    }
+
+    /**
+     * Close restore modal
+     */
+    public function closeRestoreModal()
+    {
+        $this->showRestoreModal = false;
+        $this->restoreProductId = null;
+        $this->restoreProductName = null;
+    }
+
+    /**
+     * Restore product
+     */
+    public function restoreProduct()
+    {
+        if (!$this->restoreProductId) {
+            return;
+        }
+
+        try {
+            $product = Product::withTrashed()->findOrFail($this->restoreProductId);
+            $this->authorize('restore', $product);
+
+            $oldData = $product->toArray();
+            $product->restoreWithStatus();
+
+            // Log audit
+            AuditLog::logUpdate('products', $product->id, $oldData, $product->fresh()->toArray());
+
+            session()->flash('message', 'Produk berhasil dikembalikan!');
+            $this->closeRestoreModal();
+            $this->dispatch('productRestored');
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Terjadi kesalahan: '.$e->getMessage());
+            $this->closeRestoreModal();
+        }
     }
 
     /**
@@ -659,19 +687,17 @@ class ProductTable extends Component
     {
         if (empty($this->selectedProducts)) {
             session()->flash('error', 'Pilih produk yang akan dihapus!');
-
             return;
         }
+        $this->showBulkDeleteModal = true;
+    }
 
-        $count = count($this->selectedProducts);
-        $this->showConfirm(
-            'Hapus Produk Massal',
-            "Yakin ingin menghapus {$count} produk terpilih?",
-            'bulkDelete',
-            [],
-            'Ya, hapus!',
-            'Batal'
-        );
+    /**
+     * Close bulk delete modal
+     */
+    public function closeBulkDeleteModal()
+    {
+        $this->showBulkDeleteModal = false;
     }
 
     /**
@@ -681,19 +707,17 @@ class ProductTable extends Component
     {
         if (empty($this->selectedProducts)) {
             session()->flash('error', 'Pilih produk yang akan dikembalikan!');
-
             return;
         }
+        $this->showBulkRestoreModal = true;
+    }
 
-        $count = count($this->selectedProducts);
-        $this->showConfirm(
-            'Kembalikan Produk Massal',
-            "Yakin ingin mengembalikan {$count} produk terpilih?",
-            'bulkRestore',
-            [],
-            'Ya, kembalikan!',
-            'Batal'
-        );
+    /**
+     * Close bulk restore modal
+     */
+    public function closeBulkRestoreModal()
+    {
+        $this->showBulkRestoreModal = false;
     }
 
     public function bulkDelete()
@@ -902,24 +926,8 @@ class ProductTable extends Component
         }
     }
 
-    public function resetForm()
-    {
-        $this->productId = null;
-        $this->sku = '';
-        $this->barcode = '';
-        $this->name = '';
-        $this->categoryInput = '';
-        $this->photo = null;
-        $this->currentPhoto = '';
-        $this->unit_id = '';
-        $this->base_cost = 0;
-        $this->price_retail = 0;
-        $this->price_semi_grosir = 0;
-        $this->price_grosir = 0;
-        $this->min_margin_pct = 0;
-        $this->default_price_type = 'retail';
-        $this->productStatus = 'active';
-    }
+    
+
 
     public function exportProducts()
     {
@@ -948,6 +956,9 @@ class ProductTable extends Component
 
         // Clear product listing cache with wildcard pattern
         $this->clearProductCache();
+
+        // Clear warehouse stock cache so tabel stok terupdate
+        $this->warehouseStocksCache = [];
 
         $this->resetPage();
         session()->flash('success', 'Data produk berhasil diperbarui!');
@@ -1109,6 +1120,76 @@ class ProductTable extends Component
         }
     }
 
+    /**
+     * Per-product unit scales management
+     */
+    public function addUnitScale(int $productId, int $unitId, $qty): void
+    {
+        $qty = (float) $qty;
+        // Enforce a sensible minimum conversion value
+        if ($qty < 0.0001) {
+            session()->flash('error', 'Konversi minimal adalah 0.0001 dan harus lebih dari 0.');
+            return;
+        }
+        $product = Product::findOrFail($productId);
+        if ($unitId === (int) $product->unit_id) {
+            session()->flash('error', 'Unit dasar produk tidak perlu ditambahkan.');
+            return;
+        }
+        // Ensure unit exists and is active
+        $unit = \App\ProductUnit::where('id', $unitId)->where('is_active', true)->first();
+        if (! $unit) {
+            session()->flash('error', 'Unit tidak valid atau tidak aktif.');
+            return;
+        }
+
+        // Prevent duplicate scales per product
+        $exists = \App\ProductUnitScale::where('product_id', $product->id)
+            ->where('unit_id', $unitId)
+            ->exists();
+        if ($exists) {
+            session()->flash('error', 'Satuan tersebut sudah dikonfigurasi untuk produk ini. Gunakan edit untuk mengubah konversi.');
+            return;
+        }
+
+        \App\ProductUnitScale::create([
+            'product_id' => $product->id,
+            'unit_id' => $unitId,
+            'to_base_qty' => $qty,
+        ]);
+
+        // Refresh products list to reflect changes
+        $this->refreshProducts();
+        session()->flash('message', 'Satuan tambahan berhasil disimpan.');
+    }
+
+    public function updateUnitScale(int $scaleId, $qty): void
+    {
+        $qty = (float) $qty;
+        if ($qty < 0.0001) {
+            session()->flash('error', 'Konversi minimal adalah 0.0001 dan harus lebih dari 0.');
+            return;
+        }
+        $scale = \App\ProductUnitScale::findOrFail($scaleId);
+        // Extra safeguard: prevent accidentally updating a base unit as a scale
+        $product = Product::find($scale->product_id);
+        if ($product && (int) $scale->unit_id === (int) $product->unit_id) {
+            session()->flash('error', 'Unit dasar tidak boleh dikonfigurasi sebagai skala.');
+            return;
+        }
+        $scale->update(['to_base_qty' => $qty]);
+        $this->refreshProducts();
+        session()->flash('message', 'Konversi satuan diperbarui.');
+    }
+
+    public function removeUnitScale(int $scaleId): void
+    {
+        $scale = \App\ProductUnitScale::findOrFail($scaleId);
+        $scale->delete();
+        $this->refreshProducts();
+        session()->flash('message', 'Satuan tambahan dihapus.');
+    }
+
     public function getProducts()
     {
         // Temporarily disable caching to fix serialization issues
@@ -1124,7 +1205,13 @@ class ProductTable extends Component
                 'price_grosir', 'current_stock', 'status', 'created_at',
                 'updated_at', 'deleted_at',
             ])
-            ->with(['unit:id,name,abbreviation']);
+            ->with([
+                'unit:id,name,abbreviation',
+                'unitScales' => function ($q) {
+                    $q->select('id', 'product_id', 'unit_id', 'to_base_qty');
+                },
+                'unitScales.unit:id,name,abbreviation',
+            ]);
 
         // Eager load warehouse stocks when columns are shown
         if ($this->showWarehouseColumns) {
@@ -1206,6 +1293,18 @@ class ProductTable extends Component
         return $units;
     }
 
+    public function getMasterCategories()
+    {
+        // Use master Category table for selection options in add/edit forms
+        return cache()->remember('master_categories', 600, function () {
+            return Category::query()
+                ->select('name')
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->pluck('name');
+        });
+    }
+
     public function render()
     {
         // Products already have unit relationship loaded via eager loading
@@ -1213,12 +1312,14 @@ class ProductTable extends Component
         $categories = $this->getCategories();
         $units = $this->getUnits();
         $warehouses = $this->getWarehouses();
+        $masterCategories = $this->getMasterCategories();
 
         return view('livewire.product-table', [
             'products' => $products,
             'categories' => $categories,
             'units' => $units,
             'warehouses' => $warehouses,
+            'masterCategories' => $masterCategories,
         ]);
     }
 

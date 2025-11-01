@@ -22,6 +22,7 @@ class ProductUnitManagement extends Component
     public $showModal = false;
     public $showDeleteModal = false;
     public $deleteId = null;
+    public $deleteUnitName = null;
 
     // Search and filter
     public $search = '';
@@ -30,6 +31,13 @@ class ProductUnitManagement extends Component
     public $showUnitResults = false;
     public $showUnitDropdown = false;
     public $unitSearchResults = [];
+
+    protected $paginationTheme = 'tailwind';
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'filterStatus' => ['except' => ''],
+    ];
 
     protected $rules = [
         'name' => 'required|string|max:255',
@@ -158,7 +166,9 @@ class ProductUnitManagement extends Component
 
     public function confirmDelete($id)
     {
+        $unit = ProductUnit::findOrFail($id);
         $this->deleteId = $id;
+        $this->deleteUnitName = $unit->name;
         $this->showDeleteModal = true;
     }
 
@@ -178,6 +188,7 @@ class ProductUnitManagement extends Component
 
         $this->showDeleteModal = false;
         $this->deleteId = null;
+        $this->deleteUnitName = null;
     }
 
     public function toggleStatus($id)
@@ -245,7 +256,7 @@ class ProductUnitManagement extends Component
         }
     }
 
-    private function resetForm()
+    public function resetForm()
     {
         $this->name = '';
         $this->abbreviation = '';
@@ -253,5 +264,7 @@ class ProductUnitManagement extends Component
         $this->is_active = true;
         $this->sort_order = 0;
         $this->editingId = null;
+        $this->showModal = false;
+        $this->resetValidation();
     }
 }

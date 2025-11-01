@@ -95,10 +95,10 @@
 <script>
     document.addEventListener('livewire:init', () => {
         // Listen for openUserForm event
-        window.addEventListener('openUserForm', (event) => {
-            console.log('UserForm - Received openUserForm event:', event.detail);
+        Livewire.on('openUserForm', (event) => {
+            console.log('UserForm - Received openUserForm event:', event);
             try {
-                const userId = event.detail && event.detail.userId ? event.detail.userId : null;
+                const userId = event ? event.userId : null;
                 @this.call('openModal', userId);
             } catch (error) {
                 console.error('Error opening user form:', error);
@@ -106,7 +106,7 @@
         });
         
         // Listen for userSaved event to close modal and refresh
-        window.addEventListener('userSaved', () => {
+        Livewire.on('userSaved', () => {
             console.log('UserForm - Received userSaved event');
             // Modal will be closed by the component itself
             // This is just for any additional UI updates if needed
